@@ -6,5 +6,6 @@ Requires:
 - numpy
 - pandas
 - matplotlib
+- healpy
 - pygplates
 - PlateTectonicTools (https://github.com/EarthByte/PlateTectonicTools)
