@@ -3,6 +3,7 @@ import numpy as np
 import healpy as hp
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
@@ -12,12 +13,14 @@ class ReconstructionModel(object):
     
     def __init__(self, name):
         self.name = name
-        self.rotation_model = []    # creates a new empty list for each dog
+        self.rotation_model = []    # creates a new empty list for each
+        self.rotation_files = []
         self.static_polygons = []
         self.dynamic_polygons = []
 
     def add_rotation_model(self, rotation_file):
-        self.rotation_model.append(rotation_file)
+        self.rotation_files.append(rotation_file)
+        self.rotation_model = pygplates.RotationModel(self.rotation_files)
         
     def add_static_polygons(self, static_polygons_file):
         self.static_polygons.append(static_polygons_file)
@@ -214,26 +217,86 @@ class SubductionConvergence(object):
     
     def __init__(self, df):
         self.df = df
-    
 
-    def plot(self):
-        plt.figure()
-        plt.scatter(self.df.lon, self.df.lat,c=self.df.conv_rate,edgecolors='')
+    def plot(self, variable='convergence rate'):
+        plt.figure(figsize=(12,5))
+        if variable in ['convergence rate','cr']:
+            plt.scatter(self.df.lon, self.df.lat,c=self.df.conv_rate,edgecolors='')
+            plt.title('convergence rate')
+        if variable in ['convergence obliquity','co']:
+            plt.scatter(self.df.lon, self.df.lat,c=self.df.migr_obliq,edgecolors='')
+            plt.title('migration rate')
+        if variable in ['migration rate','mr']:
+            plt.scatter(self.df.lon, self.df.lat,c=self.df.migr_rate,edgecolors='')
+            plt.title('migration rate')
+        if variable in ['migration obliquity','mo']:
+            plt.scatter(self.df.lon, self.df.lat,c=self.df.migr_obliq,edgecolors='')
+            plt.title('migration rate')
+        plt.colorbar()
+        plt.show()
+
+    def hist(self, variable='convergence rate',bins=50):
+
+        plt.figure(figsize=(12,5))
+        if variable in ['convergence rate','cr']:
+            plt.hist(self.df.conv_rate,bins=bins)
+            plt.title('convergence rate')
+        if variable in ['convergence obliquity','co']:
+            plt.scatter(self.df.migr_obliq,bins=bins)
+            plt.title('migration rate')
+        if variable in ['migration rate','mr']:
+            plt.scatter(self.df.migr_rate,bins=bins)
+            plt.title('migration rate')
+        if variable in ['migration obliquity','mo']:
+            plt.scatter(self.df.migr_obliq,bins=bins)
+            plt.title('migration rate')
         plt.show()
 
 
 
-class age_coded_point_dataset(object):
+class AgeCodedPointDataset(object):
   
-    def __init__(self, df, longitude_field, latitude_field, age_field):
-        self.df = df
-        self.point_features = []
-        for index,row in df.iterrows():
-            point = pygplates.PointOnSphere(float(row[latitude_field]),float(row[longitude_field]))
-            point_feature = pygplates.Feature()
-            point_feature.set_geometry(point)
-            point_feature.set_valid_time(row[age_field],-999.)
-            self.point_features.append(point_feature)
+    def __init__(self, source, field_mapping = None):
+
+        filename, file_extension = os.path.splitext(source)
+    
+        if file_extension == '.csv':
+            self.df = pd.read_csv(source)
+            self.point_features = []
+            for index,row in self.df.iterrows():
+                point = pygplates.PointOnSphere(float(row[field_mapping['latitude_field']]),
+                                                float(row[field_mapping['longitude_field']]))
+                point_feature = pygplates.Feature()
+                point_feature.set_geometry(point)
+                point_feature.set_valid_time(row[field_mapping['age_field']],-999.)
+                self.point_features.append(point_feature)
+
+        elif file_extension in ['.shp','.gpml','.gpmlz','.gmt']:
+            feature_collection = pygplates.FeatureCollection(source)
+
+            self.point_features = feature_collection
+
+            DataFrameTemplate = ['lon','lat']
+
+            # Get attribute (other than coordinate) names from first feature
+            for feature in feature_collection:
+                for attribute in feature.get_shapefile_attributes():
+                    DataFrameTemplate.append(attribute) 
+                break
+
+            result = []
+            for feature in feature_collection:
+                tmp = []
+                tmp.append(feature.get_geometry().to_lat_lon()[1])
+                tmp.append(feature.get_geometry().to_lat_lon()[0])
+                for attribute in feature.get_shapefile_attributes():
+                    tmp.append(feature.get_shapefile_attribute(attribute))
+                result.append(tmp)
+
+            self.df = pd.DataFrame(result,columns=DataFrameTemplate)
+
+        if "http://" in source or "https://" in source:
+            print 'Its a url'
 
 
     def assign_reconstruction_model(self,reconstruction_model):
@@ -293,7 +356,7 @@ class age_coded_point_dataset(object):
         return recon_points
 
 
-class point_distribution_on_sphere(object):
+class PointDistributionOnSphere(object):
 
     def __init__(self, distribution_type='random', N=10000):
         
