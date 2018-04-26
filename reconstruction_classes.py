@@ -4,6 +4,8 @@ import healpy as hp
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+import requests
+from io import StringIO
 
 from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
@@ -257,21 +259,15 @@ class SubductionConvergence(object):
 class AgeCodedPointDataset(object):
   
     def __init__(self, source, field_mapping = None):
+        """
+        Initiate an AgeCodedPointDataset class
+        """
 
         filename, file_extension = os.path.splitext(source)
     
-        if file_extension == '.csv':
-            self.df = pd.read_csv(source)
-            self.point_features = []
-            for index,row in self.df.iterrows():
-                point = pygplates.PointOnSphere(float(row[field_mapping['latitude_field']]),
-                                                float(row[field_mapping['longitude_field']]))
-                point_feature = pygplates.Feature()
-                point_feature.set_geometry(point)
-                point_feature.set_valid_time(row[field_mapping['age_field']],-999.)
-                self.point_features.append(point_feature)
 
-        elif file_extension in ['.shp','.gpml','.gpmlz','.gmt']:
+
+        if file_extension in ['.shp','.gpml','.gpmlz','.gmt']:
             feature_collection = pygplates.FeatureCollection(source)
 
             self.point_features = feature_collection
@@ -295,11 +291,33 @@ class AgeCodedPointDataset(object):
 
             self.df = pd.DataFrame(result,columns=DataFrameTemplate)
 
-        if "http://" in source or "https://" in source:
-            print 'Its a url'
+        else:
+            if file_extension == '.csv':
+                self.df = pd.read_csv(source)
+            if "http://" in source or "https://" in source:
+                #print 'Its a url'
+                r = requests.get(source)
+                self.df = pd.read_csv(StringIO(r.text))
+                field_mapping = {'latitude_field':'lat', 'longitude_field':'lng', 
+                                 'max_age_field':'max_ma', 'min_age_field':'min_ma'}
+
+            self.point_features = []
+            for index,row in self.df.iterrows():
+                point = pygplates.PointOnSphere(float(row[field_mapping['latitude_field']]),
+                                                float(row[field_mapping['longitude_field']]))
+                point_feature = pygplates.Feature()
+                point_feature.set_geometry(point)
+                point_feature.set_valid_time(row[field_mapping['max_age_field']],-999.)
+                self.point_features.append(point_feature)
+
+
 
 
     def assign_reconstruction_model(self,reconstruction_model):
+        """
+        assign plate ids to a point data set using an existing ReconstructionModel class
+        """
+
         partitioned_point_features = pygplates.partition_into_plates(reconstruction_model.static_polygons,
                                                                      reconstruction_model.rotation_model,
                                                                      self.point_features)
@@ -308,6 +326,11 @@ class AgeCodedPointDataset(object):
     
     
     def reconstruct(self,reconstruction_time,anchor_plate_id=0):
+        """
+        reconstruct point data to specified time (and optionally with specified anchor 
+        plate id)
+        """
+
         reconstructed_features = []
         pygplates.reconstruct(self.point_features,
                               self.reconstuction_model.rotation_model,
@@ -319,6 +342,11 @@ class AgeCodedPointDataset(object):
     
     
     def plot_reconstructed(self,reconstruction_time,anchor_plate_id=0):
+        """
+        Quick plot of points reconstructed to specified time (and optionally with 
+        specified anchor plate id)
+        """
+
         reconstructed_features = []
         pygplates.reconstruct(self.point_features,
                               self.reconstruction_model.rotation_model,
@@ -336,7 +364,10 @@ class AgeCodedPointDataset(object):
         
         
     def reconstruct_to_time_of_appearance(self,ReconstructTime='BirthTime',anchor_plate_id=0):
-        
+        """
+        Reconstruct points to time of appearance corresponding to each point feature
+        """
+
         rotation_model = pygplates.RotationModel(self.reconstruction_model.rotation_model)
         recon_points = []
         for point_feature in self.point_features:
@@ -358,8 +389,21 @@ class AgeCodedPointDataset(object):
 
 class PointDistributionOnSphere(object):
 
+    """
+    Class to handle point distributions on the sphere
+    """
     def __init__(self, distribution_type='random', N=10000):
+        """
+        Initiate a point distribution on the sphere
         
+        distribution_type: 'healpix' or 'random' [default='random']
+        
+        N: number controlling point density. If 'distribution_type' is 'healpix',
+            N must be a factor of 2 and controls the healpix density. If 
+            'distribution_type' is 'random', N is the number of points returned.
+        
+        """
+
         if distribution_type=='healpix':               
             othetas,ophis = hp.pix2ang(N,np.arange(12*N**2))
             othetas = np.pi/2-othetas
@@ -394,11 +438,19 @@ class PointDistributionOnSphere(object):
         self.meshnode_feature = pygplates.Feature(pygplates.FeatureType.create_from_qualified_string('gpml:MeshNode'))
         self.meshnode_feature.set_geometry(self.multipoint)
 
-    def to_gpml(self, filename):
+    def to_file(self, filename):
+        """
+        Save to a file. File format is dictated from extension (options are gpml, gpmlz, gmt, shp)
+        """
 
         pygplates.FeatureCollection(self.meshnode_feature).write(filename)
 
     def point_feature_heatmap(self, target_features):
+        """
+        Given a AgeCodedPointDataset class object, returns a heatmap showing the number
+        of points for which each point in the point distribution is the closest. 
+        Most useful where the point distribution is equal area.
+        """
 
         res = find_closest_geometries_to_points(target_features,
                                                 [self.multipoint],
