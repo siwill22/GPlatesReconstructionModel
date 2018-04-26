@@ -10,6 +10,8 @@ from io import StringIO
 from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
 
+import gwsFeatureCollection
+
 
 class ReconstructionModel(object):
     
@@ -18,17 +20,26 @@ class ReconstructionModel(object):
         self.rotation_model = []    # creates a new empty list for each
         self.rotation_files = []
         self.static_polygons = []
+        self.static_polygon_files = []
         self.dynamic_polygons = []
+        self.dynamic_polygon_files = []
 
     def add_rotation_model(self, rotation_file):
         self.rotation_files.append(rotation_file)
         self.rotation_model = pygplates.RotationModel(self.rotation_files)
         
     def add_static_polygons(self, static_polygons_file):
+        self.static_polygon_files.append(static_polygons_file)
         self.static_polygons.append(static_polygons_file)
         
     def add_dynamic_polygons(self, dynamic_polygons_file):
-        self.dynamic_polygons.append(dynamic_polygons_file)
+        self.dynamic_polygon_files.append(dynamic_polygons_file)
+        self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
+
+    def from_web_service(self,model='M2016'):
+        self.rotation_model = gwsFeatureCollection(model=model,layer='rotations')
+        self.static_polygons = gwsFeatureCollection(model=model,layer='static_polygons')
+        self.dynamic_polygons = gwsFeatureCollection(model=model,layer='plate_polygons')
         
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
         resolved_topologies = []
@@ -50,6 +61,10 @@ class ReconstructionModel(object):
                               velocity_delta_time=1.,
                               threshold_sampling_distance_radians=2,
                               anchor_plate_id=0):
+
+        if len(self.dynamic_polygons)==0:
+            print 'No dynamic polygons available for this reconstruction model'
+            return
 
         result = sc.subduction_convergence(
             self.rotation_model,
@@ -261,18 +276,21 @@ class AgeCodedPointDataset(object):
     def __init__(self, source, field_mapping = None):
         """
         Initiate an AgeCodedPointDataset class
+
+        This can be:
+        1. Any feature collection file readable by GPlates
+        2. Any csv (TODO add support for any pandas-readable file)
+        3. The paleobiology database web service (TODO add more generic support for web services)
         """
 
         filename, file_extension = os.path.splitext(source)
-    
-
 
         if file_extension in ['.shp','.gpml','.gpmlz','.gmt']:
             feature_collection = pygplates.FeatureCollection(source)
 
-            self.point_features = feature_collection
+            self._point_features = feature_collection
 
-            DataFrameTemplate = ['lon','lat']
+            DataFrameTemplate = ['lon','lat','name','description','reconstruction_plate_id','from_age','to_age']
 
             # Get attribute (other than coordinate) names from first feature
             for feature in feature_collection:
@@ -285,32 +303,36 @@ class AgeCodedPointDataset(object):
                 tmp = []
                 tmp.append(feature.get_geometry().to_lat_lon()[1])
                 tmp.append(feature.get_geometry().to_lat_lon()[0])
+                tmp.append(feature.get_name())
+                tmp.append(feature.get_description())
+                tmp.append(feature.get_reconstruction_plate_id())
+                tmp.append(feature.get_valid_time()[0])
+                tmp.append(feature.get_valid_time()[1])
                 for attribute in feature.get_shapefile_attributes():
                     tmp.append(feature.get_shapefile_attribute(attribute))
                 result.append(tmp)
 
-            self.df = pd.DataFrame(result,columns=DataFrameTemplate)
+            self._df = pd.DataFrame(result,columns=DataFrameTemplate)
 
         else:
             if file_extension == '.csv':
-                self.df = pd.read_csv(source)
-            if "http://" in source or "https://" in source:
-                #print 'Its a url'
+                self._df = pd.read_csv(source)
+            elif "http://" in source or "https://" in source:
                 r = requests.get(source)
-                self.df = pd.read_csv(StringIO(r.text))
+                self._df = pd.read_csv(StringIO(r.text))
                 field_mapping = {'latitude_field':'lat', 'longitude_field':'lng', 
                                  'max_age_field':'max_ma', 'min_age_field':'min_ma'}
+            elif isinstance(source,pd.DataFrame):
+                self._df = source
 
-            self.point_features = []
-            for index,row in self.df.iterrows():
+            self._point_features = []
+            for index,row in self._df.iterrows():
                 point = pygplates.PointOnSphere(float(row[field_mapping['latitude_field']]),
                                                 float(row[field_mapping['longitude_field']]))
                 point_feature = pygplates.Feature()
                 point_feature.set_geometry(point)
                 point_feature.set_valid_time(row[field_mapping['max_age_field']],-999.)
-                self.point_features.append(point_feature)
-
-
+                self._point_features.append(point_feature)
 
 
     def assign_reconstruction_model(self,reconstruction_model):
@@ -320,8 +342,8 @@ class AgeCodedPointDataset(object):
 
         partitioned_point_features = pygplates.partition_into_plates(reconstruction_model.static_polygons,
                                                                      reconstruction_model.rotation_model,
-                                                                     self.point_features)
-        self.point_features = partitioned_point_features
+                                                                     self._point_features)
+        self._point_features = partitioned_point_features
         self.reconstruction_model = reconstruction_model
     
     
@@ -332,7 +354,7 @@ class AgeCodedPointDataset(object):
         """
 
         reconstructed_features = []
-        pygplates.reconstruct(self.point_features,
+        pygplates.reconstruct(self._point_features,
                               self.reconstuction_model.rotation_model,
                               reconstructed_features,
                               reconstruction_time,
@@ -348,7 +370,7 @@ class AgeCodedPointDataset(object):
         """
 
         reconstructed_features = []
-        pygplates.reconstruct(self.point_features,
+        pygplates.reconstruct(self._point_features,
                               self.reconstruction_model.rotation_model,
                               reconstructed_features,
                               reconstruction_time,
@@ -370,7 +392,7 @@ class AgeCodedPointDataset(object):
 
         rotation_model = pygplates.RotationModel(self.reconstruction_model.rotation_model)
         recon_points = []
-        for point_feature in self.point_features:
+        for point_feature in self._point_features:
             if ReconstructTime is 'MidTime':
                 time = (point_feature.get_valid_time()[0]+point_feature.get_valid_time()[1])/2.
             else:
