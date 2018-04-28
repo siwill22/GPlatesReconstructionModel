@@ -36,10 +36,10 @@ class ReconstructionModel(object):
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
-    def from_web_service(self,model='M2016'):
-        self.rotation_model = gwsFeatureCollection(model=model,layer='rotations')
-        self.static_polygons = gwsFeatureCollection(model=model,layer='static_polygons')
-        self.dynamic_polygons = gwsFeatureCollection(model=model,layer='plate_polygons')
+    def from_web_service(self, model='MULLER2016', url='http://gws.gplates.org'):
+        self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
+        self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
+        self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
         
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
         resolved_topologies = []
