@@ -15,6 +15,7 @@ class GplatesRaster(object):
 
         self.gridX,self.gridY,self.gridZ = pg.load_netcdf(filename)
         self.reconstruction_time = reconstruction_time
+        self.source_filename = filename
 
     def plot(self):
         plt.figure(figsize=(16,6))
@@ -42,6 +43,37 @@ class GplatesRaster(object):
         point_z = np.sum(w * self.gridZ.flatten().ravel()[l],axis=1) / np.sum(w,axis=1)
 
         return point_z
+
+    def cross_section(self, PtLons, PtLats):
+        return CrossSection(self, PtLons, PtLats)
+
+
+class CrossSection(object):
+
+    def __init__(self, target_raster, PtLons, PtLats):
+
+        self.GreatCirclePoints,self.ProfilePoints,arc_distance = pg.create_profile_points(PtLons,PtLats)
+        # create an array of distances along profile in km, starting at zero
+        
+        self.profileX_kms = np.arange(0,self.ProfilePoints.shape[0])*arc_distance
+
+        # extract the values from the (smoothed) topography grid along the profile
+        self.grid_values = pg.create_slice(target_raster.gridX,
+                                       target_raster.gridY,
+                                       target_raster.gridZ,
+                                       self.GreatCirclePoints, self.ProfilePoints)
+
+        self.cross_section_geometry = pygplates.PolylineOnSphere(self.GreatCirclePoints)
+        self.source_filename = target_raster.source_filename
+
+    def plate_boundary_intersections(self, shared_boundary_sections):
+
+        (self.subduction_intersections,
+         self.ridge_intersections,
+         self.other_intersections) = pg.plate_boundary_intersections(self.cross_section_geometry,
+                                                                     shared_boundary_sections,
+                                                                     self.profileX_kms)
+
 
 
 class PresentDayAgeGrid(object):

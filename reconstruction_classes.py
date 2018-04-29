@@ -87,6 +87,7 @@ class PlateSnapshot(object):
         self.anchor_plate = anchor_plate_id
         self.rotation_model = rotation_model
         self.resolved_topologies = resolved_topologies
+        self.resolved_topological_sections = resolved_topological_sections
         self.plate_count = len(resolved_topologies)
         self.plate_ids = [resolved_topology.get_resolved_feature().get_reconstruction_plate_id() \
                           for resolved_topology in resolved_topologies]
