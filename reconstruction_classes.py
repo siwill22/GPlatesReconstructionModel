@@ -66,29 +66,13 @@ class ReconstructionModel(object):
             print 'No dynamic polygons available for this reconstruction model'
             return
 
-        result = sc.subduction_convergence(
-            self.rotation_model,
-            self.dynamic_polygons,
-            threshold_sampling_distance_radians,
-            reconstruction_time,
-            velocity_delta_time,
-            anchor_plate_id)
-        
-        # Make a flat list of subduction stats to input into the proximity test
-        subduction_data = []
-        for data in result:
-            subduction_data.append(data+(reconstruction_time,))
-    
-        # Data frame template defining the column names
-        DataFrameTemplate = ('lon','lat','conv_rate','conv_obliq','migr_rate',
-                             'migr_obliq','arc_length','arc_azimuth',
-                             'subducting_plate','overriding_plate','time')
-        
-        # convert list array to dataframe
-        df = pd.DataFrame(subduction_data, columns = DataFrameTemplate)
-        
-        return SubductionConvergence(df)
-        
+        return SubductionConvergence(self.rotation_model, self.dynamic_polygons,
+                                     reconstruction_time,
+                                     threshold_sampling_distance_radians=threshold_sampling_distance_radians,
+                                     velocity_delta_time=velocity_delta_time,
+                                     anchor_plate_id=anchor_plate_id,
+                                     time_step=1)
+
 
 class PlateSnapshot(object):
 
@@ -116,7 +100,7 @@ class PlateSnapshot(object):
     def velocity_field(self, velocity_domain_features=None, velocity_type='both', delta_time=1.):
 
         if velocity_domain_features is None:
-            velocity_domain_features = point_distribution_on_sphere(distribution_type='healpix',N=32).meshnode_feature
+            velocity_domain_features = PointDistributionOnSphere(distribution_type='healpix',N=32).meshnode_feature
 
         # All domain points and associated (magnitude, azimuth, inclination) velocities for the current time.
         all_domain_points = []
@@ -232,8 +216,47 @@ class VelocityField(object):
 
 class SubductionConvergence(object):
     
-    def __init__(self, df):
-        self.df = df
+    def __init__(self, rotation_model, dynamic_polygons,
+                 reconstruction_times,
+                 threshold_sampling_distance_radians,
+                 velocity_delta_time=1,
+                 anchor_plate_id=0,
+                 time_step=1):
+
+        # Data frame template defining the column names
+        DataFrameTemplate = ('lon','lat','conv_rate','conv_obliq','migr_rate',
+                             'migr_obliq','arc_length','arc_azimuth',
+                             'subducting_plate','overriding_plate','time')
+
+        # Create an empty dataframe to concatenate results to
+        df_AllTimes = pd.DataFrame(columns=DataFrameTemplate)
+
+        if isinstance(reconstruction_times, (float,int)):
+            reconstruction_times = [reconstruction_times]
+
+        for reconstruction_time in reconstruction_times:
+
+            result = sc.subduction_convergence(
+                rotation_model,
+                dynamic_polygons,
+                threshold_sampling_distance_radians,
+                reconstruction_time,
+                velocity_delta_time,
+                anchor_plate_id)
+        
+            # Make a flat list of subduction stats to input into the proximity test
+            subduction_data = []
+            for data in result:
+                subduction_data.append(data+(reconstruction_time,))
+    
+            df = pd.DataFrame(subduction_data, columns = DataFrameTemplate)
+
+            # append dataframe 
+            df_AllTimes = df_AllTimes.append(df)
+        
+        # convert list array to dataframe
+        self.df = df_AllTimes
+        
 
     def plot(self, variable='convergence rate'):
         plt.figure(figsize=(12,5))
@@ -313,6 +336,8 @@ class AgeCodedPointDataset(object):
                 result.append(tmp)
 
             self._df = pd.DataFrame(result,columns=DataFrameTemplate)
+            self._field_mapping = {'latitude_field':'lat', 'longitude_field':'lon', 
+                                   'max_age_field':'from_age', 'min_age_field':'to_age'}
 
         else:
             if file_extension == '.csv':
@@ -324,6 +349,8 @@ class AgeCodedPointDataset(object):
                                  'max_age_field':'max_ma', 'min_age_field':'min_ma'}
             elif isinstance(source,pd.DataFrame):
                 self._df = source
+                
+            self._field_mapping = field_mapping
 
             self._point_features = []
             for index,row in self._df.iterrows():
@@ -355,7 +382,7 @@ class AgeCodedPointDataset(object):
 
         reconstructed_features = []
         pygplates.reconstruct(self._point_features,
-                              self.reconstuction_model.rotation_model,
+                              self.reconstruction_model.rotation_model,
                               reconstructed_features,
                               reconstruction_time,
                               anchor_plate_id=anchor_plate_id)
@@ -407,6 +434,41 @@ class AgeCodedPointDataset(object):
                                      time])
             
         return recon_points
+
+
+    def spatial_binning(self, reconstruction_time=None, anchor_plate_id=0, binsize=10., axis=None):
+        """
+        spatial binning within regular long-lat boxes, 
+        [cf Zeigler++ 2003 Lethaia; Cao++ 2018 Geol.Mag]
+        
+        """
+
+        bin_edges=(np.arange(-180,180+binsize,binsize),
+                   np.arange(-90,90+binsize,binsize))
+
+        if reconstruction_time is None:
+            result = np.histogram2d(self._df[self._field_mapping['longitude_field']],
+                                    self._df[self._field_mapping['latitude_field']],
+                                    bin_edges)
+        else:
+            reconstructed_features = []
+            pygplates.reconstruct(self._point_features,
+                                  self.reconstruction_model.rotation_model,
+                                  reconstructed_features,
+                                  reconstruction_time,
+                                  anchor_plate_id=anchor_plate_id)
+
+            result = np.histogram2d([feature.get_reconstructed_geometry().to_lat_lon()[1] for feature in reconstructed_features],
+                                    [feature.get_reconstructed_geometry().to_lat_lon()[0] for feature in reconstructed_features],
+                                    bin_edges)
+
+
+        if axis == None:
+            return result,bin_edges
+        elif axis in ['latitude',0]:
+            return np.nansum(result[0]/result[0],axis=0),bin_edges[1]
+        elif axis in ['longitude',1]:
+            return np.nansum(result[0]/result[0],axis=1),bin_edges[0]
 
 
 class PointDistributionOnSphere(object):
@@ -467,6 +529,7 @@ class PointDistributionOnSphere(object):
 
         pygplates.FeatureCollection(self.meshnode_feature).write(filename)
 
+#TODO - move this to be a method of AgeCodedPointDataset
     def point_feature_heatmap(self, target_features):
         """
         Given a AgeCodedPointDataset class object, returns a heatmap showing the number
