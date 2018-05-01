@@ -23,6 +23,10 @@ class ReconstructionModel(object):
         self.static_polygon_files = []
         self.dynamic_polygons = []
         self.dynamic_polygon_files = []
+        self.coastlines = []
+        self.coastlines_files = []
+        self.continent_polygons = []
+        self.continent_polygons_files = []
 
     def add_rotation_model(self, rotation_file):
         self.rotation_files.append(rotation_file)
@@ -30,11 +34,19 @@ class ReconstructionModel(object):
         
     def add_static_polygons(self, static_polygons_file):
         self.static_polygon_files.append(static_polygons_file)
-        self.static_polygons.append(static_polygons_file)
+        self.static_polygons.append(static_polygons_file)  # Should this be loaded into memory like dynamic polygons??
         
     def add_dynamic_polygons(self, dynamic_polygons_file):
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
+
+    def add_coastlines(self, coastlines_file):
+        self.coastlines_files.append(coastlines_file)
+        self.coastlines.append(coastlines_file)
+
+    def add_continent_polygons(self, continent_polygons_file):
+        self.continent_polygons_files.append(continent_polygons_file)
+        self.continent_polygons.append(continent_polygons_file)
 
     def from_web_service(self, model='MULLER2016', url='http://gws.gplates.org'):
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)

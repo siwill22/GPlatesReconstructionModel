@@ -3,3 +3,7 @@
 
 request.gpmlz
 request.rot
+gmt.conf
+gmt.history
+tmp/*
+
