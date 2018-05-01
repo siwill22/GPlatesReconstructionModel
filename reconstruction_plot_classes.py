@@ -1,6 +1,6 @@
 import os
 import pygplates
-from resolve_topologies import resolve_topologies as topology2gmt
+from ptt.resolve_topologies import resolve_topologies as topology2gmt
 from ptt.utils.call_system_command import call_system_command
 
 
