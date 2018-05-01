@@ -24,9 +24,18 @@ class gmt_reconstruction(object):
 
         outfile='%s/%s_%dMa.ps' % (self.output_dir,self.output_file_stem,reconstruction_time)
 
-        os.system('gmt gmtset COLOR_MODEL RGB MAP_FRAME_TYPE inside MAP_FRAME_PEN 1.0 MAP_TICK_PEN_PRIMARY 1.0 FONT_ANNOT_PRIMARY 9 FONT_LABEL 8 FONT_TITLE 8 FONT_ANNOT_PRIMARY Helvetica FORMAT_GEO_MAP ddd')
+        call_system_command(['gmt','gmtset','COLOR_MODEL','RGB',
+                                            'MAP_FRAME_TYPE','inside',
+                                            'MAP_FRAME_PEN','1.0',
+                                            'MAP_TICK_PEN_PRIMARY','1.0',
+                                            'FONT_ANNOT_PRIMARY','9',
+                                            'FONT_LABEL','8',
+                                            'FONT_TITLE','8',
+                                            'FONT_ANNOT_PRIMARY','Helvetica',
+                                            'FORMAT_GEO_MAP','ddd'])
 
-        os.system('gmt psbasemap -R%s %s -Ba30f30::wesn -K > %s ' % (region,self.projection,outfile))
+        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
+                             '-Ba30f30::wesn', '-K', '>', outfile])
         
         if 'continents' in layers:
             output_reconstructed_continents_filename = 'tmp/continents.gmt'
@@ -34,7 +43,8 @@ class gmt_reconstruction(object):
                                   self.reconstruction_model.rotation_model, 
                                   output_reconstructed_continents_filename, 
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
-            os.system('gmt psxy -R%s %s -W0.1p,wheat -Gwheat tmp/continents.gmt -O -K -N >> %s' % (region,self.projection,outfile))
+            call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection, 
+                                '-W0.1p,wheat', '-Gwheat', 'tmp/continents.gmt', '-O', '-K', '-N', '>>', outfile])
 
         if 'coastlines' in layers:
             output_reconstructed_coastlines_filename = 'tmp/coastlines.gmt'
@@ -42,7 +52,8 @@ class gmt_reconstruction(object):
                                   self.reconstruction_model.rotation_model, 
                                   output_reconstructed_coastlines_filename, 
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
-            os.system('gmt psxy -R %s -W0.2p,darkolivegreen -Gdarkolivegreen -O -K -m tmp/coastlines.gmt -V >> %s' % (self.projection,outfile))
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                '-W0.2p,darkolivegreen', '-Gdarkolivegreen','-O', '-K', '-m', 'tmp/coastlines.gmt', '-V', '>>', outfile])
     
         if 'dynamic_polygons' in layers:
             output_filename_prefix = 'tmp/'
@@ -54,18 +65,23 @@ class gmt_reconstruction(object):
                  output_filename_extension,
                  anchor_plate_id)
 
-            os.system('gmt psxy -R %s -W0.6p,gray70 -K -O -m tmp/other_boundaries_%0.2fMa.gmt -V >> %s' % (self.projection,reconstruction_time,outfile))
-            os.system('gmt psxy -R %s -W0.6p,red -K -O -m tmp/ridge_transform_boundaries_%0.2fMa.gmt -V >> %s' % (self.projection,reconstruction_time,outfile))
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,gray70', '-K', '-O', '-m', 'tmp/boundary_polygons_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,red', '-K', '-O', '-m', 'tmp/ridge_transform_boundaries_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
 
             #plot subduction zones
-            os.system('gmt psxy -R %s -W0.6p,black  -Gblack -Sf15p/4plt -K -O -m tmp/subduction_boundaries_sL_%0.2fMa.gmt -V >> %s' % (self.projection,reconstruction_time,outfile))
-            os.system('gmt psxy -R %s -W0.6p,black  -Gblack -Sf15p/4prt -K -O -m tmp/subduction_boundaries_sR_%0.2fMa.gmt -V >> %s' % (self.projection,reconstruction_time,outfile))
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,black', '-Gblack', '-Sf15p/4plt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sL_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,black', '-Gblack', '-Sf15p/4prt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sR_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
 
-        os.system('gmt psbasemap -R%s %s -Ba30f30::wesn -O -K >> %s ' % (region,self.projection,outfile))
-        os.system('gmt psclip -C -O >> %s ' % (outfile))
+        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection, 
+                             '-Ba30f30::wesn', '-O', '-K', '>>', outfile])
+        call_system_command(['gmt', 'psclip', '-C', '-O', '>>', outfile])
 
         #convert ps into raster, -E set the resolution
-        os.system('gmt ps2raster %s -A0.2c -E300 -Tg -P' % outfile)  #-F${reconstruction_time}Ma
+        call_system_command(['gmt', 'ps2raster', outfile, '-A0.2c', '-E300', '-Tg', '-P'])
 
         self.image_postscript = outfile
         self.image_file = '%s.png' % outfile[:-3]
