@@ -68,22 +68,6 @@ class ReconstructionModel(object):
                              self.rotation_model,
                              reconstruction_time,
                              anchor_plate_id)
-    
-    def subduction_convergence(self, reconstruction_time, 
-                              velocity_delta_time=1.,
-                              threshold_sampling_distance_radians=2,
-                              anchor_plate_id=0):
-
-        if len(self.dynamic_polygons)==0:
-            print 'No dynamic polygons available for this reconstruction model'
-            return
-
-        return SubductionConvergence(self.rotation_model, self.dynamic_polygons,
-                                     reconstruction_time,
-                                     threshold_sampling_distance_radians=threshold_sampling_distance_radians,
-                                     velocity_delta_time=velocity_delta_time,
-                                     anchor_plate_id=anchor_plate_id,
-                                     time_step=1)
 
 
 class PlateSnapshot(object):
@@ -229,7 +213,7 @@ class VelocityField(object):
 
 class SubductionConvergence(object):
     
-    def __init__(self, rotation_model, dynamic_polygons,
+    def __init__(self, reconstruction_model,
                  reconstruction_times,
                  threshold_sampling_distance_radians,
                  velocity_delta_time=1,
@@ -250,8 +234,8 @@ class SubductionConvergence(object):
         for reconstruction_time in reconstruction_times:
 
             result = sc.subduction_convergence(
-                rotation_model,
-                dynamic_polygons,
+                reconstruction_model.rotation_model,
+                reconstruction_model.dynamic_polygons,
                 threshold_sampling_distance_radians,
                 reconstruction_time,
                 velocity_delta_time,
@@ -269,6 +253,7 @@ class SubductionConvergence(object):
         
         # convert list array to dataframe
         self.df = df_AllTimes
+        self.reconstruction_model = reconstruction_model
         
 
     def plot(self, variable='convergence rate'):
@@ -288,6 +273,7 @@ class SubductionConvergence(object):
         plt.colorbar()
         plt.show()
 
+    # TODO make the histograms weighted by segment length
     def hist(self, variable='convergence rate',bins=50):
 
         plt.figure(figsize=(12,5))
