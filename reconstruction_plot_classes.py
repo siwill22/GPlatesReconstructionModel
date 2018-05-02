@@ -2,6 +2,7 @@ import os
 import pygplates
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 from ptt.utils.call_system_command import call_system_command
+import moviepy.editor as mpy
 
 
 class gmt_reconstruction(object):
@@ -18,7 +19,8 @@ class gmt_reconstruction(object):
         self.region = region
 
     def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0, 
-                      layers=['continents','coastlines','dynamic_polygons']):
+                      layers=['continents','coastlines','dynamic_polygons'],
+                      keep_ps_file=False):
 
         region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
 
@@ -72,9 +74,9 @@ class gmt_reconstruction(object):
 
             #plot subduction zones
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf15p/4plt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sL_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3plt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sL_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf15p/4prt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sR_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3prt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sR_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
 
         call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection, 
                              '-Ba30f30::wesn', '-O', '-K', '>>', outfile])
@@ -83,8 +85,24 @@ class gmt_reconstruction(object):
         #convert ps into raster, -E set the resolution
         call_system_command(['gmt', 'ps2raster', outfile, '-A0.2c', '-E300', '-Tg', '-P'])
 
-        self.image_postscript = outfile
+        if keep_ps_file:
+            self.image_postscript = outfile
+        else:
+            call_system_command('rm', outfile)
         self.image_file = '%s.png' % outfile[:-3]
 
 
+    def animation(self, reconstruction_times, anchor_plate_id = 0,
+                  layers=['continents','coastlines','dynamic_polygons'], 
+                  gif_filename=None):
+
+        frame_list = []
+        for reconstruction_time in reconstruction_times:
+            self.plot_snapshot(reconstruction_time, anchor_plate_id=anchor_plate_id, layers=layers)
+            frame_list.append(self.image_file)
+
+        if gif_filename is not None:
+            frame_list.reverse()
+            clip = mpy.ImageSequenceClip(frame_list, fps=2)
+            clip.write_gif(gif_filename)
 
