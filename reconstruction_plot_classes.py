@@ -88,7 +88,7 @@ class gmt_reconstruction(object):
         if keep_ps_file:
             self.image_postscript = outfile
         else:
-            call_system_command('rm', outfile)
+            os.remove(outfile)
         self.image_file = '%s.png' % outfile[:-3]
 
 

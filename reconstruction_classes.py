@@ -9,6 +9,7 @@ from io import StringIO
 
 from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
+import platetree as ptree
 
 import gwsFeatureCollection
 
@@ -48,11 +49,11 @@ class ReconstructionModel(object):
         self.continent_polygons_files.append(continent_polygons_file)
         self.continent_polygons.append(continent_polygons_file)
 
-    def from_web_service(self, model='MULLER2016', url='http://gws.gplates.org'):
+    def from_web_service(self, model='MULLER2016', url='https://gws.gplates.org'):
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
-        
+    
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
         resolved_topologies = []
         resolved_topological_sections = []
@@ -68,6 +69,13 @@ class ReconstructionModel(object):
                              self.rotation_model,
                              reconstruction_time,
                              anchor_plate_id)
+
+
+## TODO
+     # topology_checks - area, segment lengths... [should go in plate snapshot??]
+     # continents --> continent area, masking between continents and oceans
+     # age grid(s) associated with reconstruction model
+
 
 
 class PlateSnapshot(object):
@@ -182,6 +190,40 @@ class PlateSnapshot(object):
             pt_lat.append(pt.to_lat_lon()[0])
 
         return VelocityField(pt_lat,pt_lon,vel_east,vel_north,vel_mag,vel_azim,plate_ids)
+
+
+class PlateTree(object):
+    #TODO handle dynamic polygons as well as static
+
+    def __init__(self, reconstruction_model):
+        self.reconstruction_model = reconstruction_model
+
+    def plot_snapshot(self, reconstruction_time):
+        
+        ptree.plot_snapshot(self.reconstruction_model.static_polygons,
+                            self.reconstruction_model.rotation_model,
+                            reconstruction_time)
+
+    def to_gpml(self, reconstruction_times, filename):
+
+        if isinstance(reconstruction_times, (float,int)):
+            reconstruction_times = [reconstruction_times]
+
+        for reconstruction_time in reconstruction_times:
+
+            (uniq_plates_from_polygons, 
+             chains, 
+             reconstruction_tree,
+             reconstructed_polygons) = tree_snapshot(polygons,
+                                                     rotation_model,
+                                                     reconstruction_time)
+
+            # for now, the valid time is set to be plus/minus 0.5 Myr
+            tree_features = pt.create_hierarchy_features(chains,reconstructed_polygons,tree_features,
+                                                         valid_time=(recon_time+0.5,recon_time-0.5))
+
+        pygplates.FeatureCollection(tree_features).write(filename)
+
 
 
 class VelocityField(object):
