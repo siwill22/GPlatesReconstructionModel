@@ -6,4 +6,4 @@ request.rot
 gmt.conf
 gmt.history
 tmp/*
-
+plots/*
