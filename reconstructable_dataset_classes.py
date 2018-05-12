@@ -14,7 +14,7 @@ class litho1_scalar_coverage(object):
         self.layer_keys = litho.l1_layer_decode.items()
         self.value_keys = litho.l1_data_decode.items()
 
-    def to_scalar_coverage(self, filename, layer_names='All'):
+    def write_layer_depth_to_scalar_coverage(self, filename, layer_names='All'):
         
         if layer_names is 'All':
             layer_names = [name[0] for name in self.layer_keys]
@@ -30,3 +30,9 @@ class litho1_scalar_coverage(object):
         ct_feature.set_name('litho1.0 layers')
 
         pygplates.FeatureCollection(ct_feature).write(filename)
+
+    def write_layer_thickness_to_scalar_coverage(self, filename, layer_names='All'):
+        
+        if layer_names is 'All':
+            layer_names = [name[0] for name in self.layer_keys]
+

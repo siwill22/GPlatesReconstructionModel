@@ -17,13 +17,14 @@ class GplatesRaster(object):
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
-    def plot(self):
+    def plot(self, show=False):
         plt.figure(figsize=(16,6))
         plt.contourf(self.gridX, self.gridY, self.gridZ,
                      20, cmap=plt.cm.BrBG_r)
         plt.gca().set_aspect('equal')
         plt.colorbar()
-        plt.show()
+        if show:
+            plt.show()
 
     def sample(self, point_lons, point_lats):
 
