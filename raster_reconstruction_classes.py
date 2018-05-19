@@ -11,9 +11,9 @@ from pigplates import sphere_tools as pigsph
 
 class GplatesRaster(object):
 
-    def __init__(self, filename, reconstruction_time=0.):
+    def __init__(self, filename, reconstruction_time=0., z_field_name='z'):
 
-        self.gridX,self.gridY,self.gridZ = pg.load_netcdf(filename)
+        self.gridX,self.gridY,self.gridZ = pg.load_netcdf(filename, z_field_name)
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
