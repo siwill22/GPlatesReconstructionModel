@@ -4,7 +4,9 @@ from reconstruction_classes import *
 import numpy as np
 #import pandas as pd
 import matplotlib.pyplot as plt
+import tempfile
 import xarray as xr
+from ptt.utils.call_system_command import call_system_command
 import paleogeography as pg
 from pigplates import sphere_tools as pigsph
 
@@ -44,6 +46,30 @@ class GplatesRaster(object):
         point_z = np.sum(w * self.gridZ.flatten().ravel()[l],axis=1) / np.sum(w,axis=1)
 
         return point_z
+
+    def sample_using_gmt(self, point_lons, point_lats):
+
+        dataout = np.vstack((np.asarray(point_lons),np.asarray(point_lats))).T
+        xyzfile = tempfile.NamedTemporaryFile()
+        grdtrack_file = tempfile.NamedTemporaryFile()
+
+        np.savetxt(xyzfile.name,dataout)
+        # Note the a -T option would find the nearest valid grid value,
+        # if the point falls on a NaN grid node
+        # adding -T+e returns the distance to the node
+        call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name])
+        G=[]
+        with open(grdtrack_file.name) as f:
+            for line in f:
+                if line[0] == '>':
+                    continue
+                else:
+                    tmp = line.split()
+                    G.append(float(tmp[2]))
+
+        f.close()
+        return np.array(G)
+	
 
     def cross_section(self, PtLons, PtLats):
         return CrossSection(self, PtLons, PtLats)
