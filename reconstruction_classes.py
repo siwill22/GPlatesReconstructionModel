@@ -105,7 +105,7 @@ class PlateSnapshot(object):
     def velocity_field(self, velocity_domain_features=None, velocity_type='both', delta_time=1.):
 
         if velocity_domain_features is None:
-            velocity_domain_features = PointDistributionOnSphere(distribution_type='healpix',N=32).meshnode_feature
+            velocity_domain_features = [PointDistributionOnSphere(distribution_type='healpix',N=32).meshnode_feature]
 
         # All domain points and associated (magnitude, azimuth, inclination) velocities for the current time.
         all_domain_points = []
