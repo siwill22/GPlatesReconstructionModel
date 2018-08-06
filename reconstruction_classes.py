@@ -243,10 +243,10 @@ class VelocityField(object):
             return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude))))
 
         elif type(plate_id_selection) is list:
-            index = [plate_id in plate_id_selection for plate_id in self.plate_id]
+            index = np.array([plate_id in plate_id_selection for plate_id in self.plate_id])
 
         else:
-            index = [plate_id == plate_id_selection for plate_id in self.plate_id]
+            index = np.array([plate_id == plate_id_selection for plate_id in self.plate_id])
 
         #print index
         return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude)[index])))
