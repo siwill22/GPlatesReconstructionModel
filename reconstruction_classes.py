@@ -15,7 +15,7 @@ import gwsFeatureCollection
 
 
 class ReconstructionModel(object):
-    
+
     def __init__(self, name):
         self.name = name
         self.rotation_model = []    # creates a new empty list for each
@@ -32,11 +32,11 @@ class ReconstructionModel(object):
     def add_rotation_model(self, rotation_file):
         self.rotation_files.append(rotation_file)
         self.rotation_model = pygplates.RotationModel(self.rotation_files)
-        
+
     def add_static_polygons(self, static_polygons_file):
         self.static_polygon_files.append(static_polygons_file)
         self.static_polygons.append(static_polygons_file)  # Should this be loaded into memory like dynamic polygons??
-        
+
     def add_dynamic_polygons(self, dynamic_polygons_file):
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
@@ -53,17 +53,17 @@ class ReconstructionModel(object):
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
-    
+
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
         resolved_topologies = []
         resolved_topological_sections = []
-        pygplates.resolve_topologies(self.dynamic_polygons, 
+        pygplates.resolve_topologies(self.dynamic_polygons,
                                      self.rotation_model,
-                                     resolved_topologies, 
+                                     resolved_topologies,
                                      reconstruction_time,
                                      resolved_topological_sections,
                                      anchor_plate_id=anchor_plate_id)
-        
+
         return PlateSnapshot(resolved_topologies,
                              resolved_topological_sections,
                              self.rotation_model,
@@ -80,13 +80,13 @@ class ReconstructionModel(object):
 
 class PlateSnapshot(object):
 
-    def __init__(self, 
+    def __init__(self,
                  resolved_topologies,
                  resolved_topological_sections,
                  rotation_model,
                  reconstruction_time,
                  anchor_plate_id):
-        
+
         self.reconstruction_time = reconstruction_time
         self.anchor_plate = anchor_plate_id
         self.rotation_model = rotation_model
@@ -95,10 +95,10 @@ class PlateSnapshot(object):
         self.plate_count = len(resolved_topologies)
         self.plate_ids = [resolved_topology.get_resolved_feature().get_reconstruction_plate_id() \
                           for resolved_topology in resolved_topologies]
-        self.plate_areas = [resolved_topology.get_resolved_geometry().get_area() * pygplates.Earth.mean_radius_in_kms\
+        self.plate_areas = [resolved_topology.get_resolved_geometry().get_area() * pygplates.Earth.mean_radius_in_kms**2\
                             for resolved_topology in resolved_topologies]
         self.plate_perimeters = [resolved_topology.get_resolved_geometry().get_arc_length() * pygplates.Earth.mean_radius_in_kms\
-                            for resolved_topology in resolved_topologies] 
+                            for resolved_topology in resolved_topologies]
         self.plate_centroids = [resolved_topology.get_resolved_geometry().get_interior_centroid()\
                                 for resolved_topology in resolved_topologies]
 
@@ -116,7 +116,7 @@ class PlateSnapshot(object):
         rotation_model = pygplates.RotationModel(self.rotation_model)
 
         # Partition our velocity domain features into our topological plate polygons at the current 'time'.
-        plate_partitioner = pygplates.PlatePartitioner(self.resolved_topologies, 
+        plate_partitioner = pygplates.PlatePartitioner(self.resolved_topologies,
                                                        rotation_model)
 
         for velocity_domain_feature in velocity_domain_features:
@@ -136,8 +136,8 @@ class PlateSnapshot(object):
                         partitioning_plate_id = partitioning_plate.get_feature().get_reconstruction_plate_id()
 
                         # Get the stage rotation of partitioning plate from 'time + delta_time' to 'time'.
-                        equivalent_stage_rotation = rotation_model.get_rotation(self.reconstruction_time, 
-                                                                                partitioning_plate_id, 
+                        equivalent_stage_rotation = rotation_model.get_rotation(self.reconstruction_time,
+                                                                                partitioning_plate_id,
                                                                                 self.reconstruction_time + delta_time)
 
                         # Calculate velocity at the velocity domain point.
@@ -152,7 +152,7 @@ class PlateSnapshot(object):
                                 [velocity_domain_point],
                                 velocity_vectors)
                         all_velocities_en.append(velocities[0])
-                        
+
                         # Convert global 3D velocity vectors to local (magnitude, azimuth, inclination) tuples (one tuple per point).
                         velocities = pygplates.LocalCartesian.convert_from_geocentric_to_magnitude_azimuth_inclination(
                                 [velocity_domain_point],
@@ -199,7 +199,7 @@ class PlateTree(object):
         self.reconstruction_model = reconstruction_model
 
     def plot_snapshot(self, reconstruction_time):
-        
+
         ptree.plot_snapshot(self.reconstruction_model.static_polygons,
                             self.reconstruction_model.rotation_model,
                             reconstruction_time)
@@ -211,8 +211,8 @@ class PlateTree(object):
 
         for reconstruction_time in reconstruction_times:
 
-            (uniq_plates_from_polygons, 
-             chains, 
+            (uniq_plates_from_polygons,
+             chains,
              reconstruction_tree,
              reconstructed_polygons) = tree_snapshot(polygons,
                                                      rotation_model,
@@ -227,7 +227,7 @@ class PlateTree(object):
 
 
 class VelocityField(object):
-    
+
     def __init__(self, pt_lat,pt_lon,vel_east,vel_north,vel_mag,vel_azim,plate_ids):
         self.longitude = pt_lon
         self.latitude = pt_lat
@@ -247,14 +247,14 @@ class VelocityField(object):
 
         else:
             index = [plate_id == plate_id_selection for plate_id in self.plate_id]
-        
+
         #print index
         return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude)[index])))
 
 
 
 class SubductionConvergence(object):
-    
+
     def __init__(self, reconstruction_model,
                  reconstruction_times,
                  threshold_sampling_distance_radians,
@@ -282,21 +282,21 @@ class SubductionConvergence(object):
                 reconstruction_time,
                 velocity_delta_time,
                 anchor_plate_id)
-        
+
             # Make a flat list of subduction stats to input into the proximity test
             subduction_data = []
             for data in result:
                 subduction_data.append(data+(reconstruction_time,))
-    
+
             df = pd.DataFrame(subduction_data, columns = DataFrameTemplate)
 
-            # append dataframe 
+            # append dataframe
             df_AllTimes = df_AllTimes.append(df)
-        
+
         # convert list array to dataframe
         self.df = df_AllTimes
         self.reconstruction_model = reconstruction_model
-        
+
 
     def plot(self, variable='convergence rate'):
         plt.figure(figsize=(12,5))
@@ -336,7 +336,7 @@ class SubductionConvergence(object):
 
 
 class AgeCodedPointDataset(object):
-  
+
     def __init__(self, source, field_mapping = None):
         """
         Initiate an AgeCodedPointDataset class
@@ -359,7 +359,7 @@ class AgeCodedPointDataset(object):
             # Get attribute (other than coordinate) names from first feature
             for feature in feature_collection:
                 for attribute in feature.get_shapefile_attributes():
-                    DataFrameTemplate.append(attribute) 
+                    DataFrameTemplate.append(attribute)
                 break
 
             result = []
@@ -377,7 +377,7 @@ class AgeCodedPointDataset(object):
                 result.append(tmp)
 
             self._df = pd.DataFrame(result,columns=DataFrameTemplate)
-            self._field_mapping = {'latitude_field':'lat', 'longitude_field':'lon', 
+            self._field_mapping = {'latitude_field':'lat', 'longitude_field':'lon',
                                    'max_age_field':'from_age', 'min_age_field':'to_age'}
 
         else:
@@ -386,11 +386,11 @@ class AgeCodedPointDataset(object):
             elif "http://" in source or "https://" in source:
                 r = requests.get(source)
                 self._df = pd.read_csv(StringIO(r.text))
-                field_mapping = {'latitude_field':'lat', 'longitude_field':'lng', 
+                field_mapping = {'latitude_field':'lat', 'longitude_field':'lng',
                                  'max_age_field':'max_ma', 'min_age_field':'min_ma'}
             elif isinstance(source,pd.DataFrame):
                 self._df = source
-                
+
             self._field_mapping = field_mapping
 
             self._point_features = []
@@ -413,11 +413,11 @@ class AgeCodedPointDataset(object):
                                                                      self._point_features)
         self._point_features = partitioned_point_features
         self.reconstruction_model = reconstruction_model
-    
-    
+
+
     def reconstruct(self,reconstruction_time,anchor_plate_id=0):
         """
-        reconstruct point data to specified time (and optionally with specified anchor 
+        reconstruct point data to specified time (and optionally with specified anchor
         plate id)
         """
 
@@ -427,13 +427,13 @@ class AgeCodedPointDataset(object):
                               reconstructed_features,
                               reconstruction_time,
                               anchor_plate_id=anchor_plate_id)
-        
+
         return reconstructed_features
-    
-    
+
+
     def plot_reconstructed(self,reconstruction_time,anchor_plate_id=0):
         """
-        Quick plot of points reconstructed to specified time (and optionally with 
+        Quick plot of points reconstructed to specified time (and optionally with
         specified anchor plate id)
         """
 
@@ -443,7 +443,7 @@ class AgeCodedPointDataset(object):
                               reconstructed_features,
                               reconstruction_time,
                               anchor_plate_id=anchor_plate_id)
-        
+
         plt.figure()
         for reconstructed_feature in reconstructed_features:
             plt.plot(reconstructed_feature.get_reconstructed_geometry().to_lat_lon()[1],
@@ -451,8 +451,8 @@ class AgeCodedPointDataset(object):
             plt.axis([-180,180,-90,90])
         plt.title('%0.2f Ma' % reconstruction_time)
         plt.show()
-        
-        
+
+
     def reconstruct_to_time_of_appearance(self,ReconstructTime='BirthTime',anchor_plate_id=0):
         """
         Reconstruct points to time of appearance corresponding to each point feature
@@ -473,15 +473,15 @@ class AgeCodedPointDataset(object):
                 recon_points.append([reconstructed_point.to_lat_lon()[1],
                                      reconstructed_point.to_lat_lon()[0],
                                      time])
-            
+
         return recon_points
 
 
     def spatial_binning(self, reconstruction_time=None, anchor_plate_id=0, binsize=10., axis=None):
         """
-        spatial binning within regular long-lat boxes, 
+        spatial binning within regular long-lat boxes,
         [cf Zeigler++ 2003 Lethaia; Cao++ 2018 Geol.Mag]
-        
+
         """
 
         bin_edges=(np.arange(-180,180+binsize,binsize),
@@ -520,16 +520,16 @@ class PointDistributionOnSphere(object):
     def __init__(self, distribution_type='random', N=10000):
         """
         Initiate a point distribution on the sphere
-        
+
         distribution_type: 'healpix' or 'random' [default='random']
-        
+
         N: number controlling point density. If 'distribution_type' is 'healpix',
-            N must be a factor of 2 and controls the healpix density. If 
+            N must be a factor of 2 and controls the healpix density. If
             'distribution_type' is 'random', N is the number of points returned.
-        
+
         """
 
-        if distribution_type=='healpix':               
+        if distribution_type=='healpix':
             othetas,ophis = hp.pix2ang(N,np.arange(12*N**2))
             othetas = np.pi/2-othetas
             ophis[ophis>np.pi] -= np.pi*2
@@ -574,7 +574,7 @@ class PointDistributionOnSphere(object):
     def point_feature_heatmap(self, target_features):
         """
         Given a AgeCodedPointDataset class object, returns a heatmap showing the number
-        of points for which each point in the point distribution is the closest. 
+        of points for which each point in the point distribution is the closest.
         Most useful where the point distribution is equal area.
         """
 
@@ -589,5 +589,3 @@ class PointDistributionOnSphere(object):
             bin_counts.append(bin_indices.count(j))
 
         return bin_counts
-
-
