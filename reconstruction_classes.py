@@ -550,7 +550,7 @@ class PointDistributionOnSphere(object):
             radius = np.sqrt((normal_deviates**2).sum(axis=0))
             points = normal_deviates/radius
 
-            Long=[], Lat=[]
+            Long=[]; Lat=[]
             for xyz in points.T:
                 LL = pygplates.PointOnSphere((xyz))
                 Lat.append(LL.to_lat_lon()[0])
