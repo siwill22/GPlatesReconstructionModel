@@ -13,6 +13,12 @@ import platetree as ptree
 
 import gwsFeatureCollection
 
+import warnings
+try:
+    import cartopy.crs as ccrs
+except:
+    warnings.warn('cartopy plotting options not available')
+
 
 class ReconstructionModel(object):
 
@@ -191,6 +197,29 @@ class PlateSnapshot(object):
 
         return VelocityField(pt_lat,pt_lon,vel_east,vel_north,vel_mag,vel_azim,plate_ids)
 
+    def plot(self, ax=None, projection=ccrs.Mollweide(),
+             linewidth=2):
+
+        if not ax:
+            ax = plt.axes(projection=projection)
+            ax.set_global()
+
+        for boundary in self.resolved_topological_sections:
+            shared_sub_segments = boundary.get_shared_sub_segments()
+            for shared_sub_segment in shared_sub_segments:
+                if shared_sub_segment.get_resolved_feature().get_geometry() is not None:
+                    if shared_sub_segment.get_resolved_feature().get_feature_type() == pygplates.FeatureType.gpml_subduction_zone:
+                        boundary_color = 'black'
+                    elif shared_sub_segment.get_resolved_feature().get_feature_type() == pygplates.FeatureType.gpml_mid_ocean_ridge:
+                        boundary_color = 'red'
+                    else:
+                        boundary_color = 'lightblue'
+                    ax.plot(shared_sub_segment.get_resolved_feature().get_geometry().to_lat_lon_array()[:,1],
+                            shared_sub_segment.get_resolved_feature().get_geometry().to_lat_lon_array()[:,0],
+                            transform=ccrs.Geodetic(), color=boundary_color, linewidth=linewidth)
+
+        return ax
+
 
 class PlateTree(object):
     #TODO handle dynamic polygons as well as static
@@ -347,7 +376,10 @@ class AgeCodedPointDataset(object):
         3. The paleobiology database web service (TODO add more generic support for web services)
         """
 
-        filename, file_extension = os.path.splitext(source)
+        try:
+            filename, file_extension = os.path.splitext(source)
+        except:
+            filename = None; file_extension = None
 
         if file_extension in ['.shp','.gpml','.gpmlz','.gmt']:
             feature_collection = pygplates.FeatureCollection(source)
@@ -399,7 +431,11 @@ class AgeCodedPointDataset(object):
                                                 float(row[field_mapping['longitude_field']]))
                 point_feature = pygplates.Feature()
                 point_feature.set_geometry(point)
-                point_feature.set_valid_time(row[field_mapping['max_age_field']],-999.)
+                try:
+                    point_feature.set_valid_time(row[field_mapping['max_age_field']],-999.)
+                except:
+                    warnings.warn('Unable to set valid time for row %d' % index)
+                    point_feature.set_valid_time(-998,-999.)
                 self._point_features.append(point_feature)
 
 
