@@ -1,4 +1,4 @@
-# GPlatesClassStruggle
+# GPlatesReconstructionModel
 
 prototyping for GPlates plate reconstructions as a python class
 
