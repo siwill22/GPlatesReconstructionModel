@@ -8,6 +8,7 @@ import tempfile
 import xarray as xr
 from ptt.utils.call_system_command import call_system_command
 import paleogeography as pg
+import stripy
 from pigplates import sphere_tools as pigsph
 
 
@@ -28,11 +29,11 @@ class GplatesRaster(object):
         if show:
             plt.show()
 
-    def sample(self, point_lons, point_lats):
+    def sample(self, point_lons, point_lats, order=0):
 
-        Xg, Yg = np.meshgrid(self.gridX,self.gridY)
-        d,l = pigsph.sampleOnSphere(Xg.flatten(),
-                                    Yg.flatten(), 
+        LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
+        d,l = pigsph.sampleOnSphere(LonGrid.flatten(),
+                                    LatGrid.flatten(),
                                     self.gridZ.flatten(),
                                     np.array(point_lons),
                                     np.array(point_lats),
@@ -40,8 +41,8 @@ class GplatesRaster(object):
 
         #print d,l
         # based on http://earthpy.org/interpolation_between_grids_with_ckdtree.html
-        # note also that where d is zero, we get a divide by zero error - hence, these 
-        # values are (currently) set to one 
+        # note also that where d is zero, we get a divide by zero error - hence, these
+        # values are (currently) set to one
         w = np.divide(1.,d**2, out=np.ones_like(d), where=d!=0)
         point_z = np.sum(w * self.gridZ.flatten().ravel()[l],axis=1) / np.sum(w,axis=1)
 
@@ -69,7 +70,19 @@ class GplatesRaster(object):
 
         f.close()
         return np.array(G)
-	
+
+    def sample_using_stripy(self, point_lons, point_lats, order=0):
+
+        LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
+        tri = stripy.sTriangulation(lons=np.radians(LonGrid.flatten()),
+                                    lats=np.radians(LatGrid.flatten()))
+
+        point_z = tri.interpolate(np.radians(point_lons),np.radians(point_lats),
+                                  zdata=self.gridZ.flatten(),
+                                  order=order)
+
+        return point_z[0]
+
 
     def cross_section(self, PtLons, PtLats):
         return CrossSection(self, PtLons, PtLats)
@@ -81,7 +94,7 @@ class CrossSection(object):
 
         self.GreatCirclePoints,self.ProfilePoints,arc_distance = pg.create_profile_points(PtLons,PtLats)
         # create an array of distances along profile in km, starting at zero
-        
+
         self.profileX_kms = np.arange(0,self.ProfilePoints.shape[0])*arc_distance
 
         # extract the values from the (smoothed) topography grid along the profile
@@ -104,7 +117,7 @@ class CrossSection(object):
 
 
 class PresentDayAgeGrid(object):
-    
+
     def __init__(self):
         GplatesRaster.__init__(self)
 
