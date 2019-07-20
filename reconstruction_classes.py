@@ -221,6 +221,34 @@ class PlateSnapshot(object):
         return ax
 
 
+class MotionPathFeature:
+
+    def __init__(self, seed_point, path_times, reconstruction_plate_id,
+                 relative_plate_id=0, anchor_plate_id=0):
+        seed_points_at_digitisation_time = pygplates.MultiPointOnSphere([seed_point])
+        motion_path_feature = pygplates.Feature.create_motion_path(seed_points_at_digitisation_time,
+                                                                   path_times,
+                                                                   valid_time=(pygplates.GeoTimeInstant.create_distant_past(), pygplates.GeoTimeInstant.create_distant_future()),
+                                                                   relative_plate = relative_plate_id,
+                                                                   reconstruction_plate_id = reconstruction_plate_id)
+
+        self.seed_point = seed_point
+        self.path_times = path_times
+        self.motion_path_feature = motion_path_feature
+
+    def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0):
+        reconstructed_motion_paths = []
+        pygplates.reconstruct(self.motion_path_feature, reconstruction_model.rotation_model,
+                              reconstructed_motion_paths, reconstruction_time,
+                              reconstruct_type=pygplates.ReconstructType.motion_path)
+
+        trails = []
+        for reconstructed_motion_path in reconstructed_motion_paths:
+            trails.append(reconstructed_motion_path.get_motion_path().to_lat_lon_array())
+
+        return trails
+
+
 class PlateTree(object):
     #TODO handle dynamic polygons as well as static
 
