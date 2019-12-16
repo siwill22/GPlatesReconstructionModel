@@ -8,7 +8,7 @@ import tempfile
 import xarray as xr
 from ptt.utils.call_system_command import call_system_command
 import paleogeography as pg
-import stripy
+#import stripy
 from pigplates import sphere_tools as pigsph
 
 

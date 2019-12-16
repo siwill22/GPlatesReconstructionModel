@@ -248,6 +248,8 @@ class MotionPathFeature:
 
         return trails
 
+    #TODO add rate step plot
+
 
 class PlateTree(object):
     #TODO handle dynamic polygons as well as static
