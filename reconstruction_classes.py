@@ -1,23 +1,30 @@
 import pygplates
 import numpy as np
-import healpy as hp
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import requests
 from io import StringIO
+
 
 from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
 import platetree as ptree
 
-import gwsFeatureCollection
+import
 
 import warnings
 try:
     import cartopy.crs as ccrs
 except:
     warnings.warn('cartopy plotting options not available')
+try:
+    import requests, gwsFeatureCollection
+except:
+    warnings.warn('web service options not available')
+try:
+    import healpy as hp
+except:
+    warnings.warn('equal area points options not available')
 
 
 class ReconstructionModel(object):

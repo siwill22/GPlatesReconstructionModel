@@ -2,8 +2,12 @@ import os
 import pygplates
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 from ptt.utils.call_system_command import call_system_command
-import moviepy.editor as mpy
 
+import warnings
+try:
+    import moviepy.editor as mpy
+except:
+    warnings.warn('moviepy animation options not available')
 
 class gmt_reconstruction(object):
 
@@ -18,7 +22,7 @@ class gmt_reconstruction(object):
     def set_region(self, region):
         self.region = region
 
-    def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0, 
+    def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0,
                       layers=['continents','coastlines','dynamic_polygons'],
                       keep_ps_file=False):
 
@@ -38,25 +42,25 @@ class gmt_reconstruction(object):
 
         call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
                              '-Ba30f30::wesn', '-K', '>', outfile])
-        
+
         if 'continents' in layers:
             output_reconstructed_continents_filename = 'tmp/continents.gmt'
-            pygplates.reconstruct(self.reconstruction_model.continent_polygons, 
-                                  self.reconstruction_model.rotation_model, 
-                                  output_reconstructed_continents_filename, 
+            pygplates.reconstruct(self.reconstruction_model.continent_polygons,
+                                  self.reconstruction_model.rotation_model,
+                                  output_reconstructed_continents_filename,
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
-            call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection, 
+            call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
                                 '-W0.1p,wheat', '-Gwheat', 'tmp/continents.gmt', '-O', '-K', '-N', '>>', outfile])
 
         if 'coastlines' in layers:
             output_reconstructed_coastlines_filename = 'tmp/coastlines.gmt'
-            pygplates.reconstruct(self.reconstruction_model.coastlines, 
-                                  self.reconstruction_model.rotation_model, 
-                                  output_reconstructed_coastlines_filename, 
+            pygplates.reconstruct(self.reconstruction_model.coastlines,
+                                  self.reconstruction_model.rotation_model,
+                                  output_reconstructed_coastlines_filename,
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
             call_system_command(['gmt', 'psxy', '-R', self.projection,
                                 '-W0.2p,darkolivegreen', '-Gdarkolivegreen','-O', '-K', '-m', 'tmp/coastlines.gmt', '-V', '>>', outfile])
-    
+
         if 'dynamic_polygons' in layers:
             output_filename_prefix = 'tmp/'
             output_filename_extension = 'gmt'
@@ -78,7 +82,7 @@ class gmt_reconstruction(object):
             call_system_command(['gmt', 'psxy', '-R', self.projection,
                                  '-W0.6p,black', '-Gblack', '-Sf10p/3prt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sR_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
 
-        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection, 
+        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
                              '-Ba30f30::wesn', '-O', '-K', '>>', outfile])
         call_system_command(['gmt', 'psclip', '-C', '-O', '>>', outfile])
 
@@ -93,7 +97,7 @@ class gmt_reconstruction(object):
 
 
     def animation(self, reconstruction_times, anchor_plate_id = 0,
-                  layers=['continents','coastlines','dynamic_polygons'], 
+                  layers=['continents','coastlines','dynamic_polygons'],
                   gif_filename=None):
 
         frame_list = []
@@ -105,4 +109,3 @@ class gmt_reconstruction(object):
             frame_list.reverse()
             clip = mpy.ImageSequenceClip(frame_list, fps=2)
             clip.write_gif(gif_filename)
-
