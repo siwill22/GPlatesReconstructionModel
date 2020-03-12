@@ -10,7 +10,6 @@ from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
 import platetree as ptree
 
-import
 
 import warnings
 try:
