@@ -48,7 +48,7 @@ class GplatesRaster(object):
 
         return point_z
 
-    def sample_using_gmt(self, point_lons, point_lats):
+    def sample_using_gmt(self, point_lons, point_lats, extrapolate=False):
 
         dataout = np.vstack((np.asarray(point_lons),np.asarray(point_lats))).T
         xyzfile = tempfile.NamedTemporaryFile()
@@ -58,7 +58,10 @@ class GplatesRaster(object):
         # Note the a -T option would find the nearest valid grid value,
         # if the point falls on a NaN grid node
         # adding -T+e returns the distance to the node
-        call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name])
+        if extrapolate:
+            call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-T', '-nl','-V','>', grdtrack_file.name])
+        else:
+            call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name])
         G=[]
         with open(grdtrack_file.name) as f:
             for line in f:
