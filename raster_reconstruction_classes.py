@@ -9,7 +9,7 @@ import xarray as xr
 from ptt.utils.call_system_command import call_system_command
 import paleogeography as pg
 #import stripy
-from pigplates import sphere_tools as pigsph
+import sphere_tools
 
 
 class GplatesRaster(object):
@@ -32,7 +32,7 @@ class GplatesRaster(object):
     def sample(self, point_lons, point_lats, order=0):
 
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
-        d,l = pigsph.sampleOnSphere(LonGrid.flatten(),
+        d,l = sphere_tools.sampleOnSphere(LonGrid.flatten(),
                                     LatGrid.flatten(),
                                     self.gridZ.flatten(),
                                     np.array(point_lons),
@@ -75,6 +75,7 @@ class GplatesRaster(object):
         return np.array(G)
 
     def sample_using_stripy(self, point_lons, point_lats, order=0):
+        import stripy
 
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
         tri = stripy.sTriangulation(lons=np.radians(LonGrid.flatten()),

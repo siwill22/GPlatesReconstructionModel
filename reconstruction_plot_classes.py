@@ -3,11 +3,6 @@ import pygplates
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 from ptt.utils.call_system_command import call_system_command
 
-import warnings
-try:
-    import moviepy.editor as mpy
-except:
-    warnings.warn('moviepy animation options not available')
 
 class gmt_reconstruction(object):
 
@@ -99,6 +94,7 @@ class gmt_reconstruction(object):
     def animation(self, reconstruction_times, anchor_plate_id = 0,
                   layers=['continents','coastlines','dynamic_polygons'],
                   gif_filename=None):
+        import moviepy.editor as mpy
 
         frame_list = []
         for reconstruction_time in reconstruction_times:
