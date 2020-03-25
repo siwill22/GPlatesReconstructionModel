@@ -828,25 +828,26 @@ class gmt_reconstruction(object):
                              '-Ba30f30::wesn', '-K', '>', outfile])
 
         if 'continents' in layers:
-            output_reconstructed_continents_filename = 'tmp/continents.gmt'
+            output_reconstructed_continents_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
             pygplates.reconstruct(self.reconstruction_model.continent_polygons,
                                   self.reconstruction_model.rotation_model,
                                   output_reconstructed_continents_filename,
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
             call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
-                                '-W0.1p,wheat', '-Gwheat', 'tmp/continents.gmt', '-O', '-K', '-N', '>>', outfile])
+                                '-W0.1p,wheat', '-Gwheat', output_reconstructed_continents_filename,
+                                '-O', '-K', '-N', '>>', outfile])
 
         if 'coastlines' in layers:
-            output_reconstructed_coastlines_filename = 'tmp/coastlines.gmt'
+            output_reconstructed_coastlines_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
             pygplates.reconstruct(self.reconstruction_model.coastlines,
                                   self.reconstruction_model.rotation_model,
                                   output_reconstructed_coastlines_filename,
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                '-W0.2p,darkolivegreen', '-Gdarkolivegreen','-O', '-K', '-m', 'tmp/coastlines.gmt', '-V', '>>', outfile])
+                                '-W0.2p,darkolivegreen', '-Gdarkolivegreen','-O', '-K', '-m', output_reconstructed_coastlines_filename, '-V', '>>', outfile])
 
         if 'dynamic_polygons' in layers:
-            output_filename_prefix = 'tmp/'
+            output_filename_prefix = '%s/' % tempfile.mkdtemp()
             output_filename_extension = 'gmt'
             topology2gmt(self.reconstruction_model.rotation_model,
                  self.reconstruction_model.dynamic_polygons,
@@ -856,15 +857,23 @@ class gmt_reconstruction(object):
                  anchor_plate_id)
 
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,gray70', '-K', '-O', '-m', 'tmp/boundary_polygons_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+                                 '-W0.6p,gray70', '-K', '-O', '-m',
+                                 '%s/boundary_polygons_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                 '-V', '>>', outfile])
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,red', '-K', '-O', '-m', 'tmp/ridge_transform_boundaries_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+                                 '-W0.6p,red', '-K', '-O', '-m',
+                                 '%s/ridge_transform_boundaries_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                 '-V', '>>', outfile])
 
             #plot subduction zones
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf10p/3plt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sL_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3plt', '-K', '-O', '-m',
+                                 '%s/subduction_boundaries_sL_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                 '-V', '>>', outfile])
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf10p/3prt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sR_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3prt', '-K', '-O', '-m',
+                                 '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                 '-V', '>>', outfile])
 
         call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
                              '-Ba30f30::wesn', '-O', '-K', '>>', outfile])

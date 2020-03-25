@@ -11,3 +11,5 @@ litho1.gpmlz
 reconstruction_classes.pyc
 raster_reconstruction_classes.pyc
 .DS_Store
+
+test_notebooks/.ipynb_checkpoints/*
