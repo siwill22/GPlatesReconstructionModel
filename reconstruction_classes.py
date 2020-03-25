@@ -4,11 +4,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from io import StringIO
-
+from pprint import pprint
+import tempfile
+import xarray as xr
 
 from proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
+from ptt.utils.call_system_command import call_system_command
+from ptt.resolve_topologies import resolve_topologies as topology2gmt
+
 import platetree as ptree
+import paleogeography as pg
+import sphere_tools
 
 
 import warnings
@@ -661,3 +668,262 @@ class PointDistributionOnSphere(object):
             bin_counts.append(bin_indices.count(j))
 
         return bin_counts
+
+
+# From raster_reconstruction_classes
+class GplatesRaster(object):
+
+    def __init__(self, filename, reconstruction_time=0., z_field_name='z'):
+
+        self.gridX,self.gridY,self.gridZ = pg.load_netcdf(filename, z_field_name)
+        self.reconstruction_time = reconstruction_time
+        self.source_filename = filename
+
+    def plot(self, show=False):
+        plt.figure(figsize=(16,6))
+        plt.contourf(self.gridX, self.gridY, self.gridZ,
+                     20, cmap=plt.cm.BrBG_r)
+        plt.gca().set_aspect('equal')
+        plt.colorbar()
+        if show:
+            plt.show()
+
+    def sample(self, point_lons, point_lats, order=0):
+
+        LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
+        d,l = sphere_tools.sampleOnSphere(LonGrid.flatten(),
+                                    LatGrid.flatten(),
+                                    self.gridZ.flatten(),
+                                    np.array(point_lons),
+                                    np.array(point_lats),
+                                    k=4)
+
+        #print d,l
+        # based on http://earthpy.org/interpolation_between_grids_with_ckdtree.html
+        # note also that where d is zero, we get a divide by zero error - hence, these
+        # values are (currently) set to one
+        w = np.divide(1.,d**2, out=np.ones_like(d), where=d!=0)
+        point_z = np.sum(w * self.gridZ.flatten().ravel()[l],axis=1) / np.sum(w,axis=1)
+
+        return point_z
+
+    def sample_using_gmt(self, point_lons, point_lats, extrapolate=False):
+
+        dataout = np.vstack((np.asarray(point_lons),np.asarray(point_lats))).T
+        xyzfile = tempfile.NamedTemporaryFile()
+        grdtrack_file = tempfile.NamedTemporaryFile()
+
+        np.savetxt(xyzfile.name,dataout)
+        # Note the a -T option would find the nearest valid grid value,
+        # if the point falls on a NaN grid node
+        # adding -T+e returns the distance to the node
+        if extrapolate:
+            call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-T', '-nl','-V','>', grdtrack_file.name])
+        else:
+            call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name])
+        G=[]
+        with open(grdtrack_file.name) as f:
+            for line in f:
+                if line[0] == '>':
+                    continue
+                else:
+                    tmp = line.split()
+                    G.append(float(tmp[2]))
+
+        f.close()
+        return np.array(G)
+
+    def sample_using_stripy(self, point_lons, point_lats, order=0):
+        import stripy
+
+        LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
+        tri = stripy.sTriangulation(lons=np.radians(LonGrid.flatten()),
+                                    lats=np.radians(LatGrid.flatten()))
+
+        point_z = tri.interpolate(np.radians(point_lons),np.radians(point_lats),
+                                  zdata=self.gridZ.flatten(),
+                                  order=order)
+
+        return point_z[0]
+
+
+    def cross_section(self, PtLons, PtLats):
+        return CrossSection(self, PtLons, PtLats)
+
+
+class CrossSection(object):
+
+    def __init__(self, target_raster, PtLons, PtLats):
+
+        self.GreatCirclePoints,self.ProfilePoints,arc_distance = pg.create_profile_points(PtLons,PtLats)
+        # create an array of distances along profile in km, starting at zero
+
+        self.profileX_kms = np.arange(0,self.ProfilePoints.shape[0])*arc_distance
+
+        # extract the values from the (smoothed) topography grid along the profile
+        self.grid_values = pg.create_slice(target_raster.gridX,
+                                       target_raster.gridY,
+                                       target_raster.gridZ,
+                                       self.GreatCirclePoints, self.ProfilePoints)
+
+        self.cross_section_geometry = pygplates.PolylineOnSphere(self.GreatCirclePoints)
+        self.source_filename = target_raster.source_filename
+
+    def plate_boundary_intersections(self, shared_boundary_sections):
+
+        (self.subduction_intersections,
+         self.ridge_intersections,
+         self.other_intersections) = pg.plate_boundary_intersections(self.cross_section_geometry,
+                                                                     shared_boundary_sections,
+                                                                     self.profileX_kms)
+
+
+
+class PresentDayAgeGrid(object):
+
+    def __init__(self):
+        GplatesRaster.__init__(self)
+
+
+class TimeDependentRasterSequence(object):
+
+    def __init__(self, name):
+
+        self.name = name
+
+
+# plot_classes
+class gmt_reconstruction(object):
+
+    def __init__(self, reconstruction_model, output_dir, output_file_stem):
+        self.reconstruction_model = reconstruction_model
+        self.output_dir = output_dir
+        self.output_file_stem = output_file_stem
+
+    def set_projection(self, projection):
+        self.projection = projection
+
+    def set_region(self, region):
+        self.region = region
+
+    def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0,
+                      layers=['continents','coastlines','dynamic_polygons'],
+                      keep_ps_file=False):
+
+        region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
+
+        outfile='%s/%s_%dMa.ps' % (self.output_dir,self.output_file_stem,reconstruction_time)
+
+        call_system_command(['gmt','gmtset','COLOR_MODEL','RGB',
+                                            'MAP_FRAME_TYPE','inside',
+                                            'MAP_FRAME_PEN','1.0',
+                                            'MAP_TICK_PEN_PRIMARY','1.0',
+                                            'FONT_ANNOT_PRIMARY','9',
+                                            'FONT_LABEL','8',
+                                            'FONT_TITLE','8',
+                                            'FONT_ANNOT_PRIMARY','Helvetica',
+                                            'FORMAT_GEO_MAP','ddd'])
+
+        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
+                             '-Ba30f30::wesn', '-K', '>', outfile])
+
+        if 'continents' in layers:
+            output_reconstructed_continents_filename = 'tmp/continents.gmt'
+            pygplates.reconstruct(self.reconstruction_model.continent_polygons,
+                                  self.reconstruction_model.rotation_model,
+                                  output_reconstructed_continents_filename,
+                                  reconstruction_time, anchor_plate_id=anchor_plate_id)
+            call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
+                                '-W0.1p,wheat', '-Gwheat', 'tmp/continents.gmt', '-O', '-K', '-N', '>>', outfile])
+
+        if 'coastlines' in layers:
+            output_reconstructed_coastlines_filename = 'tmp/coastlines.gmt'
+            pygplates.reconstruct(self.reconstruction_model.coastlines,
+                                  self.reconstruction_model.rotation_model,
+                                  output_reconstructed_coastlines_filename,
+                                  reconstruction_time, anchor_plate_id=anchor_plate_id)
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                '-W0.2p,darkolivegreen', '-Gdarkolivegreen','-O', '-K', '-m', 'tmp/coastlines.gmt', '-V', '>>', outfile])
+
+        if 'dynamic_polygons' in layers:
+            output_filename_prefix = 'tmp/'
+            output_filename_extension = 'gmt'
+            topology2gmt(self.reconstruction_model.rotation_model,
+                 self.reconstruction_model.dynamic_polygons,
+                 reconstruction_time,
+                 output_filename_prefix,
+                 output_filename_extension,
+                 anchor_plate_id)
+
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,gray70', '-K', '-O', '-m', 'tmp/boundary_polygons_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,red', '-K', '-O', '-m', 'tmp/ridge_transform_boundaries_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+
+            #plot subduction zones
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3plt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sL_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+            call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3prt', '-K', '-O', '-m', 'tmp/subduction_boundaries_sR_%0.2fMa.gmt' % reconstruction_time, '-V', '>>', outfile])
+
+        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
+                             '-Ba30f30::wesn', '-O', '-K', '>>', outfile])
+        call_system_command(['gmt', 'psclip', '-C', '-O', '>>', outfile])
+
+        #convert ps into raster, -E set the resolution
+        call_system_command(['gmt', 'ps2raster', outfile, '-A0.2c', '-E300', '-Tg', '-P'])
+
+        if keep_ps_file:
+            self.image_postscript = outfile
+        else:
+            os.remove(outfile)
+        self.image_file = '%s.png' % outfile[:-3]
+
+
+    def animation(self, reconstruction_times, anchor_plate_id = 0,
+                  layers=['continents','coastlines','dynamic_polygons'],
+                  gif_filename=None):
+        import moviepy.editor as mpy
+
+        frame_list = []
+        for reconstruction_time in reconstruction_times:
+            self.plot_snapshot(reconstruction_time, anchor_plate_id=anchor_plate_id, layers=layers)
+            frame_list.append(self.image_file)
+
+        if gif_filename is not None:
+            frame_list.reverse()
+            clip = mpy.ImageSequenceClip(frame_list, fps=2)
+            clip.write_gif(gif_filename)
+
+
+# reconstructable datasets
+class litho1_scalar_coverage(object):
+
+    def __init__(self, distribution_type='healpix', N=32):
+        import litho1pt0 as litho
+        self.points = PointDistributionOnSphere(distribution_type,N)
+        self.litho = litho
+        self.layer_keys = litho.l1_layer_decode.items()
+        self.value_keys = litho.l1_data_decode.items()
+
+    def write_layer_depth_to_scalar_coverage(self, filename, layer_names='All'):
+
+        if layer_names is 'All':
+            layer_names = [name[0] for name in self.layer_keys]
+
+        scalar_coverages = {}
+        for layer_name in layer_names:
+
+            layerZ = litho.layer_depth(self.points.latitude, self.points.longitude, layer_name)
+            scalar_coverages[pygplates.ScalarType.create_gpml(layer_name)] = layerZ
+
+        ct_feature = pygplates.Feature()
+        ct_feature.set_geometry((self.points.multipoint,scalar_coverages))
+        ct_feature.set_name('litho1.0 layers')
+
+        pygplates.FeatureCollection(ct_feature).write(filename)
+
+    def write_layer_thickness_to_scalar_coverage(self, filename, layer_names='All'):
+
+        if layer_names is 'All':
+            layer_names = [name[0] for name in self.layer_keys]
