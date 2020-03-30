@@ -4,6 +4,7 @@ prototyping for GPlates plate reconstructions as a python class
 
 Requires:
 - numpy
+- scipy
 - pandas
 - matplotlib
 - xarray
