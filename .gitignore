@@ -11,6 +11,12 @@ litho1.gpmlz
 reconstruction_classes.pyc
 raster_reconstruction_classes.pyc
 .DS_Store
+<<<<<<< HEAD
 
 test_notebooks/.ipynb_checkpoints/*
 *.pyc
+=======
+*.pyc
+
+test_notebooks/.ipynb_checkpoints/*
+>>>>>>> master
