@@ -6,8 +6,15 @@ Requires:
 - numpy
 - pandas
 - matplotlib
-- healpy
+- xarray
 - pygplates
 - PlateTectonicTools (https://github.com/EarthByte/PlateTectonicTools)
 
-[The 'ReconstructionPlot' class also requires GMT (called from outside python) and moviepy (to make animations), and is only really a 'concept' that should be superceded once gmt-python and pygplates can be properly connected. Still kinda works though]
+Optional:
+- healpy
+- stripy
+- gmt (accessed via calls to external command-line processes)
+- moviepy
+
+
+Current version is still preliminary with minimal error handling and likely numerous bugs
