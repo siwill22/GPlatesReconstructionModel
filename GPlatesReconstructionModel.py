@@ -8,14 +8,16 @@ from pprint import pprint
 import tempfile
 import xarray as xr
 
-from proximity_query import find_closest_geometries_to_points
+from utils.proximity_query import find_closest_geometries_to_points
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-import platetree as ptree
-import paleogeography as pg
-import sphere_tools
+import utils.platetree as ptree
+import utils.paleogeography as pg
+import utils.sphere_tools as sphere_tools
+from utils.proximity import distance_between_reconstructed_points_and_features
+#import proximity
 
 
 import warnings
@@ -120,6 +122,35 @@ class PlateSnapshot(object):
                             for resolved_topology in resolved_topologies]
         self.plate_centroids = [resolved_topology.get_resolved_geometry().get_interior_centroid()\
                                 for resolved_topology in resolved_topologies]
+
+    def get_boundary_features(self, boundary_types=['subduction','midoceanridge','other']):
+        # return a list of boundary features, optionally matching a certain boundary type
+        resolved_boundary_segments = []
+        for resolved_topological_section in self.resolved_topological_sections:
+            for shared_sub_segment in resolved_topological_section.get_shared_sub_segments():
+                if shared_sub_segment.get_feature().get_feature_type() == pygplates.FeatureType.gpml_subduction_zone:
+                    if 'subduction' in boundary_types:
+                        resolved_boundary_segments.append(shared_sub_segment.get_resolved_feature())
+                elif shared_sub_segment.get_feature().get_feature_type() == pygplates.FeatureType.gpml_mid_ocean_ridge:
+                    if 'midoceanridge' in boundary_types:
+                        resolved_boundary_segments.append(shared_sub_segment.get_resolved_feature())
+                else:
+                    if 'other' in boundary_types:
+                        resolved_boundary_segments.append(shared_sub_segment.get_resolved_feature())
+
+        return resolved_boundary_segments
+
+    def proximity_to_boundaries(self,reconstructed_point_features,
+                                boundary_types=['subduction','midoceanridge','other']):
+
+        boundary_features = self.get_boundary_features(boundary_types=boundary_types)
+
+        (reconstructed_lon,
+         reconstructed_lat,
+         distances) = distance_between_reconstructed_points_and_features(reconstructed_point_features,
+                                                                         boundary_features)
+
+        return reconstructed_lon, reconstructed_lat, distances
 
     def velocity_field(self, velocity_domain_features=None, velocity_type='both', delta_time=1.):
 
