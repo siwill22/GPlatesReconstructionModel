@@ -36,6 +36,9 @@ except:
 
 
 class ReconstructionModel(object):
+    """
+    Class to contain the elements of a GPlates-format reconstruction model
+    """
 
     def __init__(self, name):
         self.name = name
@@ -51,31 +54,58 @@ class ReconstructionModel(object):
         self.continent_polygons_files = []
 
     def add_rotation_model(self, rotation_file):
+        """
+        Add a rotation model by specifying the path and filename to a .rot file_extension.
+        Can be called multiple times to add a series of file into a single object instance.
+        """
         self.rotation_files.append(rotation_file)
         self.rotation_model = pygplates.RotationModel(self.rotation_files)
 
     def add_static_polygons(self, static_polygons_file):
+        """
+        Add a set of static polygons to the reconstruction model object by specifying
+        path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
+        """
         self.static_polygon_files.append(static_polygons_file)
         self.static_polygons.append(static_polygons_file)  # Should this be loaded into memory like dynamic polygons??
 
     def add_dynamic_polygons(self, dynamic_polygons_file):
+        """
+        Add topology files to be used in resolving topological polygons.
+        Can be called multiple times to add a series of file into a single object instance.
+        """
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
     def add_coastlines(self, coastlines_file):
+        """
+        Add a set of coastline polygons to the reconstruction model object by specifying
+        path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
+        """
         self.coastlines_files.append(coastlines_file)
         self.coastlines.append(coastlines_file)
 
     def add_continent_polygons(self, continent_polygons_file):
+        """
+        Add a set of continent polygons to the reconstruction model object by specifying
+        path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
+        """
         self.continent_polygons_files.append(continent_polygons_file)
         self.continent_polygons.append(continent_polygons_file)
 
     def from_web_service(self, model='MULLER2016', url='https://gws.gplates.org'):
+        """
+        Add a reconstruction model directly from the GPlates web service.
+        """
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
 
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
+        """
+        Generate a snapshot of a topological reconstruction model
+        Returns an object of the PlateSnapshot class, containing the resolved plate polygons
+        """
         resolved_topologies = []
         resolved_topological_sections = []
         pygplates.resolve_topologies(self.dynamic_polygons,
@@ -100,6 +130,10 @@ class ReconstructionModel(object):
 
 
 class PlateSnapshot(object):
+    """
+    Class containing a snapshot of a topological plate reconstruction.
+    An instance of this class is initialized from a ReconstructionModel instance.
+    """
 
     def __init__(self,
                  resolved_topologies,
@@ -124,6 +158,11 @@ class PlateSnapshot(object):
                                 for resolved_topology in resolved_topologies]
 
     def get_boundary_features(self, boundary_types=['subduction','midoceanridge','other']):
+        """
+        Get the boundary features from a topological reconstruction plot_snapshot.
+        Optionally specify to only return boundaries of type 'SubductionZone', 'MidOceanRidge',
+        or other boundaries not of these two types.
+        """
         # return a list of boundary features, optionally matching a certain boundary type
         resolved_boundary_segments = []
         for resolved_topological_section in self.resolved_topological_sections:
@@ -142,6 +181,10 @@ class PlateSnapshot(object):
 
     def proximity_to_boundaries(self,reconstructed_point_features,
                                 boundary_types=['subduction','midoceanridge','other']):
+        """
+        Given a set of reconstructed point features, returns the distance of each
+        point to the nearest boundary of the specified type(s)
+        """
 
         boundary_features = self.get_boundary_features(boundary_types=boundary_types)
 
@@ -153,7 +196,10 @@ class PlateSnapshot(object):
         return reconstructed_lon, reconstructed_lat, distances
 
     def velocity_field(self, velocity_domain_features=None, velocity_type='both', delta_time=1.):
-
+        """
+        From the plate snapshot, generates a set of velocity vectors, which are return_closest_index
+        as a instance of the VelocityField class.
+        """
         if velocity_domain_features is None:
             velocity_domain_features = [PointDistributionOnSphere(distribution_type='healpix',N=32).meshnode_feature]
 
@@ -243,7 +289,10 @@ class PlateSnapshot(object):
 
     def plot(self, ax=None, projection=ccrs.Mollweide(),
              linewidth=2):
-
+        """
+        Plot topological plate boundaries into a cartopy map.
+        Optionally specify the projection (default = Mollweide) and linewidth (default = 2).
+        """
         if not ax:
             ax = plt.axes(projection=projection)
             ax.set_global()
@@ -266,6 +315,9 @@ class PlateSnapshot(object):
 
 
 class MotionPathFeature:
+    """
+    Class to define a motion path feature.
+    """
 
     def __init__(self, seed_point, path_times, reconstruction_plate_id,
                  relative_plate_id=0, anchor_plate_id=0):
@@ -296,6 +348,10 @@ class MotionPathFeature:
 
 
 class PlateTree(object):
+    """
+    Class describing a geographic representation of a plate hierarchy,
+    where the hierarchy joins the centroid points of plate polygons.
+    """
     #TODO handle dynamic polygons as well as static
 
     def __init__(self, reconstruction_model):
