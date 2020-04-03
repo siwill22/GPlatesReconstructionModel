@@ -24,4 +24,5 @@
 - cartopy and python basemap (for legacxy reasons, map plotting options are currently a mixture of both, in addition to gmt)
 
 
+
 Current version is still preliminary with minimal error handling and likely numerous bugs
