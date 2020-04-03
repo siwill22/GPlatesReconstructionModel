@@ -1,12 +1,13 @@
 # GPlatesReconstructionModel
 
-prototyping for GPlates plate reconstructions as a python class
+*Prototyping for GPlates plate reconstructions as a python class*
 
-To use, clone the repo and add the main directory to the pythonpath
+- To use, clone the repo and add the main directory to the pythonpath
 
-Usage examples are available in the test_notebooks directory
+- Usage examples are available in the test_notebooks directory
 
-Requires:
+## Python Dependencies
+### Required:
 - numpy
 - scipy
 - pandas
@@ -15,7 +16,7 @@ Requires:
 - pygplates
 - PlateTectonicTools (https://github.com/EarthByte/PlateTectonicTools)
 
-Optional:
+### Optional:
 - healpy
 - stripy
 - gmt (accessed via calls to external command-line processes)
