@@ -386,7 +386,9 @@ class PlateTree(object):
 
 
 class VelocityField(object):
-
+    """
+    Class containing velocity field vectors for a reconstruction snapshot.
+    """
     def __init__(self, pt_lat,pt_lon,vel_east,vel_north,vel_mag,vel_azim,plate_ids):
         self.longitude = pt_lon
         self.latitude = pt_lat
