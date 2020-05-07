@@ -29,10 +29,13 @@ try:
     import requests, gwsFeatureCollection
 except:
     warnings.warn('web service options not available')
-try:
-    import healpy as hp
-except:
-    warnings.warn('equal area points options not available')
+#try:
+#    import healpy as hp
+#except:
+#    warnings.warn('equal area points options not available')
+
+
+DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'Data')
 
 
 class ReconstructionModel(object):
@@ -698,13 +701,22 @@ class PointDistributionOnSphere(object):
         """
 
         if distribution_type=='healpix':
-            othetas,ophis = hp.pix2ang(N,np.arange(12*N**2))
-            othetas = np.pi/2-othetas
-            ophis[ophis>np.pi] -= np.pi*2
+            try:
+                import healpy as hp
+                othetas,ophis = hp.pix2ang(N,np.arange(12*N**2))
+                othetas = np.pi/2-othetas
+                ophis[ophis>np.pi] -= np.pi*2
 
-            # ophis -> longitude, othetas -> latitude
-            self.longitude = np.degrees(ophis)
-            self.latitude = np.degrees(othetas)
+                # ophis -> longitude, othetas -> latitude
+                self.longitude = np.degrees(ophis)
+                self.latitude = np.degrees(othetas)
+            except:
+                warnings.warn('unable to import healpy, trying pregenerated point files')
+                features = pygplates.FeatureCollection('{:s}/healpix_mesh_{:d}.gpmlz'.format(DATA_DIR,N))
+                for feature in features:
+                    for geometry in feature.get_all_geometries():
+                        self.latitude = geometry.to_lat_lon_array()[:,0]
+                        self.longitude = geometry.to_lat_lon_array()[:,1]
 
         elif distribution_type=='random':
             # function to call Marsaglia's method and return Long/
@@ -768,10 +780,10 @@ class GplatesRaster(object):
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
-    def plot(self, show=False):
+    def plot(self, show=False, levels=20, extend='both', cmap=plt.cm.BrBG_r):
         plt.figure(figsize=(16,6))
         plt.contourf(self.gridX, self.gridY, self.gridZ,
-                     20, cmap=plt.cm.BrBG_r)
+                     levels, extend=extend, cmap=cmap)
         plt.gca().set_aspect('equal')
         plt.colorbar()
         if show:
@@ -897,7 +909,7 @@ class gmt_reconstruction(object):
 
     def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0,
                       layers=['continents','coastlines','dynamic_polygons'],
-                      keep_ps_file=False):
+                      keep_ps_file=False, overlay=False):
 
         region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
 
@@ -915,6 +927,9 @@ class gmt_reconstruction(object):
 
         call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
                              '-Ba30f30::wesn', '-K', '>', outfile])
+
+        call_system_command(['gmt', 'psclip', '-T', '-R%s' % region, self.projection,
+                             '-O', '-K', '>>', outfile])
 
         if 'continents' in layers:
             output_reconstructed_continents_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
@@ -964,9 +979,17 @@ class gmt_reconstruction(object):
                                  '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
 
+        if not overlay:
+            self.finish_plot(reconstruction_time, keep_ps_file=keep_ps_file)
+
+    def finish_plot(self, reconstruction_time, keep_ps_file=False):
+
+        region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
+        outfile = '%s/%s_%dMa.ps' % (self.output_dir,self.output_file_stem,reconstruction_time)
+
+        call_system_command(['gmt', 'psclip', '-C', '-O', '-K', '>>', outfile])
         call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
-                             '-Ba30f30::wesn', '-O', '-K', '>>', outfile])
-        call_system_command(['gmt', 'psclip', '-C', '-O', '>>', outfile])
+                             '-Ba30f30::wesn', '-O', '>>', outfile])
 
         #convert ps into raster, -E set the resolution
         call_system_command(['gmt', 'ps2raster', outfile, '-A0.2c', '-E300', '-Tg', '-P'])
