@@ -6,7 +6,7 @@ import points_spatial_tree
 from proximity_query import find_closest_geometries_to_points_using_points_spatial_tree
 import pygplates
 
-import inpaint
+#from .inpaint import ??
 from netCDF4 import Dataset
 import scipy.interpolate as spi
 from scipy.interpolate.interpnd import _ndim_coords_from_arrays
@@ -36,7 +36,7 @@ def reconstruct_raster_stage(static_polygon_features,
                              spatial_tree_of_uniform_recon_points,
                              anchor_plate_id=0):
 
-    print 'Reconstruct static polygons...'
+    print('Reconstruct static polygons...')
 
     # Reconstruct the multipoint feature.
     recon_static_polygon_features = []
@@ -52,7 +52,7 @@ def reconstruct_raster_stage(static_polygon_features,
         recon_static_polygon_plate_ids.append(recon_plate_id)
         recon_static_polygons.append(recon_polygon)
 
-    print 'Find static polygons...'
+    print('Find static polygons...')
 
     # Find the reconstructed static polygon (plate IDs) containing the uniform (reconstructed) points.
     #
@@ -61,7 +61,7 @@ def reconstruct_raster_stage(static_polygon_features,
     recon_point_plate_ids = points_in_polygons.find_polygons_using_points_spatial_tree(
             uniform_recon_points, spatial_tree_of_uniform_recon_points, recon_static_polygons, recon_static_polygon_plate_ids)
 
-    print 'Group by polygons...'
+    print('Group by polygons...')
 
     # Group recon points with plate IDs so we can later create one multipoint per plate.
     recon_points_grouped_by_plate_id = {}
@@ -78,7 +78,7 @@ def reconstruct_raster_stage(static_polygon_features,
         recon_point = uniform_recon_points[point_index]
         recon_points_grouped_by_plate_id[point_plate_id].append(recon_point)
 
-    print 'Reverse reconstruct points...'
+    print('Reverse reconstruct points...')
 
     # Reconstructed points.
     recon_point_lons = []
@@ -118,7 +118,7 @@ def reconstruct_raster_stage(static_polygon_features,
             recon_point_lons.append(recon_lon)
             recon_point_lats.append(recon_lat)
 
-    print 'Sample present-day grid...'
+    print('Sample present-day grid...')
 
     # Query present-day grid using present-day points.
     #

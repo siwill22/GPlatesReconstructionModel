@@ -5,14 +5,14 @@ import os
 import sys
 import xarray as xr
 import scipy.interpolate as spi
-from create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
+from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
 
 try:
     import matplotlib
     import matplotlib.pyplot as plt
     from mpl_toolkits.basemap import Basemap
 except:
-    print 'Failed to load plotting dependencies'
+    print('Failed to load plotting dependencies')
 
 
 def load_paleogeography(pg_dir,env_list=None,
@@ -23,7 +23,7 @@ def load_paleogeography(pg_dir,env_list=None,
         env_list = ['lm','m','sm','i']
 
     if single_file:
-        print pg_dir
+        print(pg_dir)
         features = pygplates.FeatureCollection(pg_dir)
         pg_features = []
         for feature in features:
@@ -36,14 +36,14 @@ def load_paleogeography(pg_dir,env_list=None,
         for env in env_list:
             try:
                 filename = glob.glob('%s/%s_*.shp' % (pg_dir,env))
-                print filename
+                print(filename)
                 features = pygplates.FeatureCollection(filename[0])
                 for feature in features:
                     feature.set_shapefile_attribute('Layer',env)
                     pg_features.append(feature)
 
             except:
-                print 'no features of type %s' % env
+                print('no features of type %s' % env)
 
     return pg_features
 
@@ -308,7 +308,7 @@ def find_distance_to_nearest_ridge(resolved_topologies,shared_boundary_sections,
 
     for topology in resolved_topologies:
         plate_id = topology.get_resolved_feature().get_reconstruction_plate_id()
-        print 'Generating distances for Plate %d ...' % plate_id
+        print('Generating distances for Plate %d ...' % plate_id)
 
         # Section to isolate the mid-ocean ridge segments that bound the current plate
         mid_ocean_ridges_on_plate = []
@@ -320,8 +320,6 @@ def find_distance_to_nearest_ridge(resolved_topologies,shared_boundary_sections,
                     for resolved_polygon in sharing_resolved_topologies:
                         if resolved_polygon.get_feature().get_reconstruction_plate_id() == plate_id:
                             mid_ocean_ridges_on_plate.append(shared_subsegment.get_resolved_geometry())
-                            #print 'here'
-
 
         point_distance_to_ridge = []
         point_lats = []
@@ -377,7 +375,7 @@ def age2depth(age_array,model='GDH1'):
         paleodepth = -paleodepth
 
     else:
-        print 'unknown depth model'
+        print('unknown depth model')
 
     return paleodepth
 

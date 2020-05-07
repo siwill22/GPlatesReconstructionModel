@@ -1,5 +1,5 @@
 import pygplates
-from create_gpml import create_gpml_healpix_mesh
+from .create_gpml import create_gpml_healpix_mesh
 
 def get_velocities(rotation_model,topology_features,time,velocity_domain_features=None,delta_time=1,velocity_type='MagAzim'):
 
@@ -83,4 +83,3 @@ def get_velocities(rotation_model,topology_features,time,velocity_domain_feature
         pt_lat.append(pt.to_lat_lon()[0])
 
     return pt_lat,pt_lon,pt_vel1,pt_vel2,plate_ids
-

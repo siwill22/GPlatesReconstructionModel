@@ -6,9 +6,9 @@ import pygplates
 
 
 def wrap_polylines(polylines,lon0=0,tesselate_degrees=1):
-    
+
     data = {"type": "FeatureCollection"}
-    data["features"] = [] 
+    data["features"] = []
     for polyline in polylines:
 
         if lon0 is not None:
@@ -26,11 +26,11 @@ def wrap_polylines(polylines,lon0=0,tesselate_degrees=1):
                 point_list.append((point.to_lat_lon()[1],point.to_lat_lon()[0]))
             feature["geometry"]["coordinates"] = [point_list]
             data["features"].append(feature)
- 
+
     return data
 
 def wrap_polygons(polygons,lon0=0,tesselate_degrees=1):
-    
+
     data = {"type": "FeatureCollection"}
     data["features"] = []
 
@@ -51,30 +51,26 @@ def wrap_polygons(polygons,lon0=0,tesselate_degrees=1):
 
         else:
             for geometry in polygon.get_geometries():
-                print polygon.get_reconstruction_plate_id()
                 feature = {"type": "Feature"}
                 feature["geometry"] = {}
                 feature["geometry"]["type"] = "Polygon"
                 point_list = []
                 for point in geometry.get_points():
                     point_list.append((point.to_lat_lon()[1],point.to_lat_lon()[0]))
-                print geometry.get_orientation()
                 if geometry.get_orientation() == pygplates.PolygonOnSphere.Orientation.counter_clockwise:
                     point_list.reverse()
                 feature["geometry"]["coordinates"] = [point_list]
                 data["features"].append(feature)
-    
+
     return data
 
 def wrap_reconstructed_polygons(reconstructed_polygons,lon0=0,tesselate_degrees=1):
-        
+
     data = {"type": "FeatureCollection"}
-    data["features"] = [] 
+    data["features"] = []
     for reconstructed_polygon in reconstructed_polygons:
         rev=False
-        print reconstructed_polygon.get_reconstructed_geometry().get_orientation()
         if reconstructed_polygon.get_reconstructed_geometry().get_orientation() == pygplates.PolygonOnSphere.Orientation.counter_clockwise:
-            print 'hello'
             rev = True
 
         if lon0 is not None:
@@ -105,13 +101,13 @@ def wrap_reconstructed_polygons(reconstructed_polygons,lon0=0,tesselate_degrees=
                 point_list.reverse()
             feature["geometry"]["coordinates"] = [point_list]
             data["features"].append(feature)
-    
+
     return data
 
 def wrap_plate_boundaries(shared_boundary_sections,lon0=0,tesselate_degrees=1):
-        
+
     data = {"type": "FeatureCollection"}
-    data["features"] = [] 
+    data["features"] = []
     for shared_boundary_section in shared_boundary_sections:
         for shared_sub_segment in shared_boundary_section.get_shared_sub_segments():
 
@@ -132,5 +128,5 @@ def wrap_plate_boundaries(shared_boundary_sections,lon0=0,tesselate_degrees=1):
                 feature["feature_type"] = str(shared_sub_segment.get_feature().get_feature_type())
                 feature["Length"] = float(shared_sub_segment.get_geometry().get_arc_length())
                 data["features"].append(feature)
-    
+
     return data

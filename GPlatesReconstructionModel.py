@@ -13,9 +13,9 @@ import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-import utils.platetree as ptree
-import utils.paleogeography as pg
-import utils.sphere_tools as sphere_tools
+from utils import platetree as ptree
+from utils import paleogeography as pg
+from utils import sphere_tools as sphere_tools
 from utils.proximity import distance_between_reconstructed_points_and_features
 #import proximity
 
