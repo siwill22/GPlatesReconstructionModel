@@ -971,11 +971,11 @@ class gmt_reconstruction(object):
 
             #plot subduction zones
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf10p/3plt', '-K', '-O', '-m',
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3p+l+t', '-K', '-O', '-m',
                                  '%s/subduction_boundaries_sL_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf10p/3prt', '-K', '-O', '-m',
+                                 '-W0.6p,black', '-Gblack', '-Sf10p/3p+r+t', '-K', '-O', '-m',
                                  '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
 
