@@ -5,7 +5,7 @@ import os
 import sys
 import xarray as xr
 import scipy.interpolate as spi
-from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
+from create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
 
 try:
     import matplotlib
