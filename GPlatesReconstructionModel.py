@@ -13,9 +13,10 @@ import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-from utils import platetree as ptree
-from utils import paleogeography as pg
-from utils import sphere_tools as sphere_tools
+import utils.platetree
+#from utils import platetree as ptree
+import utils.paleogeography
+import utils.sphere_tools
 from utils.proximity import distance_between_reconstructed_points_and_features
 #import proximity
 
@@ -362,9 +363,9 @@ class PlateTree(object):
 
     def plot_snapshot(self, reconstruction_time):
 
-        ptree.plot_snapshot(self.reconstruction_model.static_polygons,
-                            self.reconstruction_model.rotation_model,
-                            reconstruction_time)
+        platetree.plot_snapshot(self.reconstruction_model.static_polygons,
+                                self.reconstruction_model.rotation_model,
+                                reconstruction_time)
 
     def to_gpml(self, reconstruction_times, filename):
 
@@ -776,7 +777,7 @@ class GplatesRaster(object):
 
     def __init__(self, filename, reconstruction_time=0., z_field_name='z'):
 
-        self.gridX,self.gridY,self.gridZ = pg.load_netcdf(filename, z_field_name)
+        self.gridX,self.gridY,self.gridZ = utils.load_netcdf(filename, z_field_name)
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
@@ -792,12 +793,12 @@ class GplatesRaster(object):
     def sample(self, point_lons, point_lats, order=0):
 
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
-        d,l = sphere_tools.sampleOnSphere(LonGrid.flatten(),
-                                    LatGrid.flatten(),
-                                    self.gridZ.flatten(),
-                                    np.array(point_lons),
-                                    np.array(point_lats),
-                                    k=4)
+        d,l = utils.sampleOnSphere(LonGrid.flatten(),
+                                   LatGrid.flatten(),
+                                   self.gridZ.flatten(),
+                                   np.array(point_lons),
+                                   np.array(point_lats),
+                                   k=4)
 
         #print d,l
         # based on http://earthpy.org/interpolation_between_grids_with_ckdtree.html
@@ -856,16 +857,16 @@ class CrossSection(object):
 
     def __init__(self, target_raster, PtLons, PtLats):
 
-        self.GreatCirclePoints,self.ProfilePoints,arc_distance = pg.create_profile_points(PtLons,PtLats)
+        self.GreatCirclePoints,self.ProfilePoints,arc_distance = paleogeography.create_profile_points(PtLons,PtLats)
         # create an array of distances along profile in km, starting at zero
 
         self.profileX_kms = np.arange(0,self.ProfilePoints.shape[0])*arc_distance
 
         # extract the values from the (smoothed) topography grid along the profile
-        self.grid_values = pg.create_slice(target_raster.gridX,
-                                       target_raster.gridY,
-                                       target_raster.gridZ,
-                                       self.GreatCirclePoints, self.ProfilePoints)
+        self.grid_values = paleogeography.create_slice(target_raster.gridX,
+                                                       target_raster.gridY,
+                                                       target_raster.gridZ,
+                                                       self.GreatCirclePoints, self.ProfilePoints)
 
         self.cross_section_geometry = pygplates.PolylineOnSphere(self.GreatCirclePoints)
         self.source_filename = target_raster.source_filename
@@ -874,9 +875,9 @@ class CrossSection(object):
 
         (self.subduction_intersections,
          self.ridge_intersections,
-         self.other_intersections) = pg.plate_boundary_intersections(self.cross_section_geometry,
-                                                                     shared_boundary_sections,
-                                                                     self.profileX_kms)
+         self.other_intersections) = paleogeography.plate_boundary_intersections(self.cross_section_geometry,
+                                                                                 shared_boundary_sections,
+                                                                                 self.profileX_kms)
 
 
 

@@ -1,10 +1,10 @@
 import os
 import math
 import numpy as np
+import pygplates
 import points_in_polygons
 import points_spatial_tree
 from proximity_query import find_closest_geometries_to_points_using_points_spatial_tree
-import pygplates
 
 #from .inpaint import ??
 from netCDF4 import Dataset

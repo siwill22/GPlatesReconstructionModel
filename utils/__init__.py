@@ -1,3 +1,4 @@
+from .sphere_tools import *
 from .create_gpml import *
 from .inpaint import *
 from .kinematic_tools import *
@@ -8,6 +9,5 @@ from .points_spatial_tree import *
 from .proximity_query import *
 from .proximity import *
 from .reconstruct_atom_rasters import *
-from .sphere_tools import *
 from .velocity_tools import *
 from .wrapping_tools import *
