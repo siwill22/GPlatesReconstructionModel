@@ -1,4 +1,29 @@
+'''
+MIT License
+
+Copyright (c) 2017 Simon Williams
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'''
+
 import pygplates
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -6,6 +31,7 @@ import os
 from io import StringIO
 from pprint import pprint
 import tempfile
+import copy
 import xarray as xr
 
 from utils.proximity_query import find_closest_geometries_to_points
@@ -104,6 +130,15 @@ class ReconstructionModel(object):
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
+
+    def copy(self, deep=False):
+        """
+        Make a copy of an existing reconstruction_model
+        """
+        if deep:
+            return copy.deepcopy(self)
+        else:
+            return copy.copy(self)
 
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
         """
@@ -363,9 +398,9 @@ class PlateTree(object):
 
     def plot_snapshot(self, reconstruction_time):
 
-        platetree.plot_snapshot(self.reconstruction_model.static_polygons,
-                                self.reconstruction_model.rotation_model,
-                                reconstruction_time)
+        utils.plot_snapshot(self.reconstruction_model.static_polygons,
+                            self.reconstruction_model.rotation_model,
+                            reconstruction_time)
 
     def to_gpml(self, reconstruction_times, filename):
 
@@ -377,13 +412,13 @@ class PlateTree(object):
             (uniq_plates_from_polygons,
              chains,
              reconstruction_tree,
-             reconstructed_polygons) = tree_snapshot(polygons,
-                                                     rotation_model,
-                                                     reconstruction_time)
+             reconstructed_polygons) = utils.tree_snapshot(self.reconstruction_model.static_polygons,
+                                                           self.reconstruction_model.rotation_model,
+                                                           reconstruction_time)
 
             # for now, the valid time is set to be plus/minus 0.5 Myr
-            tree_features = pt.create_hierarchy_features(chains,reconstructed_polygons,tree_features,
-                                                         valid_time=(recon_time+0.5,recon_time-0.5))
+            tree_features = utils.create_hierarchy_features(chains,reconstructed_polygons,tree_features,
+                                                                valid_time=(reconstruction_time+0.5,reconstruction_time-0.5))
 
         pygplates.FeatureCollection(tree_features).write(filename)
 
@@ -488,13 +523,13 @@ class SubductionConvergence(object):
             plt.hist(self.df.conv_rate,bins=bins)
             plt.title('convergence rate')
         if variable in ['convergence obliquity','co']:
-            plt.scatter(self.df.migr_obliq,bins=bins)
+            plt.hist(self.df.migr_obliq,bins=bins)
             plt.title('migration rate')
         if variable in ['migration rate','mr']:
-            plt.scatter(self.df.migr_rate,bins=bins)
+            plt.hist(self.df.migr_rate,bins=bins)
             plt.title('migration rate')
         if variable in ['migration obliquity','mo']:
-            plt.scatter(self.df.migr_obliq,bins=bins)
+            plt.hist(self.df.migr_obliq,bins=bins)
             plt.title('migration rate')
         plt.show()
 
@@ -857,13 +892,13 @@ class CrossSection(object):
 
     def __init__(self, target_raster, PtLons, PtLats):
 
-        self.GreatCirclePoints,self.ProfilePoints,arc_distance = paleogeography.create_profile_points(PtLons,PtLats)
+        self.GreatCirclePoints,self.ProfilePoints,arc_distance = utils.create_profile_points(PtLons,PtLats)
         # create an array of distances along profile in km, starting at zero
 
         self.profileX_kms = np.arange(0,self.ProfilePoints.shape[0])*arc_distance
 
         # extract the values from the (smoothed) topography grid along the profile
-        self.grid_values = paleogeography.create_slice(target_raster.gridX,
+        self.grid_values = utils.create_slice(target_raster.gridX,
                                                        target_raster.gridY,
                                                        target_raster.gridZ,
                                                        self.GreatCirclePoints, self.ProfilePoints)
@@ -875,7 +910,7 @@ class CrossSection(object):
 
         (self.subduction_intersections,
          self.ridge_intersections,
-         self.other_intersections) = paleogeography.plate_boundary_intersections(self.cross_section_geometry,
+         self.other_intersections) = utils.plate_boundary_intersections(self.cross_section_geometry,
                                                                                  shared_boundary_sections,
                                                                                  self.profileX_kms)
 
