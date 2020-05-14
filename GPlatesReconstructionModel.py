@@ -786,7 +786,7 @@ class PointDistributionOnSphere(object):
 
         pygplates.FeatureCollection(self.meshnode_feature).write(filename)
 
-#TODO - move this to be a method of AgeCodedPointDataset
+    #TODO - move this to be a method of AgeCodedPointDataset
     def point_feature_heatmap(self, target_features):
         """
         Given a AgeCodedPointDataset class object, returns a heatmap showing the number
