@@ -39,11 +39,12 @@ import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-import utils.platetree
+import utils
+#import utils.platetree
 #from utils import platetree as ptree
-import utils.paleogeography
-import utils.sphere_tools
-from utils.proximity import distance_between_reconstructed_points_and_features
+#import utils.paleogeography
+#import utils.sphere_tools
+#from utils.proximity import distance_between_reconstructed_points_and_features
 #import proximity
 
 
@@ -353,6 +354,29 @@ class PlateSnapshot(object):
         return ax
 
 
+    def plot_coastlines(self):
+
+
+    def plot_continents(self):
+
+
+    def plot_subduction_zones(self):
+
+        resolved_boundary_segments = self.get_boundary_features(['subduction'])
+
+        for resolved_boundary_segment in resolved_boundary_segments:
+            if resolved_boundary_segment.get_geometry() is not None:
+                data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
+                if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
+                    fig.plot(x=data[:,1],y=data[:,0], style="f10p/4p+l+t", 
+                             pen='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]),
+                             color='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]))
+                elif resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Right':
+                    fig.plot(x=data[:,1],y=data[:,0], style="f10p/4p+r+t",
+                             pen='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]),
+                             color='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]))
+
+
 class MotionPathFeature:
     """
     Class to define a motion path feature.
@@ -398,9 +422,9 @@ class PlateTree(object):
 
     def plot_snapshot(self, reconstruction_time):
 
-        utils.plot_snapshot(self.reconstruction_model.static_polygons,
-                            self.reconstruction_model.rotation_model,
-                            reconstruction_time)
+        utils.platetree.plot_snapshot(self.reconstruction_model.static_polygons,
+                                      self.reconstruction_model.rotation_model,
+                                      reconstruction_time)
 
     def to_gpml(self, reconstruction_times, filename):
 
@@ -412,13 +436,13 @@ class PlateTree(object):
             (uniq_plates_from_polygons,
              chains,
              reconstruction_tree,
-             reconstructed_polygons) = utils.tree_snapshot(self.reconstruction_model.static_polygons,
-                                                           self.reconstruction_model.rotation_model,
-                                                           reconstruction_time)
+             reconstructed_polygons) = utils.platetree.tree_snapshot(self.reconstruction_model.static_polygons,
+                                                                     self.reconstruction_model.rotation_model,
+                                                                     reconstruction_time)
 
             # for now, the valid time is set to be plus/minus 0.5 Myr
-            tree_features = utils.create_hierarchy_features(chains,reconstructed_polygons,tree_features,
-                                                                valid_time=(reconstruction_time+0.5,reconstruction_time-0.5))
+            tree_features = utils.platetree.create_hierarchy_features(chains,reconstructed_polygons,tree_features,
+                                                                      valid_time=(reconstruction_time+0.5,reconstruction_time-0.5))
 
         pygplates.FeatureCollection(tree_features).write(filename)
 
@@ -808,11 +832,11 @@ class PointDistributionOnSphere(object):
 
 
 # From raster_reconstruction_classes
-class GplatesRaster(object):
+class GPlatesRaster(object):
 
     def __init__(self, filename, reconstruction_time=0., z_field_name='z'):
 
-        self.gridX,self.gridY,self.gridZ = utils.load_netcdf(filename, z_field_name)
+        self.gridX,self.gridY,self.gridZ = utils.paleogeography.load_netcdf(filename, z_field_name)
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
@@ -828,12 +852,12 @@ class GplatesRaster(object):
     def sample(self, point_lons, point_lats, order=0):
 
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
-        d,l = utils.sampleOnSphere(LonGrid.flatten(),
-                                   LatGrid.flatten(),
-                                   self.gridZ.flatten(),
-                                   np.array(point_lons),
-                                   np.array(point_lats),
-                                   k=4)
+        d,l = utils.sphere_tools.sampleOnSphere(LonGrid.flatten(),
+                                                LatGrid.flatten(),
+                                                self.gridZ.flatten(),
+                                                np.array(point_lons),
+                                                np.array(point_lats),
+                                                k=4)
 
         #print d,l
         # based on http://earthpy.org/interpolation_between_grids_with_ckdtree.html
@@ -892,16 +916,16 @@ class CrossSection(object):
 
     def __init__(self, target_raster, PtLons, PtLats):
 
-        self.GreatCirclePoints,self.ProfilePoints,arc_distance = utils.create_profile_points(PtLons,PtLats)
+        self.GreatCirclePoints,self.ProfilePoints,arc_distance = utils.paleogeography.create_profile_points(PtLons,PtLats)
         # create an array of distances along profile in km, starting at zero
 
         self.profileX_kms = np.arange(0,self.ProfilePoints.shape[0])*arc_distance
 
         # extract the values from the (smoothed) topography grid along the profile
-        self.grid_values = utils.create_slice(target_raster.gridX,
-                                                       target_raster.gridY,
-                                                       target_raster.gridZ,
-                                                       self.GreatCirclePoints, self.ProfilePoints)
+        self.grid_values = utils.paleogeography.create_slice(target_raster.gridX,
+                                                             target_raster.gridY,
+                                                             target_raster.gridZ,
+                                                             self.GreatCirclePoints, self.ProfilePoints)
 
         self.cross_section_geometry = pygplates.PolylineOnSphere(self.GreatCirclePoints)
         self.source_filename = target_raster.source_filename
@@ -910,9 +934,9 @@ class CrossSection(object):
 
         (self.subduction_intersections,
          self.ridge_intersections,
-         self.other_intersections) = utils.plate_boundary_intersections(self.cross_section_geometry,
-                                                                                 shared_boundary_sections,
-                                                                                 self.profileX_kms)
+         self.other_intersections) = utils.paleogeography.plate_boundary_intersections(self.cross_section_geometry,
+                                                                                       shared_boundary_sections,
+                                                                                       self.profileX_kms)
 
 
 
@@ -945,7 +969,21 @@ class gmt_reconstruction(object):
 
     def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0,
                       layers=['continents','coastlines','dynamic_polygons'],
-                      keep_ps_file=False, overlay=False):
+                      custom_layer_colors = None,
+                      keep_ps_file=False, overlay=False, underlay=False):
+
+        # specify default colors
+        layer_colors = {'coastline_fill': 'darkolivegreen',
+                        'coastline_outline': 'darkolivegreen',
+                        'continent_fill': 'wheat',
+                        'continent_outline': 'wheat',
+                        'midoceanridge': 'red',
+                        'subduction': 'black',
+                        'other_boundary': 'gray70'}
+
+        if custom_layer_colors is not None:
+            for key in custom_layer_colors:
+                layer_colors[key] = custom_layer_colors[key]
 
         region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
 
@@ -961,8 +999,9 @@ class gmt_reconstruction(object):
                                             'FONT_ANNOT_PRIMARY','Helvetica',
                                             'FORMAT_GEO_MAP','ddd'])
 
-        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
-                             '-Ba30f30::wesn', '-K', '>', outfile])
+        if not underlay:
+            call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
+                                 '-Ba30f30::wesn', '-K', '>', outfile])
 
         call_system_command(['gmt', 'psclip', '-T', '-R%s' % region, self.projection,
                              '-O', '-K', '>>', outfile])
@@ -974,7 +1013,9 @@ class gmt_reconstruction(object):
                                   output_reconstructed_continents_filename,
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
             call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
-                                '-W0.1p,wheat', '-Gwheat', output_reconstructed_continents_filename,
+                                '-W0.1p,{:s}'.format(layer_colors['continent_outline']), 
+                                '-G{:s}'.format(layer_colors['continent_fill']), 
+                                output_reconstructed_continents_filename,
                                 '-O', '-K', '-N', '>>', outfile])
 
         if 'coastlines' in layers:
@@ -984,7 +1025,9 @@ class gmt_reconstruction(object):
                                   output_reconstructed_coastlines_filename,
                                   reconstruction_time, anchor_plate_id=anchor_plate_id)
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                '-W0.2p,darkolivegreen', '-Gdarkolivegreen','-O', '-K', '-m', output_reconstructed_coastlines_filename, '-V', '>>', outfile])
+                                '-W0.2p,{:s}'.format(layer_colors['coastline_outline']), 
+                                '-G{:s}'.format(layer_colors['coastline_fill']),
+                                '-O', '-K', output_reconstructed_coastlines_filename, '-V', '>>', outfile])
 
         if 'dynamic_polygons' in layers:
             output_filename_prefix = '%s/' % tempfile.mkdtemp()
@@ -997,21 +1040,27 @@ class gmt_reconstruction(object):
                  anchor_plate_id)
 
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,gray70', '-K', '-O', '-m',
+                                 '-W0.6p,{:s}'.format(layer_colors['other_boundary']), 
+                                 '-K', '-O',
                                  '%s/boundary_polygons_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,red', '-K', '-O', '-m',
+                                 '-W0.6p,{:s}'.format(layer_colors['midoceanridge']), 
+                                 '-K', '-O',
                                  '%s/ridge_transform_boundaries_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
 
             #plot subduction zones
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf10p/3p+l+t', '-K', '-O', '-m',
+                                 '-W0.6p,{:s}'.format(layer_colors['subduction']), 
+                                 '-G{:s}'.format(layer_colors['subduction']), 
+                                 '-Sf10p/3p+l+t', '-K', '-O',
                                  '%s/subduction_boundaries_sL_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
             call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,black', '-Gblack', '-Sf10p/3p+r+t', '-K', '-O', '-m',
+                                 '-W0.6p,{:s}'.format(layer_colors['subduction']), 
+                                 '-G{:s}'.format(layer_colors['subduction']), 
+                                 '-Sf10p/3p+r+t', '-K', '-O',
                                  '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
                                  '-V', '>>', outfile])
 
