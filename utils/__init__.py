@@ -1,13 +1,13 @@
-from .sphere_tools import *
-from .create_gpml import *
-from .inpaint import *
-from .kinematic_tools import *
-from .paleogeography import *
-from .platetree import *
-from .points_in_polygons import *
-from .points_spatial_tree import *
-from .proximity_query import *
-from .proximity import *
-from .reconstruct_atom_rasters import *
-from .velocity_tools import *
-from .wrapping_tools import *
+import sphere_tools
+import create_gpml
+import inpaint
+import kinematic_tools
+import paleogeography
+import platetree
+import points_in_polygons
+import points_spatial_tree
+import proximity_query
+import proximity
+import reconstruct_atom_rasters
+import velocity_tools
+import wrapping_tools
