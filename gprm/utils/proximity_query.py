@@ -159,7 +159,7 @@
 
 
 from __future__ import print_function
-import points_spatial_tree
+from . import points_spatial_tree
 import math
 import pygplates
 import sys

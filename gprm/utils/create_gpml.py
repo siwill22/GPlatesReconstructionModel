@@ -1,6 +1,6 @@
 import pygplates
 import numpy as np
-from sphere_tools import healpix_mesh
+from .sphere_tools import healpix_mesh
 
 def create_gpml_crustal_thickness(longitude_array,latitude_array,thickness,filename=None):
 

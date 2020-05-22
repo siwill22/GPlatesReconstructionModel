@@ -6,18 +6,19 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 import xarray as xr
 
-import polygon_processing as pp
-import paleogeography as pg
-import paleogeography_tweening as pgt
+import .polygon_processing as pp
+import .paleogeography as pg
+import .paleogeography_tweening as pgt
 
-from proximity_query import *
-from create_gpml import create_gpml_regular_long_lat_mesh
-import points_in_polygons
-from sphere_tools import sampleOnSphere
-import points_spatial_tree
+from .proximity_query import *
+from .create_gpml import create_gpml_regular_long_lat_mesh
+from . import points_in_polygons
+from .sphere_tools import sampleOnSphere
+from . import points_spatial_tree
 
 from ptt.utils.call_system_command import call_system_command
 import tempfile
+
 
 def write_xyz_file(output_filename, output_data):
     with open(output_filename, 'w') as output_file:

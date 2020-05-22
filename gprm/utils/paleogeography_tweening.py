@@ -8,10 +8,10 @@ try:
 except:
     print 'failed to load plotting dependencies'
 import xarray as xr
-import points_spatial_tree
+from . import points_spatial_tree
 
-import polygon_processing as pp
-import paleogeography as pg
+import .polygon_processing as pp
+import .paleogeography as pg
 
 
 

@@ -1,4 +1,5 @@
 #import utils
+#from .GPlatesReconstructionModel.gprm import utils
 from .GPlatesReconstructionModel import ReconstructionModel
 from .GPlatesReconstructionModel import PlateTree
 from .GPlatesReconstructionModel import GPlatesRaster

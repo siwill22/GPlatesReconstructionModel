@@ -34,10 +34,10 @@ import tempfile
 import copy
 import xarray as xr
 
-import utils
+import gprm.utils
 
-from utils.proximity_query import find_closest_geometries_to_points
-from utils.proximity import distance_between_reconstructed_points_and_features
+from gprm.utils.proximity_query import find_closest_geometries_to_points
+from gprm.utils.proximity import distance_between_reconstructed_points_and_features
 
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
