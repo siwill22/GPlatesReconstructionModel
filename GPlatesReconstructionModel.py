@@ -34,17 +34,19 @@ import tempfile
 import copy
 import xarray as xr
 
+import utils
+
 from utils.proximity_query import find_closest_geometries_to_points
+from utils.proximity import distance_between_reconstructed_points_and_features
+
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-import utils
 #import utils.platetree
 #from utils import platetree as ptree
 #import utils.paleogeography
 #import utils.sphere_tools
-#from utils.proximity import distance_between_reconstructed_points_and_features
 #import proximity
 
 
@@ -160,6 +162,51 @@ class ReconstructionModel(object):
                              self.rotation_model,
                              reconstruction_time,
                              anchor_plate_id)
+
+    def polygon_snapshot(self, polygon_type, reconstruction_time, anchor_plate_id=0):
+
+        if polygon_type == 'coastlines':
+            polygons_to_reconstruct = self.coastlines
+        elif polygon_type == 'continents':
+            polygons_to_reconstruct = self.continent_polygons
+        elif polygon_type == 'static_polygons':
+            polygons_to_reconstruct = self.static_polygons
+        else:
+            print('some error msg')
+        
+        reconstructed_polygons = []
+        pygplates.reconstruct(polygons_to_reconstruct,
+                              self.rotation_model,
+                              reconstructed_polygons,
+                              reconstruction_time, anchor_plate_id=anchor_plate_id)
+
+        return ReconstructedPolygonSnapshot(reconstructed_polygons,
+                                            self.rotation_model,
+                                            reconstruction_time,
+                                            anchor_plate_id)
+
+
+
+class ReconstructedPolygonSnapshot(object):
+
+    def __init__(self,
+                 reconstructed_polygons,
+                 rotation_model,
+                 reconstruction_time,
+                 anchor_plate_id):
+
+        self.reconstructed_polygons = reconstructed_polygons
+        self.rotation_model = rotation_model
+        self.reconstruction_time = reconstruction_time
+        self.anchor_plate_id = anchor_plate_id
+
+    def plot(self, fig, pen_color='black', fill_color='wheat'):
+        for polygon in self.reconstructed_polygons:
+            data = polygon.get_reconstructed_geometry().to_lat_lon_array()
+            fig.plot(x=data[:,1],y=data[:,0], 
+                     pen=pen_color, color=fill_color)
+
+
 
 
 ## TODO
@@ -353,14 +400,8 @@ class PlateSnapshot(object):
 
         return ax
 
-
-    def plot_coastlines(self):
-
-
-    def plot_continents(self):
-
-
-    def plot_subduction_zones(self):
+    # pygmt functions
+    def plot_subduction_zones(self, fig, color='black'):
 
         resolved_boundary_segments = self.get_boundary_features(['subduction'])
 
@@ -368,13 +409,30 @@ class PlateSnapshot(object):
             if resolved_boundary_segment.get_geometry() is not None:
                 data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
                 if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
-                    fig.plot(x=data[:,1],y=data[:,0], style="f10p/4p+l+t", 
-                             pen='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]),
-                             color='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]))
+                    fig.plot(x=data[:,1],y=data[:,0], style='f10p/4p+l+t', 
+                             pen=color, color=color)
                 elif resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Right':
-                    fig.plot(x=data[:,1],y=data[:,0], style="f10p/4p+r+t",
-                             pen='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]),
-                             color='{:f}/{:f}/{:f}'.format(colors[0],colors[1],colors[2]))
+                    fig.plot(x=data[:,1],y=data[:,0], style='f10p/4p+r+t',
+                             pen=color, color=color)
+
+    def plot_mid_ocean_ridges(self, fig, color='red'):
+
+        resolved_boundary_segments = self.get_boundary_features(['midoceanridge'])
+
+        for resolved_boundary_segment in resolved_boundary_segments:
+            if resolved_boundary_segment.get_geometry() is not None:
+                data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
+                fig.plot(x=data[:,1], y=data[:,0], pen=color)
+
+    def plot_other_boundaries(self, fig, color='gray70'):
+
+        resolved_boundary_segments = self.get_boundary_features(['other'])
+
+        for resolved_boundary_segment in resolved_boundary_segments:
+            if resolved_boundary_segment.get_geometry() is not None:
+                data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
+                fig.plot(x=data[:,1], y=data[:,0], pen=color)
+
 
 
 class MotionPathFeature:
