@@ -1063,10 +1063,10 @@ class gmt_reconstruction(object):
 
         call_system_command(['gmt', 'psclip', '-T', '-R%s' % region, self.projection,
                              '-O', '-K', '>>', outfile])
-
+        
         if 'continents' in layers:
             if not self.reconstruction_model.continent_polygons:
-                warnings.warn(('no continent polygons available for selected reconstruction model')
+                warnings.warn('no continent polygons available for selected reconstruction model')
             else:
                 output_reconstructed_continents_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
                 pygplates.reconstruct(self.reconstruction_model.continent_polygons,
@@ -1081,7 +1081,7 @@ class gmt_reconstruction(object):
 
         if 'coastlines' in layers:
             if not self.reconstruction_model.coastlines:
-                warnings.warn(('no coastline polygons available for selected reconstruction model')
+                warnings.warn('no coastline polygons available for selected reconstruction model')
             else:
                 output_reconstructed_coastlines_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
                 pygplates.reconstruct(self.reconstruction_model.coastlines,
@@ -1095,7 +1095,7 @@ class gmt_reconstruction(object):
 
         if 'dynamic_polygons' in layers:
             if not self.reconstruction_model.dynamic_polygons:
-                warnings.warn(('no dynamic polygons available for selected reconstruction model')
+                warnings.warn('no dynamic polygons available for selected reconstruction model')
             else:
                 output_filename_prefix = '%s/' % tempfile.mkdtemp()
                 output_filename_extension = 'gmt'
