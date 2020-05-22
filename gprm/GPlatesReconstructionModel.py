@@ -34,7 +34,7 @@ import tempfile
 import copy
 import xarray as xr
 
-import gprm.utils
+import gprm.utils as utils
 
 from gprm.utils.proximity_query import find_closest_geometries_to_points
 from gprm.utils.proximity import distance_between_reconstructed_points_and_features
@@ -998,17 +998,17 @@ class CrossSection(object):
 
 
 
-class PresentDayAgeGrid(object):
-
-    def __init__(self):
-        GplatesRaster.__init__(self)
-
-
-class TimeDependentRasterSequence(object):
-
-    def __init__(self, name):
-
-        self.name = name
+#class PresentDayAgeGrid(object):
+#
+#    def __init__(self):
+#        GPlatesRaster.__init__(self)
+#
+#
+#class TimeDependentRasterSequence(object):
+#
+#    def __init__(self, name):
+#
+#        self.name = name
 
 
 # plot_classes
@@ -1065,62 +1065,71 @@ class gmt_reconstruction(object):
                              '-O', '-K', '>>', outfile])
 
         if 'continents' in layers:
-            output_reconstructed_continents_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
-            pygplates.reconstruct(self.reconstruction_model.continent_polygons,
-                                  self.reconstruction_model.rotation_model,
-                                  output_reconstructed_continents_filename,
-                                  reconstruction_time, anchor_plate_id=anchor_plate_id)
-            call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
-                                '-W0.1p,{:s}'.format(layer_colors['continent_outline']), 
-                                '-G{:s}'.format(layer_colors['continent_fill']), 
-                                output_reconstructed_continents_filename,
-                                '-O', '-K', '-N', '>>', outfile])
+            if not self.reconstruction_model.continent_polygons:
+                warnings.warn(('no continent polygons available for selected reconstruction model')
+            else:
+                output_reconstructed_continents_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
+                pygplates.reconstruct(self.reconstruction_model.continent_polygons,
+                                    self.reconstruction_model.rotation_model,
+                                    output_reconstructed_continents_filename,
+                                    reconstruction_time, anchor_plate_id=anchor_plate_id)
+                call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
+                                    '-W0.1p,{:s}'.format(layer_colors['continent_outline']), 
+                                    '-G{:s}'.format(layer_colors['continent_fill']), 
+                                    output_reconstructed_continents_filename,
+                                    '-O', '-K', '-N', '>>', outfile])
 
         if 'coastlines' in layers:
-            output_reconstructed_coastlines_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
-            pygplates.reconstruct(self.reconstruction_model.coastlines,
-                                  self.reconstruction_model.rotation_model,
-                                  output_reconstructed_coastlines_filename,
-                                  reconstruction_time, anchor_plate_id=anchor_plate_id)
-            call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                '-W0.2p,{:s}'.format(layer_colors['coastline_outline']), 
-                                '-G{:s}'.format(layer_colors['coastline_fill']),
-                                '-O', '-K', output_reconstructed_coastlines_filename, '-V', '>>', outfile])
+            if not self.reconstruction_model.coastlines:
+                warnings.warn(('no coastline polygons available for selected reconstruction model')
+            else:
+                output_reconstructed_coastlines_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
+                pygplates.reconstruct(self.reconstruction_model.coastlines,
+                                    self.reconstruction_model.rotation_model,
+                                    output_reconstructed_coastlines_filename,
+                                    reconstruction_time, anchor_plate_id=anchor_plate_id)
+                call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                    '-W0.2p,{:s}'.format(layer_colors['coastline_outline']), 
+                                    '-G{:s}'.format(layer_colors['coastline_fill']),
+                                    '-O', '-K', output_reconstructed_coastlines_filename, '-V', '>>', outfile])
 
         if 'dynamic_polygons' in layers:
-            output_filename_prefix = '%s/' % tempfile.mkdtemp()
-            output_filename_extension = 'gmt'
-            topology2gmt(self.reconstruction_model.rotation_model,
-                 self.reconstruction_model.dynamic_polygons,
-                 reconstruction_time,
-                 output_filename_prefix,
-                 output_filename_extension,
-                 anchor_plate_id)
+            if not self.reconstruction_model.dynamic_polygons:
+                warnings.warn(('no dynamic polygons available for selected reconstruction model')
+            else:
+                output_filename_prefix = '%s/' % tempfile.mkdtemp()
+                output_filename_extension = 'gmt'
+                topology2gmt(self.reconstruction_model.rotation_model,
+                    self.reconstruction_model.dynamic_polygons,
+                    reconstruction_time,
+                    output_filename_prefix,
+                    output_filename_extension,
+                    anchor_plate_id)
 
-            call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,{:s}'.format(layer_colors['other_boundary']), 
-                                 '-K', '-O',
-                                 '%s/boundary_polygons_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                 '-V', '>>', outfile])
-            call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,{:s}'.format(layer_colors['midoceanridge']), 
-                                 '-K', '-O',
-                                 '%s/ridge_transform_boundaries_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                 '-V', '>>', outfile])
+                call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                    '-W0.6p,{:s}'.format(layer_colors['other_boundary']), 
+                                    '-K', '-O',
+                                    '%s/boundary_polygons_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                    '-V', '>>', outfile])
+                call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                    '-W0.6p,{:s}'.format(layer_colors['midoceanridge']), 
+                                    '-K', '-O',
+                                    '%s/ridge_transform_boundaries_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                    '-V', '>>', outfile])
 
-            #plot subduction zones
-            call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,{:s}'.format(layer_colors['subduction']), 
-                                 '-G{:s}'.format(layer_colors['subduction']), 
-                                 '-Sf10p/3p+l+t', '-K', '-O',
-                                 '%s/subduction_boundaries_sL_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                 '-V', '>>', outfile])
-            call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                 '-W0.6p,{:s}'.format(layer_colors['subduction']), 
-                                 '-G{:s}'.format(layer_colors['subduction']), 
-                                 '-Sf10p/3p+r+t', '-K', '-O',
-                                 '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                 '-V', '>>', outfile])
+                #plot subduction zones
+                call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                    '-W0.6p,{:s}'.format(layer_colors['subduction']), 
+                                    '-G{:s}'.format(layer_colors['subduction']), 
+                                    '-Sf10p/3p+l+t', '-K', '-O',
+                                    '%s/subduction_boundaries_sL_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                    '-V', '>>', outfile])
+                call_system_command(['gmt', 'psxy', '-R', self.projection,
+                                    '-W0.6p,{:s}'.format(layer_colors['subduction']), 
+                                    '-G{:s}'.format(layer_colors['subduction']), 
+                                    '-Sf10p/3p+r+t', '-K', '-O',
+                                    '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
+                                    '-V', '>>', outfile])
 
         if not overlay:
             self.finish_plot(reconstruction_time, keep_ps_file=keep_ps_file)
