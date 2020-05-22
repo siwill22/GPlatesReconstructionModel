@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 import xarray as xr
 
-import .polygon_processing as pp
-import .paleogeography as pg
-import .paleogeography_tweening as pgt
+from . import polygon_processing as pp
+from . import paleogeography as pg
+from . import paleogeography_tweening as pgt
 
 from .proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh
@@ -187,7 +187,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
                         land_or_ocean_precedence='land', netcdf3_output=False, subdivision_depth=4):
 
 
-    print 'Working on Time %0.2fMa\n' % reconstruction_time 
+    print('Working on Time %0.2fMa\n' % reconstruction_time)
         
     rotation_model = pygplates.RotationModel(rotation_file)
                         
@@ -201,7 +201,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
     # --> if the reconstruction time matches one of these times, then we can work directly on
     #     the geometries that match this time - hence the two routes through the if statement below
     
-    print 'Selected Time is in the stage %0.2fMa to %0.2fMa' % (time_stage_min,time_stage_max)
+    print('Selected Time is in the stage %0.2fMa to %0.2fMa' % (time_stage_min,time_stage_max))
 
     land_points_file = '%s/tweentest_land_%0.2fMa_%0.2fMa.%s' % (tween_basedir,time_stage_min,time_stage_max,file_format)
     marine_points_file = '%s/tweentest_ocean_%0.2fMa_%0.2fMa.%s' % (tween_basedir,time_stage_min,time_stage_max,file_format)
@@ -258,7 +258,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
     ####################################
     # Deal with the mountains
     if np.equal(reconstruction_time, time_stage_min):
-        print 'Temporary fix for valid time'
+        print('Temporary fix for valid time')
         #dat3 = add_reconstructed_points_to_xyz(mountains_going_up_file,rotation_model,reconstruction_time,3)
         dat4 = add_reconstructed_points_to_xyz(mountains_going_down_file, rotation_model, reconstruction_time+0.01,1)
         dat5 = add_reconstructed_points_to_xyz(mountains_stable_file, rotation_model, reconstruction_time+0.01,1)
