@@ -21,3 +21,4 @@ test_notebooks/.ipynb_checkpoints/*
 test_notebooks/.ipynb_checkpoints/*
 >>>>>>> master
 gprm/.ipynb_checkpoints/*
+.vscode/settings.json

@@ -86,43 +86,63 @@ class ReconstructionModel(object):
         self.continent_polygons = []
         self.continent_polygons_files = []
 
-    def add_rotation_model(self, rotation_file):
+    def add_rotation_model(self, rotation_file, replace=False):
         """
         Add a rotation model by specifying the path and filename to a .rot file_extension.
         Can be called multiple times to add a series of file into a single object instance.
         """
+        if replace:
+            self.rotation_model = []
+            self.rotation_files = []
+
         self.rotation_files.append(rotation_file)
         self.rotation_model = pygplates.RotationModel(self.rotation_files)
 
-    def add_static_polygons(self, static_polygons_file):
+    def add_static_polygons(self, static_polygons_file, replace=False):
         """
         Add a set of static polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
         """
+        if replace:
+            self.static_polygons = []
+            self.static_polygon_files = []
+
         self.static_polygon_files.append(static_polygons_file)
         self.static_polygons.append(static_polygons_file)  # Should this be loaded into memory like dynamic polygons??
 
-    def add_dynamic_polygons(self, dynamic_polygons_file):
+    def add_dynamic_polygons(self, dynamic_polygons_file, replace=False):
         """
         Add topology files to be used in resolving topological polygons.
         Can be called multiple times to add a series of file into a single object instance.
         """
+        if replace:
+            self.dynamic_polygons = []
+            self.dynamic_polygon_files = []
+
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
-    def add_coastlines(self, coastlines_file):
+    def add_coastlines(self, coastlines_file, replace=False):
         """
         Add a set of coastline polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
         """
+        if replace:
+            self.coastlines = []
+            self.coastlines_files = []
+
         self.coastlines_files.append(coastlines_file)
         self.coastlines.append(coastlines_file)
 
-    def add_continent_polygons(self, continent_polygons_file):
+    def add_continent_polygons(self, continent_polygons_file, replace=False):
         """
         Add a set of continent polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
         """
+        if replace:
+            self.continent_polygons = []
+            self.continent_polygons_files = []
+
         self.continent_polygons_files.append(continent_polygons_file)
         self.continent_polygons.append(continent_polygons_file)
 
