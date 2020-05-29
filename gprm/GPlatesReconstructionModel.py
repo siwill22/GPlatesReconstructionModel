@@ -220,11 +220,11 @@ class ReconstructedPolygonSnapshot(object):
         self.reconstruction_time = reconstruction_time
         self.anchor_plate_id = anchor_plate_id
 
-    def plot(self, fig, pen_color='black', fill_color='wheat'):
+    def plot(self, fig, pen_color='black', fill_color='wheat', **kwargs):
         for polygon in self.reconstructed_polygons:
             data = polygon.get_reconstructed_geometry().to_lat_lon_array()
             fig.plot(x=data[:,1],y=data[:,0], 
-                     pen=pen_color, color=fill_color)
+                     pen=pen_color, color=fill_color, **kwargs)
 
 
 
