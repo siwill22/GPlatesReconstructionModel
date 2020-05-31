@@ -31,6 +31,8 @@ import math
 import pygplates
 import sys
 
+# for python2-3 compatibility
+from builtins import range
 
 # The depth of the internal lat/lon quad tree.
 # A value of 4 seems to work quite well for a uniform lat/lon spacing of 'points' of 1 degree
@@ -111,7 +113,7 @@ class PointsSpatialTree(object):
             node_half_width_degrees = root_node_half_width_degrees
             node_centre_lon = root_node_centre_lon
             node_centre_lat = root_node_centre_lat
-            for level in xrange(0, subdivision_depth):
+            for level in range(0, subdivision_depth):
                 
                 child_node_half_width_degrees = node_half_width_degrees / 2.0
                 

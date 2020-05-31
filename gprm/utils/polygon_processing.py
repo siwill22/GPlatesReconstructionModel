@@ -1,8 +1,8 @@
 import pygplates
-import points_in_polygons
-import points_spatial_tree
-from proximity_query import *
-from create_gpml import create_gpml_regular_long_lat_mesh
+from . import points_in_polygons
+from . import points_spatial_tree
+from .proximity_query import *
+from .create_gpml import create_gpml_regular_long_lat_mesh
 import numpy as np
 from skimage import measure
 

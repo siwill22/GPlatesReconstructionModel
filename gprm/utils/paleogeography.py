@@ -131,12 +131,14 @@ def load_netcdf(grdfile,z_field_name='z'):
     ds_disk = xr.open_dataset(grdfile)
 
     data_array = ds_disk[z_field_name]
-    coord_keys = data_array.coords.keys()
+    coord_keys = [key for key in data_array.coords.keys()]  # updated for python3 compatibility
 
-    if 'lat' in coord_keys[0].lower():
-        latitude_key=0; longitude_key=1
-    else:
+    if 'lon' in coord_keys[0].lower():
         latitude_key=1; longitude_key=0
+    elif 'x' in coord_keys[0].lower():
+        latitude_key=1; longitude_key=0
+    else:
+        latitude_key=0; longitude_key=1
 
     try:
         gridX = data_array.coords[coord_keys[longitude_key]].data
@@ -154,6 +156,9 @@ def load_netcdf(grdfile,z_field_name='z'):
                                                                        ds_disk.data_vars['dimension'].data[0]))
 
     ds_disk.close()
+
+    if gridZ.shape[0]==gridX.shape[0]:
+        gridZ = gridZ.T
 
     return gridX,gridY,gridZ
 
