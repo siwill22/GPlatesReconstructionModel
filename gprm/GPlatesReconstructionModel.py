@@ -1,7 +1,7 @@
 '''
 MIT License
 
-Copyright (c) 2017 Simon Williams
+Copyright (c) 2017-2020 Simon Williams
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -59,10 +59,7 @@ try:
     import requests, gwsFeatureCollection
 except:
     warnings.warn('web service options not available')
-#try:
-#    import healpy as hp
-#except:
-#    warnings.warn('equal area points options not available')
+
 
 
 DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'Data')
@@ -70,7 +67,37 @@ DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'Data')
 
 class ReconstructionModel(object):
     """
-    Class to contain the elements of a GPlates-format reconstruction model
+    Class to contain the various elements of a GPlates-format reconstruction model, 
+    including some or all of plate rotation models, topologies, and reconstructable 
+    geometries
+
+    ...
+    
+    Attributes
+    ----------
+    name : str
+        a string with a name for the reconstruction model
+    rotation_model : pygplates.RotationModel
+        the rotation model in memory
+    rotation_files : list of str
+        list of filename(s) of rotation files used to build the
+        rotation model
+    static_polygons : list of str
+        list of static polygon feature collections
+    static_polygon_files : list of str
+        list of static polygon filename(s)
+    dynamic_polygons : list of pygplates.FeatureCollection
+        dynamic polygon features loaded into memory
+    dynamic_polygon_files : list of str
+        list of dynamic polygon filename(s)
+    coastlines : list of str
+        list of coastline feature collections
+    coastlines_files : list of str
+        list of coastline filename(s)
+    continent_polygons : list of str
+        list of continent polygons feature collections
+    continent_polygons_files : list of str
+        list of continent polygons filename(s)
     """
 
     def __init__(self, name):
@@ -90,6 +117,14 @@ class ReconstructionModel(object):
         """
         Add a rotation model by specifying the path and filename to a .rot file_extension.
         Can be called multiple times to add a series of file into a single object instance.
+
+        Parameters
+        ----------
+        rotation_file : str
+            name of rotation file
+        replace : bool, optional
+            A flag to specify whether to add to existing rotation model (if present), or 
+            replace the current contents (default is False)
         """
         if replace:
             self.rotation_model = []
@@ -184,6 +219,9 @@ class ReconstructionModel(object):
                              anchor_plate_id)
 
     def polygon_snapshot(self, polygon_type, reconstruction_time, anchor_plate_id=0):
+        """
+        Create a set of reconstructed polygons for a specific reconstruction time 
+        """
 
         if polygon_type == 'coastlines':
             polygons_to_reconstruct = self.coastlines
@@ -208,7 +246,9 @@ class ReconstructionModel(object):
 
 
 class ReconstructedPolygonSnapshot(object):
-
+    """
+    Class to contain a set of reconstructed polygon features
+    """
     def __init__(self,
                  reconstructed_polygons,
                  rotation_model,
@@ -221,6 +261,9 @@ class ReconstructedPolygonSnapshot(object):
         self.anchor_plate_id = anchor_plate_id
 
     def plot(self, fig, pen_color='black', fill_color='wheat', **kwargs):
+        """
+        plot the reconstructed polygons into a pygmt map figure
+        """
         for polygon in self.reconstructed_polygons:
             data = polygon.get_reconstructed_geometry().to_lat_lon_array()
             fig.plot(x=data[:,1],y=data[:,0], 
@@ -422,6 +465,9 @@ class PlateSnapshot(object):
 
     # pygmt functions
     def plot_subduction_zones(self, fig, color='black'):
+        """
+        plot subduction zones into a pygmt map figure
+        """
 
         resolved_boundary_segments = self.get_boundary_features(['subduction'])
 
@@ -436,6 +482,9 @@ class PlateSnapshot(object):
                              pen=color, color=color)
 
     def plot_mid_ocean_ridges(self, fig, color='red'):
+        """
+        plot mid ocean ridges into a pygmt map figure
+        """
 
         resolved_boundary_segments = self.get_boundary_features(['midoceanridge'])
 
@@ -445,7 +494,10 @@ class PlateSnapshot(object):
                 fig.plot(x=data[:,1], y=data[:,0], pen=color)
 
     def plot_other_boundaries(self, fig, color='gray70'):
-
+        """
+        plot plate boundaries of 'other' types (ie not subduction zone 
+        or mid ocean ridge) into a pygmt map figure
+        """
         resolved_boundary_segments = self.get_boundary_features(['other'])
 
         for resolved_boundary_segment in resolved_boundary_segments:
@@ -462,6 +514,10 @@ class MotionPathFeature:
 
     def __init__(self, seed_point, path_times, reconstruction_plate_id,
                  relative_plate_id=0, anchor_plate_id=0):
+        """
+        create a motion path feature 
+        """
+
         seed_points_at_digitisation_time = pygplates.MultiPointOnSphere([seed_point])
         motion_path_feature = pygplates.Feature.create_motion_path(seed_points_at_digitisation_time,
                                                                    path_times,
@@ -474,6 +530,10 @@ class MotionPathFeature:
         self.motion_path_feature = motion_path_feature
 
     def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0):
+        """
+        generate reconstructed trails from the motion path feature according to a specified reconstruction model
+        """
+
         reconstructed_motion_paths = []
         pygplates.reconstruct(self.motion_path_feature, reconstruction_model.rotation_model,
                               reconstructed_motion_paths, reconstruction_time,
@@ -505,6 +565,9 @@ class PlateTree(object):
                                       reconstruction_time)
 
     def to_gpml(self, reconstruction_times, filename):
+        """
+        Save a platetree object to a vector file with a GPlates-compatible file type
+        """
 
         if isinstance(reconstruction_times, (float,int)):
             reconstruction_times = [reconstruction_times]
@@ -540,6 +603,10 @@ class VelocityField(object):
         self.velocity_azimuth = vel_azim
 
     def rms_velocity(self, plate_id_selection=None):
+        """
+        compute the rms velocity for a specific plate, or list of plates, or all plates within
+        the current plate snapshot
+        """
 
         if plate_id_selection is None:
             return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude))))
@@ -556,7 +623,10 @@ class VelocityField(object):
 
 
 class SubductionConvergence(object):
-
+    """
+    Class for holding the analysis of subduction zone kinematics for a single time
+    or range of time, contained within a pandas data frame
+    """
     def __init__(self, reconstruction_model,
                  reconstruction_times,
                  threshold_sampling_distance_radians,
@@ -601,6 +671,9 @@ class SubductionConvergence(object):
 
 
     def plot(self, variable='convergence rate'):
+        """
+        simple plot of subduction kinematics with matplotlib
+        """
         plt.figure(figsize=(12,5))
         if variable in ['convergence rate','cr']:
             plt.scatter(self.df.lon, self.df.lat,c=self.df.conv_rate,edgecolors='')
@@ -619,6 +692,9 @@ class SubductionConvergence(object):
 
     # TODO make the histograms weighted by segment length
     def hist(self, variable='convergence rate',bins=50):
+        """
+        plot histogram of subduction parameters
+        """
 
         plt.figure(figsize=(12,5))
         if variable in ['convergence rate','cr']:
@@ -911,14 +987,21 @@ class PointDistributionOnSphere(object):
 
 # From raster_reconstruction_classes
 class GPlatesRaster(object):
-
+    """
+    Class for holding raster data for conveient use with reconstructed data 
+    """
     def __init__(self, filename, reconstruction_time=0., z_field_name='z'):
-
+        """
+        initialise a GPlatesRaster object from a netcdf file defined in geographic coordinates
+        """
         self.gridX,self.gridY,self.gridZ = utils.paleogeography.load_netcdf(filename, z_field_name)
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
     def plot(self, show=False, levels=20, extend='both', cmap=plt.cm.BrBG_r):
+        """
+        generate a quick plot of the raster using matplotlib 
+        """
         plt.figure(figsize=(16,6))
         plt.contourf(self.gridX, self.gridY, self.gridZ,
                      levels, extend=extend, cmap=cmap)
@@ -928,7 +1011,9 @@ class GPlatesRaster(object):
             plt.show()
 
     def sample(self, point_lons, point_lats, order=0):
-
+        """
+        sample the raster at specififed lon,lat points and return the z values
+        """
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
         d,l = utils.sphere_tools.sampleOnSphere(LonGrid.flatten(),
                                                 LatGrid.flatten(),
