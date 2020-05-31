@@ -1,5 +1,6 @@
 
 .ipynb_checkpoints/*
+*checkpoint*
 
 request.gpmlz
 request.rot
@@ -22,3 +23,5 @@ test_notebooks/.ipynb_checkpoints/*
 >>>>>>> master
 gprm/.ipynb_checkpoints/*
 .vscode/settings.json
+
+doc/_build/*
