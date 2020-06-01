@@ -118,12 +118,8 @@ class ReconstructionModel(object):
         Add a rotation model by specifying the path and filename to a .rot file_extension.
         Can be called multiple times to add a series of file into a single object instance.
 
-        Parameters
-        ----------
-        rotation_file : str
-            name of rotation file
-        replace : bool, optional
-            A flag to specify whether to add to existing rotation model (if present), or 
+        :param rotation_file: (str) name of rotation file
+        :param replace: (bool, optional) A flag to specify whether to add to existing rotation model (if present), or 
             replace the current contents (default is False)
         """
         if replace:
@@ -464,9 +460,13 @@ class PlateSnapshot(object):
         return ax
 
     # pygmt functions
-    def plot_subduction_zones(self, fig, color='black'):
+    def plot_subduction_zones(self, fig, color='black', **kwargs):
         """
         plot subduction zones into a pygmt map figure
+
+        :param fig: (pygmt.Figure) pygmt figure object to plot to
+        :param color: (string, optional) color of the subduction lines and triangle (default is 'black') 
+        :param kwargs: (optional) additional arguments to pygmt plot command
         """
 
         resolved_boundary_segments = self.get_boundary_features(['subduction'])
@@ -476,35 +476,41 @@ class PlateSnapshot(object):
                 data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
                 if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
                     fig.plot(x=data[:,1],y=data[:,0], style='f10p/4p+l+t', 
-                             pen=color, color=color)
+                             pen=color, color=color, **kwargs)
                 elif resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Right':
                     fig.plot(x=data[:,1],y=data[:,0], style='f10p/4p+r+t',
-                             pen=color, color=color)
+                             pen=color, color=color, **kwargs)
 
-    def plot_mid_ocean_ridges(self, fig, color='red'):
+    def plot_mid_ocean_ridges(self, fig, color='red', **kwargs):
         """
         plot mid ocean ridges into a pygmt map figure
-        """
 
+        :param fig: (pygmt.Figure) pygmt figure object to plot to
+        :param color: (string, optional) color of the subduction lines and triangle (default is 'red') 
+        :param kwargs: (optional) additional arguments to pygmt plot command
+        """
         resolved_boundary_segments = self.get_boundary_features(['midoceanridge'])
 
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
                 data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
-                fig.plot(x=data[:,1], y=data[:,0], pen=color)
+                fig.plot(x=data[:,1], y=data[:,0], pen=color, **kwargs)
 
-    def plot_other_boundaries(self, fig, color='gray70'):
+    def plot_other_boundaries(self, fig, color='gray70', **kwargs):
         """
         plot plate boundaries of 'other' types (ie not subduction zone 
         or mid ocean ridge) into a pygmt map figure
+
+        :param fig: (pygmt.Figure) pygmt figure object to plot to
+        :param color: (string, optional) color of the subduction lines and triangle (default is 'gray70') 
+        :param kwargs: (optional) additional arguments to pygmt plot command
         """
         resolved_boundary_segments = self.get_boundary_features(['other'])
 
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
                 data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
-                fig.plot(x=data[:,1], y=data[:,0], pen=color)
-
+                fig.plot(x=data[:,1], y=data[:,0], pen=color, **kwargs)
 
 
 class MotionPathFeature:
@@ -516,6 +522,12 @@ class MotionPathFeature:
                  relative_plate_id=0, anchor_plate_id=0):
         """
         create a motion path feature 
+
+        :param seed_point: (tuple or list of tuples) lat,lon coordinates of the seed point(s)
+        :param path_times: (array)
+        :param reconstruction_plate_id: (int)
+        :param relative_plate_id: (int, optional)
+        :param anchor_plate_id: (int, optional)
         """
 
         seed_points_at_digitisation_time = pygplates.MultiPointOnSphere([seed_point])
@@ -559,6 +571,9 @@ class PlateTree(object):
         self.reconstruction_model = reconstruction_model
 
     def plot_snapshot(self, reconstruction_time):
+        """
+        simple snapshot of a platetree snapshot at a specified reconstruction time, rendered in matplotlib
+        """
 
         utils.platetree.plot_snapshot(self.reconstruction_model.static_polygons,
                                       self.reconstruction_model.rotation_model,
