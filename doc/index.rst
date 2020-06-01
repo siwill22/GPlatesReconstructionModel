@@ -6,13 +6,54 @@
 Welcome to GPlatesReconstructionModel's documentation!
 ======================================================
 
+These pages provide information on how to use the
+
+
+Example Notebooks
+=================
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Example Notebooks:
 
-   GPlatesReconstructionModel_reference
+   The links below contain example usage of the classes with GPlatesReconstructionModel
+   in jupyter notebooks
 
-   notebooks/test_ReconstructionModel.ipynb
+   _examples/test_ReconstructionModel.ipynb
+
+   _examples/test_GPlatesRaster.ipynb
+
+   _examples/test_PlateTree.ipynb
+
+   _examples/test_VelocityField.ipynb
+
+   _examples/test_SubductionConvergence.ipynb
+
+   _examples/test_pygmt.ipynb
+
+
+
+Class Documentation
+===========================================================
+
+The links below provide documentation for the different classes in **gprm**
+
+.. toctree::
+   :maxdepth: 1
+   :caption: gprm Class API:
+
+   GPlatesReconstructionModel_ReconstructionModel
+   GPlatesReconstructionModel_ReconstructedPolygonSnapshot
+   GPlatesReconstructionModel_GPlatesRaster
+   GPlatesReconstructionModel_PlateTree
+   GPlatesReconstructionModel_PlateSnapshot
+   GPlatesReconstructionModel_MotionPathFeature
+   GPlatesReconstructionModel_VelocityField
+   GPlatesReconstructionModel_SubductionConvergence
+   GPlatesReconstructionModel_PointDistributionOnSphere
+   GPlatesReconstructionModel_AgeCodedPointDataset
+
+
+
 
 
 Indices and tables

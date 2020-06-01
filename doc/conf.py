@@ -14,7 +14,27 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 import sys
+import os
+import shutil
 sys.path.insert(1,'/Users/simon/GPlatesBuilds/pygplates_rev28_python36_MacOS64/')
+
+# Based on https://github.com/spatialaudio/nbsphinx/issues/170,
+# with some modifications to remove checkpoint files
+print("Copy example notebooks into docs/_examples")
+
+def all_but_ipynb(dir, contents):
+    result = []
+    for c in contents:
+        if ("checkpoint" in c):
+            result += [c]
+        elif os.path.isfile(os.path.join(dir,c)) and (not c.endswith(".ipynb")):
+            result += [c]
+    return result
+
+shutil.rmtree(os.path.join(os.path.abspath('..'), "doc/_examples"), ignore_errors=True)
+shutil.copytree(os.path.join(os.path.abspath('..'), "test_notebooks"),
+                os.path.join(os.path.abspath('..'), "doc/_examples"),
+                ignore=all_but_ipynb)
 
 # -- Project information -----------------------------------------------------
 

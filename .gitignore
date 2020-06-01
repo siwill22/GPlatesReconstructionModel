@@ -25,3 +25,4 @@ gprm/.ipynb_checkpoints/*
 .vscode/settings.json
 
 doc/_build/*
+doc/_examples/*
