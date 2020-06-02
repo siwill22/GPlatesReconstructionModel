@@ -3,7 +3,7 @@
 ReconstructionModel
 ===================
 
-This section documents the Python functions and classes that make up the public interface of the *GPlatesReconstructionModel* package.
+This section documents the Python functions and classes that make up the public interface of the *ReconstructionModel* class.
 
 .. contents::
    :local:
@@ -11,10 +11,3 @@ This section documents the Python functions and classes that make up the public 
 
 .. autoclass:: gprm.ReconstructionModel
    :members:
-
-Notebooks
-=========
-.. toctree::
-   :maxdepth: 2
-
-   _examples/test_ReconstructionModel.ipynb

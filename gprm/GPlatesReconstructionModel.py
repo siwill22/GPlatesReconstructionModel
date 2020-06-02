@@ -992,7 +992,7 @@ class PointDistributionOnSphere(object):
                                                 return_closest_position = True,
                                                 return_closest_index = True)
 
-        bin_indices = zip(*res)[2]
+        bin_indices = list(zip(*res))[2]
         bin_counts = []
         for j in range(len(self.multipoint.get_points())):
             bin_counts.append(bin_indices.count(j))
