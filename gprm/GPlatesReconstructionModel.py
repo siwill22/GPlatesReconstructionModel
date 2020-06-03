@@ -1005,6 +1005,10 @@ class GPlatesRaster(object):
     """
     Class for holding raster data for conveient use with reconstructed data 
     """
+    # TODO create a way to initialise from an array
+    # TODO save to netcdf
+    # TODO grdimage method
+
     def __init__(self, filename, reconstruction_time=0., z_field_name='z'):
         """
         initialise a GPlatesRaster object from a netcdf file defined in geographic coordinates
