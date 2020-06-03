@@ -118,8 +118,8 @@ def reconstruct_raster_stage(static_polygon_features,
             recon_point_lons.append(recon_lon)
             recon_point_lats.append(recon_lat)
 
-    print('Sample present-day grid...')
 
+    #print('Sample present-day grid...')
     # Query present-day grid using present-day points.
     #
     # TODO: Note sure what happens in regions where there's no data in grid (need to ignore those points).
