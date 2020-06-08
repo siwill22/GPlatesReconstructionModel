@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 import xarray as xr
 
-from . import polygon_processing as pp
-from . import paleogeography as pg
 from . import paleogeography_tweening as pgt
 
 from .proximity_query import *
@@ -15,6 +13,8 @@ from .create_gpml import create_gpml_regular_long_lat_mesh
 from . import points_in_polygons
 from .sphere_tools import sampleOnSphere
 from . import points_spatial_tree
+from .fileio import load_netcdf
+from .spatial import polygon_area_threshold, merge_polygons
 
 from ptt.utils.call_system_command import call_system_command
 import tempfile
@@ -73,8 +73,8 @@ def get_distance_to_mountain_edge(point_array,reconstruction_basedir,rotation_mo
         pg_dir = '%s/PresentDay_Paleogeog_Matthews2016_%dMa/' % (reconstruction_basedir,time)
         pg_features = pg.load_paleogeography(pg_dir,env_list)
 
-    cf = pp.merge_polygons(pg_features, rotation_model, time=time, sampling=0.25)
-    sieve_polygons_t1 = pp.polygon_area_threshold(cf, area_threshold)
+    cf = merge_polygons(pg_features, rotation_model, time=time, sampling=0.25)
+    sieve_polygons_t1 = polygon_area_threshold(cf, area_threshold)
 
     polygons_as_list = []
     for feature in sieve_polygons_t1:
@@ -345,7 +345,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
     mountain_nc_file.delete
     
     # load result back into python
-    topoX,topoY,topoZ = pg.load_netcdf('%s/paleotopo_%0.2fd_%0.2fMa.nc' % (output_dir, sampling, reconstruction_time))
+    topoX,topoY,topoZ = load_netcdf('%s/paleotopo_%0.2fd_%0.2fMa.nc' % (output_dir, sampling, reconstruction_time))
 
     
     if merge_with_bathymetry:
@@ -356,7 +356,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
         # load age grid for this time and calculate paleobathymetry
         agegrid_file = agegrid_file_template % reconstruction_time
 
-        ageX,ageY,ageZ = pg.load_netcdf(agegrid_file)
+        ageX,ageY,ageZ = load_netcdf(agegrid_file)
 
         paleodepth = pg.age2depth(ageZ,model='GDH1')
 
@@ -409,7 +409,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
                                                                                               reconstruction_time)])
         
         # load and plot the result
-        topo_smoothX,topo_smoothY,topo_smoothZ = pg.load_netcdf(paleotopobathy_smooth_nc_file.name)
+        topo_smoothX,topo_smoothY,topo_smoothZ = load_netcdf(paleotopobathy_smooth_nc_file.name)
         #
         plt.figure(figsize=(25,11))
         plt.imshow(topo_smoothZ,origin='lower',

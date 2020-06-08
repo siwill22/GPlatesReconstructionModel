@@ -9,11 +9,7 @@ except:
     print('failed to load plotting dependencies')
 import xarray as xr
 from . import points_spatial_tree
-
-from . import polygon_processing as pp
-from . import paleogeography as pg
-
-
+from .spatial import run_grid_pnp
 
 
 def get_paleogeography_time_list(basedir):
@@ -52,17 +48,17 @@ def get_masked_multipoint(coords,masking_array,plate_partitioner,valid_time=None
 
 def get_change_masks(t1,points,spatial_tree_of_uniform_recon_points,psl_t1,psl_t2,rotation_model):
 
-    distance_to_land_t1,distance_to_psl_t1 = pp.run_grid_pnp(t1,
-                                                             points,
-                                                             spatial_tree_of_uniform_recon_points,
-                                                             psl_t1,
-                                                             rotation_model)
+    distance_to_land_t1,distance_to_psl_t1 = run_grid_pnp(t1,
+                                                          points,
+                                                          spatial_tree_of_uniform_recon_points,
+                                                          psl_t1,
+                                                          rotation_model)
 
-    distance_to_land_t2,distance_to_psl_t2 = pp.run_grid_pnp(t1,
-                                                             points,
-                                                             spatial_tree_of_uniform_recon_points,
-                                                             psl_t2,
-                                                             rotation_model)
+    distance_to_land_t2,distance_to_psl_t2 = run_grid_pnp(t1,
+                                                          points,
+                                                          spatial_tree_of_uniform_recon_points,
+                                                          psl_t2,
+                                                          rotation_model)
 
     # this mask is true where one (and only one) of the indicators is not zero
     # --> delineates points that change environment between time steps
