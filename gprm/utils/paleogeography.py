@@ -126,42 +126,6 @@ def smooth_topography_grid(grdfile,filt_grdfile,wavelength):
     os.system('gmt grdfilter %s -G%s -Fg%0.2f -D4 -Vl' % (grdfile,filt_grdfile,wavelength))
 
 
-def load_netcdf(grdfile,z_field_name='z'):
-
-    ds_disk = xr.open_dataset(grdfile)
-
-    data_array = ds_disk[z_field_name]
-    coord_keys = [key for key in data_array.coords.keys()]  # updated for python3 compatibility
-
-    if 'lon' in coord_keys[0].lower():
-        latitude_key=1; longitude_key=0
-    elif 'x' in coord_keys[0].lower():
-        latitude_key=1; longitude_key=0
-    else:
-        latitude_key=0; longitude_key=1
-
-    try:
-        gridX = data_array.coords[coord_keys[longitude_key]].data
-        gridY = data_array.coords[coord_keys[latitude_key]].data
-        gridZ = data_array.data
-    except:
-        # attempt to handle old-school GMT netcdfs (e.g. produced by grdconvert)
-        gridX = np.linspace(ds_disk.data_vars['x_range'].data[0],
-                            ds_disk.data_vars['x_range'].data[1],
-                            ds_disk.data_vars['dimension'].data[0])
-        gridY = np.linspace(ds_disk.data_vars['y_range'].data[0],
-                            ds_disk.data_vars['y_range'].data[1],
-                            ds_disk.data_vars['dimension'].data[1])
-        gridZ = np.flipud(ds_disk.data_vars[z_field_name].data.reshape(ds_disk.data_vars['dimension'].data[1],
-                                                                       ds_disk.data_vars['dimension'].data[0]))
-
-    ds_disk.close()
-
-    if gridZ.shape[0]==gridX.shape[0]:
-        gridZ = gridZ.T
-
-    return gridX,gridY,gridZ
-
 
 def create_slice(gridX,gridY,gridZ,GCPts,ProfilePoints):
     # make a cross-section across a grid, given (two or more) points
@@ -213,85 +177,6 @@ def profile_plate_ids(resolved_topologies,rotation_model,GreatCirclePoints):
     return plate_ids
 
 
-def plate_boundary_intersections(cross_section_geometry,shared_boundary_sections,ProfileX_kms):
-
-    # Given a polyline, and the subduction boundary sections, finds places where the cross-section
-    # intersects a plate boundary
-    # returns the Lat/Long coordinates and the distance along profile
-
-    subduction_intersections = []
-    ridge_intersections = []
-    other_intersections = []
-
-    for shared_boundary_section in shared_boundary_sections:
-
-        for shared_subsegment in shared_boundary_section.get_shared_sub_segments():
-
-            (min_distance_to_feature,
-            closest_point_on_section,
-            closest_point_on_topology,
-            section_index,
-            topology_index) = pygplates.GeometryOnSphere.distance(
-                cross_section_geometry,
-                shared_subsegment.get_resolved_geometry(),
-                return_closest_positions=True,
-                return_closest_indices=True)
-
-            if min_distance_to_feature == 0:
-
-                # find the distance along the section profile
-                #print section_index
-                cross_section_segment = cross_section_geometry.get_segments()[section_index]
-                distance_along_segment = pygplates.GeometryOnSphere.distance(closest_point_on_section,cross_section_segment.get_start_point())
-                distance_long_profile = distance_along_segment*pygplates.Earth.mean_radius_in_kms + ProfileX_kms[section_index]
-
-                if shared_boundary_section.get_feature().get_feature_type() == pygplates.FeatureType.create_gpml('SubductionZone'):
-                    polarity = get_subduction_polarity(shared_subsegment,topology_index,cross_section_segment,distance_along_segment)
-                    subduction_intersections.append([closest_point_on_section,distance_long_profile,polarity])
-
-                elif shared_boundary_section.get_feature().get_feature_type() == pygplates.FeatureType.create_gpml('MidOceanRidge'):
-                    ridge_intersections.append([closest_point_on_section,distance_long_profile])
-                else:
-                    other_intersections.append([closest_point_on_section,distance_long_profile])
-
-    return subduction_intersections,ridge_intersections,other_intersections
-
-
-def get_subduction_polarity(shared_subsegment,topology_index,cross_section_segment,distance_along_segment):
-# gets the subduction polarity at locations where a subduction segment intersects
-# another line segment
-
-    topology_section_segment = shared_subsegment.get_resolved_geometry().get_segments()[topology_index]
-
-    # Get cross-section segment direction at point of intersection.
-    if not cross_section_segment.is_zero_length():
-        cross_section_segment_direction = cross_section_segment.get_arc_direction(
-                distance_along_segment / cross_section_segment.get_arc_length())
-    else:
-        cross_section_segment_direction = cross_section_segment.get_arc_direction(0)
-
-    # Imagine topology going South to North. If cross section crosses it going from West to East then
-    # cross section segment and normal to topology segment will point 'away' from each other (ie, < 0).
-    # Note that topology segment normal points to the left side (West).
-    # Note: Same sort of thing applies when imagining topology going North to South (hence reference to left/right instead).
-    cross_section_left_to_right = pygplates.Vector3D.dot(
-            cross_section_segment_direction,
-            topology_section_segment.get_great_circle_normal()) < 0
-
-    # If overriding plate on left (West) and cross-section goes left to right (West to East) then
-    # subduction dips from left to right along cross-section (same for overriding on right and cross-section going right to left).
-    # The other two cases (out of four cases total) result in subduction dipping right to left along cross-section.
-    subduction_polarity = shared_subsegment.get_feature().get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)
-    if ((subduction_polarity == 'Left' and cross_section_left_to_right) or
-        (subduction_polarity == 'Right' and not cross_section_left_to_right)):
-        cross_section_dips_left_to_right = True
-    else:
-        # NOTE: We'll also get here if (subduction_polarity == 'Unknown').
-        cross_section_dips_left_to_right = False
-
-    return cross_section_dips_left_to_right
-
-
 def topo2moho(topo_profile,ref_depth=20000,rhoM = 3300.,rhoC = 2700.):
     # TODO handle both air-loaded and water-loaded
 
@@ -299,7 +184,6 @@ def topo2moho(topo_profile,ref_depth=20000,rhoM = 3300.,rhoC = 2700.):
     moho_depth = -base_surface-ref_depth
 
     return moho_depth
-
 
 
 ########################

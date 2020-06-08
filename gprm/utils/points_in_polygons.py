@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-    Copyright (C) 2017 The University of Sydney, Australia
+    Copyright (C) 2017-2020 The University of Sydney, Australia
     
     This program is free software; you can redistribute it and/or modify it under
     the terms of the GNU General Public License, version 2, as published by
@@ -80,8 +80,9 @@ import math
 import pygplates
 import sys
 
-# for python2-3 compatibility
-from builtins import range
+# the following line would ensure more correct python2-3 compatibility,
+# but requires a non-standard module
+# from builtins import range
 
 
 def find_polygons(

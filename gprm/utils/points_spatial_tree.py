@@ -31,8 +31,9 @@ import math
 import pygplates
 import sys
 
-# for python2-3 compatibility
-from builtins import range
+# the following line would ensure more correct python2-3 compatibility,
+# but requires a non-standard module
+# from builtins import range
 
 # The depth of the internal lat/lon quad tree.
 # A value of 4 seems to work quite well for a uniform lat/lon spacing of 'points' of 1 degree

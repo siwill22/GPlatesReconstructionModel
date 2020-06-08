@@ -20,11 +20,6 @@ from ptt.utils.call_system_command import call_system_command
 import tempfile
 
 
-def write_xyz_file(output_filename, output_data):
-    with open(output_filename, 'w') as output_file:
-        for output_line in output_data:
-            output_file.write(' '.join(str(item) for item in output_line) + '\n')
-
 
 # define a function that loads paleogeography multipoints at a specified time
 # NOTE this time can be anything, not a time where the multipoints fit nicely together,
@@ -104,39 +99,6 @@ def get_distance_to_mountain_edge(point_array,reconstruction_basedir,rotation_mo
             distance_to_polygon[point_index] = 0.0
             
     return distance_to_polygon
-
-
-# This cell uses COB Terranes to make a masking polygon
-# (which is called 'seive_polygons')
-def get_merged_cob_terrane_polygons(COBterrane_file, rotation_model, reconstruction_time,
-                                    sampling, area_threshold=None, return_raster=False):
-
-    polygon_features = pygplates.FeatureCollection(COBterrane_file)
-
-    cobter = pp.force_polygon_geometries(polygon_features)
-
-    cf = pp.merge_polygons(cobter, rotation_model, time=reconstruction_time, sampling=sampling)
-    
-    if area_threshold is not None:
-        sieve_polygons = pp.polygon_area_threshold(cf, area_threshold)
-        return sieve_polygons
-
-    else:
-        return cf
-
-# This cell uses COB Terranes to make a masking polygon
-# (which is called 'seive_polygons')
-def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstruction_time,
-                                  sampling):
-
-    polygon_features = pygplates.FeatureCollection(COBterrane_file)
-
-    cobter = pp.force_polygon_geometries(polygon_features)
-
-    mask = pp.merge_polygons(cobter, rotation_model, time=reconstruction_time,
-                             sampling=sampling, return_raster=True)
-    
-    return mask
 
 
 # use merged seive_polygons to get a regular lat-long multipoint that will contain points
