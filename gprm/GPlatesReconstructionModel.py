@@ -769,8 +769,9 @@ class AgeCodedPointDataset(object):
 
             # Get attribute (other than coordinate) names from first feature
             for feature in feature_collection:
-                for attribute in feature.get_shapefile_attributes():
-                    DataFrameTemplate.append(attribute)
+                if feature.get_shapefile_attributes():
+                    for attribute in feature.get_shapefile_attributes():
+                        DataFrameTemplate.append(attribute)
                 break
 
             result = []
