@@ -122,6 +122,9 @@ class ReconstructionModel(object):
         :param replace: (bool, optional) A flag to specify whether to add to existing rotation model (if present), or 
             replace the current contents (default is False)
         """
+        if not os.path.isfile(rotation_file):
+            raise ValueError('Unable to find file {:s}'.format(rotation_file))
+
         if replace:
             self.rotation_model = []
             self.rotation_files = []
@@ -134,6 +137,9 @@ class ReconstructionModel(object):
         Add a set of static polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
         """
+        if not os.path.isfile(static_polygons_file):
+            raise ValueError('Unable to find file {:s}'.format(static_polygons_file))
+
         if replace:
             self.static_polygons = []
             self.static_polygon_files = []
@@ -146,6 +152,9 @@ class ReconstructionModel(object):
         Add topology files to be used in resolving topological polygons.
         Can be called multiple times to add a series of file into a single object instance.
         """
+        if not os.path.isfile(dynamic_polygons_file):
+            raise ValueError('Unable to find file {:s}'.format(dynamic_polygons_file))
+
         if replace:
             self.dynamic_polygons = []
             self.dynamic_polygon_files = []
@@ -158,6 +167,9 @@ class ReconstructionModel(object):
         Add a set of coastline polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
         """
+        if not os.path.isfile(coastlines_file):
+            raise ValueError('Unable to find file {:s}'.format(coastlines_file))
+
         if replace:
             self.coastlines = []
             self.coastlines_files = []
@@ -170,6 +182,9 @@ class ReconstructionModel(object):
         Add a set of continent polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
         """
+        if not os.path.isfile(continent_polygons_file):
+            raise ValueError('Unable to find file {:s}'.format(continent_polygons_file))
+        
         if replace:
             self.continent_polygons = []
             self.continent_polygons_files = []
@@ -768,8 +783,9 @@ class AgeCodedPointDataset(object):
                 tmp.append(feature.get_reconstruction_plate_id())
                 tmp.append(feature.get_valid_time()[0])
                 tmp.append(feature.get_valid_time()[1])
-                for attribute in feature.get_shapefile_attributes():
-                    tmp.append(feature.get_shapefile_attribute(attribute))
+                if feature.get_shapefile_attributes():
+                    for attribute in feature.get_shapefile_attributes():
+                        tmp.append(feature.get_shapefile_attribute(attribute))
                 result.append(tmp)
 
             self._df = pd.DataFrame(result,columns=DataFrameTemplate)
