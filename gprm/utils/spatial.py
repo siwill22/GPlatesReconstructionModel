@@ -64,32 +64,31 @@ def merge_polygons(polygons,rotation_model,
             return contour_features
 
 
-def rasterise_polygons(polygon_features,rotation_model,time,
-					   sampling=0.5,env_list=None,meshtype='LongLatGrid',
-					   masking=None):
+def rasterise_polygons(polygon_features, rotation_model, reconstruction_time, raster_domain_points=None, 
+					   sampling=0.5, meshtype='LongLatGrid', masking=None):
     # takes a set of polygons and converts them into a raster, or other regular point distribution,
     # with the polygon shapefile attributes mapped to points 
     # if meshtype is set to 'healpix', sampling should be set to an integer defining nSide
 
-    #pg_features = load_paleogeography(pg_dir,env_list)
-    if meshtype=='healpix':
-        raster_domain = create_gpml_healpix_mesh(sampling,filename=None,feature_type='MeshNode')
-    else:
-        raster_domain = create_gpml_regular_long_lat_mesh(sampling,filename=None,feature_type='MeshNode')
+    if not raster_domain_points:
+        if meshtype=='healpix':
+            raster_domain_points = create_gpml_healpix_mesh(sampling,filename=None,feature_type='MeshNode')
+        else:
+            raster_domain_points = create_gpml_regular_long_lat_mesh(sampling,filename=None,feature_type='MeshNode')
 
-    plate_partitioner = pygplates.PlatePartitioner(polygon_features, rotation_model, reconstruction_time=time)
+    plate_partitioner = pygplates.PlatePartitioner(polygon_features, rotation_model, reconstruction_time=reconstruction_time)
 
     if masking is not None:
-        pg_points = plate_partitioner.partition_features(raster_domain,
+        pg_points = plate_partitioner.partition_features(raster_domain_points,
 														 partition_return = pygplates.PartitionReturn.separate_partitioned_and_unpartitioned,
                                                          properties_to_copy=[pygplates.PropertyName.gpml_shapefile_attributes])
-        if masking == 'Outside':
+        if masking == 'outside':
             pg_points = pg_points[0]
-        elif masking == 'Inside':
+        elif masking == 'inside':
             pg_points = pg_points[1]
 
     else:
-        pg_points = plate_partitioner.partition_features(raster_domain,
+        pg_points = plate_partitioner.partition_features(raster_domain_points,
                                                          properties_to_copy=[pygplates.PropertyName.gpml_shapefile_attributes])
 
     return pg_points
