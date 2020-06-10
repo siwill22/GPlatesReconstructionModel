@@ -1,7 +1,7 @@
 import pygplates
-from . import points_in_polygons
-from . import points_spatial_tree
-from .proximity_query import *
+from ptt.utils import points_in_polygons
+from ptt.utils import points_spatial_tree
+from ptt.utils.proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
 import numpy as np
 from skimage import measure
