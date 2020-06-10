@@ -71,8 +71,6 @@ class ReconstructionModel(object):
     including some or all of plate rotation models, topologies, and reconstructable 
     geometries
 
-    ...
-    
     Attributes
     ----------
     name : str
@@ -274,6 +272,11 @@ class ReconstructedPolygonSnapshot(object):
     def plot(self, fig, pen_color='black', fill_color='wheat', **kwargs):
         """
         plot the reconstructed polygons into a pygmt map figure
+
+        :param fig: (pygmt.Figure) pygmt figure object to plot to
+        :param pen_color: (string, optional) name of polygon boundary color (default is 'black')
+        :param fill_color: (string, optional) name of polygon fill color (default is 'wheat')
+        :param kwargs: (optional) set of additonal keyword arguments to pass to the pygmt 'plot' command
         """
         for polygon in self.reconstructed_polygons:
             data = polygon.get_reconstructed_geometry().to_lat_lon_array()
@@ -661,8 +664,17 @@ class SubductionConvergence(object):
                  reconstruction_times,
                  threshold_sampling_distance_radians,
                  velocity_delta_time=1,
-                 anchor_plate_id=0,
-                 time_step=1):
+                 anchor_plate_id=0):
+        """
+        Initiate a subduction convergence object, which is essentially a pandas dataframe
+        with the results of subduction kinematic analysis for a single or multiple time snapshots
+
+        :param reconstruction_model: The ReconstructionModel object containing the rotation model and dynamic polygons
+        :param reconstruction_times: (int, or float, or list or array of ints or floats)
+        :param threshold_sampling_distance_radians:
+        :param velocity_delta_time: (default=1)
+        :param anchor_plate_id: (default=0)
+        """
 
         # Data frame template defining the column names
         DataFrameTemplate = ('lon','lat','conv_rate','conv_obliq','migr_rate',
