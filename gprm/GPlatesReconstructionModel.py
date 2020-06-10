@@ -812,6 +812,7 @@ class AgeCodedPointDataset(object):
                                                 float(row[field_mapping['longitude_field']]))
                 point_feature = pygplates.Feature()
                 point_feature.set_geometry(point)
+                point_feature.set_reconstruction_plate_id(0)
                 try:
                     point_feature.set_valid_time(row[field_mapping['max_age_field']],-999.)
                 except:
@@ -820,12 +821,20 @@ class AgeCodedPointDataset(object):
                 self._point_features.append(point_feature)
 
 
-    def assign_reconstruction_model(self,reconstruction_model):
+    def assign_reconstruction_model(self, reconstruction_model, polygons='static'):
         """
         assign plate ids to a point data set using an existing ReconstructionModel class
         """
+        if polygons=='continents':
+            partitioning_polygon_features = reconstruction_model.continent_polygons
+        elif polygons=='coastlines':
+            partitioning_polygon_features = reconstruction_model.coastlines
+        else:
+            partitioning_polygon_features = reconstruction_model.static_polygons
 
-        partitioned_point_features = pygplates.partition_into_plates(reconstruction_model.static_polygons,
+        if not partitioning_polygon_features:
+            raise ValueError('No polygons found for partitioning')
+        partitioned_point_features = pygplates.partition_into_plates(partitioning_polygon_features,
                                                                      reconstruction_model.rotation_model,
                                                                      self._point_features)
         self._point_features = partitioned_point_features
@@ -879,17 +888,17 @@ class AgeCodedPointDataset(object):
         recon_points = []
         for point_feature in self._point_features:
             if ReconstructTime is 'MidTime':
-                time = (point_feature.get_valid_time()[0]+point_feature.get_valid_time()[1])/2.
+                reconstruction_time = (point_feature.get_valid_time()[0]+point_feature.get_valid_time()[1])/2.
             else:
-                time = point_feature.get_valid_time()[0]
+                reconstruction_time = point_feature.get_valid_time()[0]
             if point_feature.get_reconstruction_plate_id()!=0:
-                point_rotation = rotation_model.get_rotation(time,
+                point_rotation = rotation_model.get_rotation(reconstruction_time,
                                                              point_feature.get_reconstruction_plate_id(),
                                                              anchor_plate_id=anchor_plate_id)
                 reconstructed_point = point_rotation * point_feature.get_geometry()
                 recon_points.append([reconstructed_point.to_lat_lon()[1],
                                      reconstructed_point.to_lat_lon()[0],
-                                     time])
+                                     reconstruction_time])
 
         return recon_points
 
