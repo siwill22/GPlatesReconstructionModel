@@ -36,18 +36,13 @@ import xarray as xr
 
 import gprm.utils as utils
 
-from gprm.utils.proximity_query import find_closest_geometries_to_points
+from ptt.utils.proximity_query import find_closest_geometries_to_points
 from gprm.utils.proximity import distance_between_reconstructed_points_and_features
 
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-#import utils.platetree
-#from utils import platetree as ptree
-#import utils.paleogeography
-#import utils.sphere_tools
-#import proximity
 
 
 import warnings
