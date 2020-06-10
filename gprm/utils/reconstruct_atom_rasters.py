@@ -2,21 +2,15 @@ import os
 import math
 import numpy as np
 import pygplates
-from . import points_in_polygons
-from . import points_spatial_tree
-from .proximity_query import find_closest_geometries_to_points_using_points_spatial_tree
+from ptt.utils import points_in_polygons
+from ptt.utils import points_spatial_tree
+from ptt.utils.proximity_query import find_closest_geometries_to_points_using_points_spatial_tree
 
-#from .inpaint import ??
-from netCDF4 import Dataset
+from .fileio import write_xyz_file
+
 import scipy.interpolate as spi
 from scipy.interpolate.interpnd import _ndim_coords_from_arrays
 from scipy.spatial import cKDTree
-
-
-def write_xyz_file(output_filename, output_data):
-    with open(output_filename, 'w') as output_file:
-        for output_line in output_data:
-            output_file.write(' '.join(str(item) for item in output_line) + '\n')
 
 
 def xyzfile_to_spatial_tree_of_points(xyzfile):
@@ -91,7 +85,7 @@ def reconstruct_raster_stage(static_polygon_features,
     # Create a multipoint feature for each plate ID and reverse-reconstruct it to get present-day points.
     #
     # Iterate over key/value pairs in dictionary.
-    for plate_id, recon_points_in_plate in recon_points_grouped_by_plate_id.iteritems():
+    for plate_id, recon_points_in_plate in recon_points_grouped_by_plate_id.items():
         # Reverse reconstructing a multipoint is much faster than individually reverse-reconstructing points.
         multipoint_feature = pygplates.Feature()
         multipoint_feature.set_geometry(pygplates.MultiPointOnSphere(recon_points_in_plate))
