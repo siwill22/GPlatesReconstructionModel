@@ -10,6 +10,7 @@ from . import proximity_query
 from . import proximity
 from . import raster
 from . import velocity_tools
-from . import wrapping_tools
+#from . import wrapping_tools
 from . import fileio
 from . import spatial
+from . import rotation

@@ -247,6 +247,12 @@ class ReconstructionModel(object):
                                             reconstruction_time,
                                             anchor_plate_id)
 
+    def rotation_table(self, plate_id_list=None, asdataframe=False):
+
+        rotation_features = utils.rotation.generate_rotation_feature(self.rotation_files)
+
+        return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
+
 
 
 class ReconstructedPolygonSnapshot(object):
