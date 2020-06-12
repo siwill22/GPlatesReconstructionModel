@@ -571,6 +571,43 @@ class MotionPathFeature:
         return trails
 
     #TODO add rate step plot
+    def rate(self, reconstruction_model, reconstruction_time=0):
+
+        reconstructed_motion_paths = []
+        pygplates.reconstruct(self.motion_path_feature, reconstruction_model.rotation_model,
+                              reconstructed_motion_paths, reconstruction_time,
+                              reconstruct_type=pygplates.ReconstructType.motion_path)
+
+        dist = []
+        for reconstructed_motion_path in reconstructed_motion_paths:
+            for segment in reconstructed_motion_path.get_motion_path().get_segments():
+                dist.append(segment.get_arc_length()*pygplates.Earth.mean_radius_in_kms)
+
+        # Get rate of motion as distance per Myr
+        rates = np.asarray(dist)/np.diff(self.path_times)
+        
+        return rates 
+
+    def step_plot(self, reconstruction_model, reconstruction_time=0, show=False):
+
+        rate = self.rate(reconstruction_model, reconstruction_time=0)
+        step_rate = np.zeros(len(rate)*2)
+        step_rate[::2] = rate
+        step_rate[1::2] = rate
+
+        step_time = np.zeros(len(rate)*2)
+        step_time[::2] = self.path_times[:-1]
+        step_time[1::2] = self.path_times[1:]
+
+        if show:
+            fig = plt.figure(figsize=(10,4))
+            plt.plot(step_time,step_rate)
+            plt.xlabel('Reconstruction Time (Myr)')
+            plt.ylabel('Rate of motion (mm/yr)')
+            plt.gca().invert_xaxis()
+            plt.show()
+        else:
+            return step_time, step_rate
 
 
 class PlateTree(object):
@@ -1046,7 +1083,7 @@ class GPlatesRaster(object):
         """
         initialise a GPlatesRaster object from a netcdf file defined in geographic coordinates
         """
-        self.gridX,self.gridY,self.gridZ = utils.paleogeography.load_netcdf(filename, z_field_name)
+        self.gridX,self.gridY,self.gridZ = utils.fileio.load_netcdf(filename, z_field_name)
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
@@ -1122,9 +1159,32 @@ class GPlatesRaster(object):
 
         return point_z[0]
 
+    
+    def reconstruct(self, reconstruction_model, to_time, from_time=0, grid_sampling=1.,
+                    anchor_plate_id=0, sampling_method='scipy', return_points=False):
+        """
+        TODO make default sampling be same as input
+        """
 
-    def cross_section(self, PtLons, PtLats):
-        return CrossSection(self, PtLons, PtLats)
+        from_time = 0.
+        to_time = np.float(to_time)
+
+        (reconstructed_point_lons,
+         reconstructed_point_lats,
+         point_zvals) = utils.raster.reconstruct_raster(self, 
+                                                        reconstruction_model.static_polygons, 
+                                                        reconstruction_model.rotation_model,
+                                                        from_time, to_time, 
+                                                        grid_sampling=grid_sampling)
+
+        if return_points:
+            return reconstructed_point_lons, reconstructed_point_lats, point_zvals
+        else:
+            return utils.raster.xyz2grd(reconstructed_point_lons,reconstructed_point_lats,
+                                        point_zvals,self.gridX,self.gridY)
+
+    #def cross_section(self, PtLons, PtLats):
+    #    return CrossSection(self, PtLons, PtLats)
 
 
 class CrossSection(object):
