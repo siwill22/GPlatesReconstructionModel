@@ -8,7 +8,7 @@ from . import points_in_polygons
 from . import points_spatial_tree
 from . import proximity_query
 from . import proximity
-from . import reconstruct_atom_rasters
+from . import raster
 from . import velocity_tools
 from . import wrapping_tools
 from . import fileio

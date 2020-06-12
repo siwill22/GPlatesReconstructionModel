@@ -11,4 +11,3 @@ from .GPlatesReconstructionModel import SubductionConvergence
 from .GPlatesReconstructionModel import AgeCodedPointDataset
 from .GPlatesReconstructionModel import PointDistributionOnSphere
 from .GPlatesReconstructionModel import CrossSection
-from .GPlatesReconstructionModel import gmt_reconstruction
