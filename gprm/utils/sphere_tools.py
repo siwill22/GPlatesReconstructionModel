@@ -1,7 +1,6 @@
 import numpy as np
 import pygplates
 from scipy import spatial
-#from netCDF4 import Dataset
 
 
 def marsaglias_method(N):
