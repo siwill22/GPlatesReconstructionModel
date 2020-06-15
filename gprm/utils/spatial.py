@@ -178,7 +178,7 @@ def run_grid_pnp(recon_time,
                                                                     distance_threshold_radians = distance_threshold_radians,
                                                                     geometries_are_solid = False)
 
-    distance_to_polygon_boundary = np.array(zip(*res1)[0])
+    distance_to_polygon_boundary = np.array(list(zip(*res1))[0])
 
     # Make a copy of list of distances.
     distance_to_polygon = list(distance_to_polygon_boundary)
