@@ -248,7 +248,15 @@ class ReconstructionModel(object):
                                             anchor_plate_id)
 
     def rotation_table(self, plate_id_list=None, asdataframe=False):
+        """
+        Return an object containing the rotation parameters for some or all of the 
+        current rotation model, either as a pandas dataframe or a list of lists (one 
+        list per finite rotation entry)
 
+        :param plate_id_list: (list of ints, optional) list of plate_ids to include in the output. 
+            Default is None, in which case the full rotation table is returned
+        :param asdataframe: (bool, optional) whether to return a pandas data frame (default is False) 
+        """
         rotation_features = utils.rotation.generate_rotation_feature(self.rotation_files)
 
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
@@ -537,26 +545,38 @@ class MotionPathFeature:
     Class to define a motion path feature.
     """
 
-    def __init__(self, seed_point, path_times, reconstruction_plate_id,
+    def __init__(self, path_times=np.arange(0.,201.,10.), reconstruction_plate_id=0, seed_points=None, lats=None, longs=None,
                  relative_plate_id=0, anchor_plate_id=0):
         """
         create a motion path feature 
 
-        :param seed_point: (tuple or list of tuples) lat,lon coordinates of the seed point(s)
+        :param seed_points: (tuple or list of tuples) lat,lon coordinates of the seed point(s)
+        :param lats:
+        :param longs:
         :param path_times: (array)
         :param reconstruction_plate_id: (int)
         :param relative_plate_id: (int, optional)
         :param anchor_plate_id: (int, optional)
         """
+        if seed_points:
+            if type(seed_points) is tuple:
+                seed_points = [seed_points]
+        elif lats and longs:
+            seed_points = []
+            for x,y in zip(lats,longs):
+                seed_points.append((x,y))
+        else:
+            raise ValueError('Unrecognised format for seed point coordinates')
 
-        seed_points_at_digitisation_time = pygplates.MultiPointOnSphere([seed_point])
+
+        seed_points_at_digitisation_time = pygplates.MultiPointOnSphere(seed_points)
         motion_path_feature = pygplates.Feature.create_motion_path(seed_points_at_digitisation_time,
                                                                    path_times,
                                                                    valid_time=(pygplates.GeoTimeInstant.create_distant_past(), pygplates.GeoTimeInstant.create_distant_future()),
                                                                    relative_plate = relative_plate_id,
                                                                    reconstruction_plate_id = reconstruction_plate_id)
 
-        self.seed_point = seed_point
+        self.seed_points = seed_points
         self.path_times = path_times
         self.motion_path_feature = motion_path_feature
 
@@ -584,36 +604,43 @@ class MotionPathFeature:
                               reconstructed_motion_paths, reconstruction_time,
                               reconstruct_type=pygplates.ReconstructType.motion_path)
 
-        dist = []
+        #dists = []
+        rates = []
         for reconstructed_motion_path in reconstructed_motion_paths:
+            dist = []
             for segment in reconstructed_motion_path.get_motion_path().get_segments():
                 dist.append(segment.get_arc_length()*pygplates.Earth.mean_radius_in_kms)
+            #dists.append(dist[::-1])
+            
+            # Get rate of motion as distance per Myr
+            rates.append(np.asarray(dist[::-1])/np.diff(self.path_times))
 
-        # Get rate of motion as distance per Myr
-        rates = np.asarray(dist)/np.diff(self.path_times)
-        
-        return rates 
+        return rates
 
     def step_plot(self, reconstruction_model, reconstruction_time=0, show=False):
 
-        rate = self.rate(reconstruction_model, reconstruction_time=0)
-        step_rate = np.zeros(len(rate)*2)
-        step_rate[::2] = rate
-        step_rate[1::2] = rate
+        rates = self.rate(reconstruction_model, reconstruction_time=0)
+        
+        step_rates = []
+        for rate in rates:
+            step_rate = np.zeros(len(rate)*2)
+            step_rate[::2] = rate
+            step_rate[1::2] = rate
+            step_rates.append(step_rate)
 
-        step_time = np.zeros(len(rate)*2)
+        step_time = np.zeros(len(rates[0])*2)
         step_time[::2] = self.path_times[:-1]
         step_time[1::2] = self.path_times[1:]
-
+        
         if show:
             fig = plt.figure(figsize=(10,4))
-            plt.plot(step_time,step_rate)
+            plt.plot(step_time,np.array(step_rates).T)
             plt.xlabel('Reconstruction Time (Myr)')
             plt.ylabel('Rate of motion (mm/yr)')
             plt.gca().invert_xaxis()
             plt.show()
         else:
-            return step_time, step_rate
+            return step_time, step_rates
 
 
 class PlateTree(object):
