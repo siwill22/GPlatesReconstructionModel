@@ -3,6 +3,11 @@ import xarray as xr
 
 
 def write_xyz_file(output_filename, output_data):
+    """
+    write data arrays to an xyz file
+    :param filename: (string) name of output ascii file
+    :param output_data: name of array containing data to be written
+    """
     with open(output_filename, 'w') as output_file:
         for output_line in output_data:
             output_file.write(' '.join(str(item) for item in output_line) + '\n')
