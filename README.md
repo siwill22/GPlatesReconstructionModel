@@ -19,9 +19,9 @@
 ### Optional:
 - healpy (if healpy is not available, the some functions will fall back on precomputed point distributions in the 'data' folder)
 - stripy
-- pygmt ~~gmt (accessed via calls to external command-line processes)~~
+- pygmt
 - moviepy
-- cartopy and python basemap (but planned for removal with all plotting handled by matplotlib and pygmt)
+- cartopy
 
 
 ## Warning
