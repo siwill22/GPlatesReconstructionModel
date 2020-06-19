@@ -7,12 +7,8 @@ import xarray as xr
 import scipy.interpolate as spi
 from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
 
-try:
-    import matplotlib
-    import matplotlib.pyplot as plt
-    from mpl_toolkits.basemap import Basemap
-except:
-    print('Failed to load plotting dependencies')
+import matplotlib
+import matplotlib.pyplot as plt
 
 
 def load_paleogeography(pg_dir,env_list=None,
@@ -299,6 +295,7 @@ def paleobathymetry_from_topologies(resolved_topologies,shared_boundary_sections
 ########################
 # PLOTTING
 def paleogeography_points_basemap(pg_points,env_color_dict,fill_color='darkblue',markersize=2,alpha=1):
+    from mpl_toolkits.basemap import Basemap
     m = Basemap(projection='robin', lon_0=0, resolution='c')
     m.drawmapboundary(fill_color='white')
     for feature in pg_points:
