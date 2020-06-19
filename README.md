@@ -26,4 +26,4 @@
 
 ## Warning
 - Current version is still preliminary with minimal error handling and likely numerous bugs
-- The current version in the process of being transitoined to python3 compatibility, which will temporarily break some functions 
+- The current version in the process of being transitioned to python3 compatibility, which will temporarily break some functions 
