@@ -3,7 +3,7 @@ import pygplates
 from scipy import spatial
 
 
-def marsaglias_method(N):
+def marsaglias_method(N=10000):
 
     ## Marsaglia's method
     dim = 3
@@ -17,11 +17,49 @@ def marsaglias_method(N):
     return points
 
 
-def random_points_on_sphere(N):
-# function to call Marsaglia's method and return Long/
-# Lat arrays
+def fibonacci_sphere(N=10000):
+# https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere/44164075
+    points = []
+    phi = np.pi * (3. - np.sqrt(5.))  # golden angle in radians
 
-    points = marsaglias_method(N)
+    for i in range(N):
+        y = 1 - (i / float(N - 1)) * 2  # y goes from 1 to -1
+        radius = np.sqrt(1 - y * y)  # radius at y
+
+        theta = phi * i  # golden angle increment
+
+        x = np.cos(theta) * radius
+        z = np.sin(theta) * radius
+
+        points.append((x, y, z))
+
+    return np.vstack(points).T
+
+
+def golden_spiral(N=10000):
+# https://stackoverflow.com/questions/9600801/evenly-distributing-n-points-on-a-sphere/44164075
+    indices = np.arange(0, N, dtype=float) + 0.5
+
+    phi = np.arccos(1 - 2*indices/N)
+    theta = np.pi * (1 + 5**0.5) * indices
+
+    x, y, z = np.cos(theta) * np.sin(phi), np.sin(theta) * np.sin(phi), np.cos(phi)
+
+    return np.vstack((x,y,z))
+
+
+def points_on_sphere(N, distribution_type='marsaglia'):
+# function to call one of several methods and return Long/
+# Lat arrays of points distributed on sphere
+
+    if distribution_type in ['marsaglia','random']:
+        points = marsaglias_method(N)
+    elif distribution_type=='fibonacci':
+        points = fibonacci_sphere(N)
+    elif distribution_type=='spiral':
+        points = golden_spiral(N)
+    else:
+        raise ValueError('unrecognised method for point on sphere generation')
 
     Long=[]
     Lat=[]
