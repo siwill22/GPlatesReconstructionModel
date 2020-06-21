@@ -1,4 +1,4 @@
-from . import sphere_tools
+from . import sphere
 from . import create_gpml
 from . import inpaint
 from . import kinematic_tools
