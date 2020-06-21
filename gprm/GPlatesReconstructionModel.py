@@ -640,7 +640,7 @@ class MotionPathFeature:
             plt.gca().invert_xaxis()
             plt.show()
         else:
-            return step_time, step_rates
+            return np.array(step_time), np.array(step_rates).squeeze()
 
 
 class PlateTree(object):
@@ -1050,26 +1050,17 @@ class PointDistributionOnSphere(object):
                         self.latitude = geometry.to_lat_lon_array()[:,0]
                         self.longitude = geometry.to_lat_lon_array()[:,1]
 
-        elif distribution_type=='random':
+        elif distribution_type in ['random','marsaglia','fibonacci','spiral']:
             # function to call Marsaglia's method and return Long/
             # Lat arrays
 
-            ## Marsaglia's method
-            dim = 3
-            norm = np.random.normal
-            normal_deviates = norm(size=(dim, N))
-
-            radius = np.sqrt((normal_deviates**2).sum(axis=0))
-            points = normal_deviates/radius
-
-            Long=[]; Lat=[]
-            for xyz in points.T:
-                LL = pygplates.PointOnSphere((xyz))
-                Lat.append(LL.to_lat_lon()[0])
-                Long.append(LL.to_lat_lon()[1])
+            Long, Lat = utils.sphere.points_on_sphere(N=N, distribution_type=distribution_type)
 
             self.longitude = np.array(Long)
             self.latitude = np.array(Lat)
+
+        else:
+            raise ValueError('unrecognized distribution type ''{:s}'' for PointDistributionOnSphere generation'.format(distribution_type))
 
         self.multipoint = pygplates.MultiPointOnSphere(zip(self.latitude,self.longitude))
         self.meshnode_feature = pygplates.Feature(pygplates.FeatureType.create_from_qualified_string('gpml:MeshNode'))
