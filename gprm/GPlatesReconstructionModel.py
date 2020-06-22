@@ -1128,12 +1128,12 @@ class GPlatesRaster(object):
         sample the raster at specififed lon,lat points and return the z values
         """
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
-        d,l = utils.sphere_tools.sampleOnSphere(LonGrid.flatten(),
-                                                LatGrid.flatten(),
-                                                self.gridZ.flatten(),
-                                                np.array(point_lons),
-                                                np.array(point_lats),
-                                                k=4)
+        d,l = utils.sphere.sampleOnSphere(LonGrid.flatten(),
+                                          LatGrid.flatten(),
+                                          self.gridZ.flatten(),
+                                          np.array(point_lons),
+                                          np.array(point_lats),
+                                          k=4)
 
         #print d,l
         # based on http://earthpy.org/interpolation_between_grids_with_ckdtree.html
