@@ -11,7 +11,7 @@ from . import paleogeography_tweening as pgt
 from .proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh
 from . import points_in_polygons
-from .sphere_tools import sampleOnSphere
+from .sphere import sampleOnSphere
 from . import points_spatial_tree
 from .fileio import load_netcdf
 from .spatial import polygon_area_threshold, merge_polygons
