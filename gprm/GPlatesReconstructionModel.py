@@ -1081,7 +1081,8 @@ class PointDistributionOnSphere(object):
         """
 
         masked_pts = utils.spatial.rasterise_polygons(reconstructable_polygons, 
-                                                      rotation_model, 50., 
+                                                      rotation_model, 
+                                                      reconstruction_time, 
                                                       raster_domain_points=self.meshnode_feature,
                                                       masking=masking)
 
