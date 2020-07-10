@@ -1073,6 +1073,27 @@ class PointDistributionOnSphere(object):
 
         pygplates.FeatureCollection(self.meshnode_feature).write(filename)
 
+    def mask(self, reconstructable_polygons, rotation_model, reconstruction_time=0., 
+             masking='outside', preserve_polygon_attributes=False):
+        """
+        create a masked version of the point distribution using reconstructed polygons 
+        [NB currently returns multipoint feature(s), not a PointDistributionOnSphere object]
+        """
+
+        masked_pts = utils.spatial.rasterise_polygons(reconstructable_polygons, 
+                                                      rotation_model, 50., 
+                                                      raster_domain_points=self.meshnode_feature,
+                                                      masking=masking)
+
+        if preserve_polygon_attributes:
+            return masked_pts
+        else:
+            merge_points = []
+            for points in masked_pts:
+                merge_points.extend(points.get_geometry().to_lat_lon_list())
+            return pygplates.MultiPointOnSphere(merge_points)
+
+
     #TODO - move this to be a method of AgeCodedPointDataset
     def point_feature_heatmap(self, target_features):
         """
