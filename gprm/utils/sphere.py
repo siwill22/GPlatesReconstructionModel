@@ -137,7 +137,8 @@ def sampleOnSphere(inputLons, inputLats, inputVals, sample_points_lons, sample_p
 
 
 def healpix_mesh(nSide):
-    import healpy as hp
+    #import healpy as hp
+    from astropy_healpix import healpy as hp
     othetas,ophis = hp.pix2ang(nSide,np.arange(12*nSide**2))
     othetas = np.pi/2-othetas
     ophis[ophis>np.pi] -= np.pi*2

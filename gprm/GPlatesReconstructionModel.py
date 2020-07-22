@@ -460,12 +460,13 @@ class PlateSnapshot(object):
 
         return VelocityField(pt_lat,pt_lon,vel_east,vel_north,vel_mag,vel_azim,plate_ids)
 
-    def plot(self, ax=None, projection=ccrs.Mollweide(),
+    def plot(self, ax=None, projection=None,
              linewidth=2):
         """
         Plot topological plate boundaries into a cartopy map.
         Optionally specify the projection (default = Mollweide) and linewidth (default = 2).
         """
+        #ccrs.Mollweide()
         if not ax:
             ax = plt.axes(projection=projection)
             ax.set_global()
@@ -1034,7 +1035,8 @@ class PointDistributionOnSphere(object):
 
         if distribution_type=='healpix':
             try:
-                import healpy as hp
+                #import healpy as hp
+                from astropy_healpix import healpy as hp
                 othetas,ophis = hp.pix2ang(N,np.arange(12*N**2))
                 othetas = np.pi/2-othetas
                 ophis[ophis>np.pi] -= np.pi*2
@@ -1043,7 +1045,7 @@ class PointDistributionOnSphere(object):
                 self.longitude = np.degrees(ophis)
                 self.latitude = np.degrees(othetas)
             except:
-                warnings.warn('unable to import healpy, trying pregenerated point files')
+                warnings.warn('unable to import module for healpix generation, trying pregenerated point files')
                 features = pygplates.FeatureCollection('{:s}/healpix_mesh_{:d}.gpmlz'.format(DATA_DIR,N))
                 for feature in features:
                     for geometry in feature.get_all_geometries():
