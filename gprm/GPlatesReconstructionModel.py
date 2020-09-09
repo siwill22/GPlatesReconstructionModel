@@ -1098,7 +1098,7 @@ class PointDistributionOnSphere(object):
 
 
     #TODO - move this to be a method of AgeCodedPointDataset
-    def point_feature_heatmap(self, target_features):
+    def point_feature_heatmap(self, target_features, return_indices=False):
         """
         Given a AgeCodedPointDataset class object, returns a heatmap showing the number
         of points for which each point in the point distribution is the closest.
@@ -1115,7 +1115,10 @@ class PointDistributionOnSphere(object):
         for j in range(len(self.multipoint.get_points())):
             bin_counts.append(bin_indices.count(j))
 
-        return bin_counts
+        if return_indices:
+            return bin_counts, bin_indices
+        else:
+            return bin_counts
 
 
 # From raster_reconstruction_classes
