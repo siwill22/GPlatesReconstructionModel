@@ -965,7 +965,7 @@ class AgeCodedPointDataset(object):
         rotation_model = pygplates.RotationModel(self.reconstruction_model.rotation_model)
         recon_points = []
         for point_feature in self._point_features:
-            if ReconstructTime is 'MidTime':
+            if ReconstructTime == 'MidTime':
                 reconstruction_time = (point_feature.get_valid_time()[0]+point_feature.get_valid_time()[1])/2.
             else:
                 reconstruction_time = point_feature.get_valid_time()[0]
@@ -1449,7 +1449,7 @@ class litho1_scalar_coverage(object):
 
     def write_layer_depth_to_scalar_coverage(self, filename, layer_names='All'):
 
-        if layer_names is 'All':
+        if layer_names == 'All':
             layer_names = [name[0] for name in self.layer_keys]
 
         scalar_coverages = {}
@@ -1466,5 +1466,5 @@ class litho1_scalar_coverage(object):
 
     def write_layer_thickness_to_scalar_coverage(self, filename, layer_names='All'):
 
-        if layer_names is 'All':
+        if layer_names == 'All':
             layer_names = [name[0] for name in self.layer_keys]
