@@ -172,7 +172,7 @@ def find_rotations_from_pca(polygon_features,num_iterations=20):
     return total_applied_rotations,oriented_polygon_features
 
 
-def grdcontour2feature(grdfile,clevel):
+def grdcontour2feature(grdfile,clevel,return_polygons=True):
 
     # call GMT to get a single contour at the specified value of clevel
     call_system_command(['gmt',
@@ -202,17 +202,21 @@ def grdcontour2feature(grdfile,clevel):
     # create gplates-format features
     polyline_features = []
     for p in polygons:
-        pf = pygplates.PolylineOnSphere(zip(zip(*p)[1],zip(*p)[0]))
+        pf = pygplates.PolylineOnSphere(zip(list(zip(*p))[1],list(zip(*p))[0]))
         polyline_features.append(pf)
 
     # use join to handle polylines split across dateline
     joined_polyline_features = pygplates.PolylineOnSphere.join(polyline_features)
 
+    if return_polygons:
     # force polylines to be polygons
-    joined_polygon_features = []
-    for geom in joined_polyline_features:
-        polygon = pygplates.Feature()
-        polygon.set_geometry(pygplates.PolygonOnSphere(geom))
-        joined_polygon_features.append(polygon)
-    
-    return joined_polygon_features
+        joined_polygon_features = []
+        for geom in joined_polyline_features:
+            polygon = pygplates.Feature()
+            polygon.set_geometry(pygplates.PolygonOnSphere(geom))
+            joined_polygon_features.append(polygon)
+            
+        return joined_polygon_features
+
+    else:
+        return joined_polyline_features
