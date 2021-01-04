@@ -248,12 +248,12 @@ def find_distance_to_nearest_ridge(resolved_topologies,shared_boundary_sections,
 #
 def age2depth(age_array,model='GDH1'):
 
-    if model is 'GDH1':
+    if model == 'GDH1':
         paleodepth = 2600. + 365. * np.sqrt(age_array)
         paleodepth[age_array>=20.] = 5651 - 2473*np.exp(-0.0278*age_array[age_array>=20.])
         paleodepth = -paleodepth
 
-    elif model is 'Crosby':
+    elif model == 'Crosby':
         paleodepth = 2652. + (324. * np.sqrt(age_array))
         paleodepth[age_array>75.] = 5028. + 5.26*age_array[age_array>75.] - 250.*np.sin((age_array[age_array>75.]-75.)/30.)
         paleodepth[age_array>160.] = 5750.

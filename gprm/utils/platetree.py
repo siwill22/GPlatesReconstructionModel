@@ -309,7 +309,7 @@ def write_trees_to_file(input_features, rotation_model, filename,
         print('working on time %0.2f Ma' % reconstruction_time)
 
         reconstructed_polygons = []
-        if polygon_type is 'topological':
+        if polygon_type == 'topological':
             pygplates.resolve_topologies(input_features, rotation_model, reconstructed_polygons, reconstruction_time)
 
         else:
