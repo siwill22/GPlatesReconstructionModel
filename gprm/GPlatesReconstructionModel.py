@@ -467,6 +467,7 @@ class PlateSnapshot(object):
         Optionally specify the projection (default = Mollweide) and linewidth (default = 2).
         """
         #ccrs.Mollweide()
+        import cartopy
         if not ax:
             ax = plt.axes(projection=projection)
             ax.set_global()
