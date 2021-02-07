@@ -102,7 +102,7 @@ def force_polygon_geometries(input_features):
     polygons = []
     for feature in input_features: 
         for geom in feature.get_all_geometries():
-            polygon = pygplates.Feature()
+            polygon = pygplates.Feature(feature.get_feature_type())
             polygon.set_geometry(pygplates.PolygonOnSphere(geom))
             polygon.set_reconstruction_plate_id(feature.get_reconstruction_plate_id())
             # some features in COBTerranes had invalid time ranges - these with throw an error if 
