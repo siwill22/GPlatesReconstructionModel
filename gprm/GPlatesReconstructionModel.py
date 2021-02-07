@@ -785,18 +785,21 @@ class SubductionConvergence(object):
         """
         plt.figure(figsize=(12,5))
         if variable in ['convergence rate','cr']:
-            plt.scatter(self.df.lon, self.df.lat,c=self.df.conv_rate,edgecolors='')
+            self.df.plot(kind='scatter', x='lon', y='lat', c='conv_rate', 
+                         colormap='magma', edgecolor=None)
             plt.title('convergence rate')
         if variable in ['convergence obliquity','co']:
-            plt.scatter(self.df.lon, self.df.lat,c=self.df.migr_obliq,edgecolors='')
+            self.df.plot(kind='scatter', x='lon', y='lat', c='conv_obliq', 
+                         colormap='magma', edgecolor=None)
             plt.title('migration rate')
         if variable in ['migration rate','mr']:
-            plt.scatter(self.df.lon, self.df.lat,c=self.df.migr_rate,edgecolors='')
+            self.df.plot(kind='scatter', x='lon', y='lat', c='migr_rate', 
+                         colormap='magma', edgecolor=None)
             plt.title('migration rate')
         if variable in ['migration obliquity','mo']:
-            plt.scatter(self.df.lon, self.df.lat,c=self.df.migr_obliq,edgecolors='')
+            self.df.plot(kind='scatter', x='lon', y='lat', c='migr_obliq', 
+                         colormap='magma', edgecolor=None)
             plt.title('migration rate')
-        plt.colorbar()
         plt.show()
 
     # TODO make the histograms weighted by segment length
@@ -810,7 +813,7 @@ class SubductionConvergence(object):
             plt.hist(self.df.conv_rate,bins=bins)
             plt.title('convergence rate')
         if variable in ['convergence obliquity','co']:
-            plt.hist(self.df.migr_obliq,bins=bins)
+            plt.hist(self.df.conv_obliq,bins=bins)
             plt.title('migration rate')
         if variable in ['migration rate','mr']:
             plt.hist(self.df.migr_rate,bins=bins)
