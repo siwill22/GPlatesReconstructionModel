@@ -1025,7 +1025,7 @@ class PointDistributionOnSphere(object):
     """
     Class to handle point distributions on the sphere
     """
-    def __init__(self, distribution_type='random', N=10000):
+    def __init__(self, distribution_type='random', N=10000, nest=False):
         """
         Initiate a point distribution on the sphere
 
@@ -1035,13 +1035,16 @@ class PointDistributionOnSphere(object):
             N must be a factor of 2 and controls the healpix density. If
             'distribution_type' is 'random', N is the number of points returned.
 
+        nest: logical, only applies for healpix distributions, and controls
+              the ordering of the healpix points [default='False']
+
         """
 
         if distribution_type=='healpix':
             try:
                 #import healpy as hp
                 from astropy_healpix import healpy as hp
-                othetas,ophis = hp.pix2ang(N,np.arange(12*N**2))
+                othetas,ophis = hp.pix2ang(N,np.arange(12*N**2),nest=nest)
                 othetas = np.pi/2-othetas
                 ophis[ophis>np.pi] -= np.pi*2
 
