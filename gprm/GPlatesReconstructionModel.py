@@ -1145,13 +1145,13 @@ class GPlatesRaster(object):
         self.reconstruction_time = reconstruction_time
         self.source_filename = filename
 
-    def plot(self, show=False, levels=20, extend='both', cmap=plt.cm.BrBG_r):
+    def plot(self, show=False, levels=20, extend='both', cmap=plt.cm.BrBG_r, **kwargs):
         """
         generate a quick plot of the raster using matplotlib 
         """
         plt.figure(figsize=(16,6))
         plt.contourf(self.gridX, self.gridY, self.gridZ,
-                     levels, extend=extend, cmap=cmap)
+                     levels, extend=extend, cmap=cmap, **kwargs)
         plt.gca().set_aspect('equal')
         plt.colorbar()
         if show:
