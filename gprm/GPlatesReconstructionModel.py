@@ -93,7 +93,7 @@ class ReconstructionModel(object):
         list of continent polygons filename(s)
     """
 
-    def __init__(self, name):
+    def __init__(self, name=None):
         self.name = name
         self.rotation_model = []    # creates a new empty list for each
         self.rotation_files = []
