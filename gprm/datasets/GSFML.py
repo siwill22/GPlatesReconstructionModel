@@ -8,8 +8,10 @@ import os as _os
 
 def MagneticPicks(load=True):
     '''
-    Magnetic Picks from the 'Global Seafloor Fabric (and) Magnetic Linations' database,
-    returned as a geopandas dataframe
+    Magnetic Picks from the 'Global Seafloor Fabric (and) Magnetic Linations' 
+    database, returned as a geopandas dataframe
+    Alternatively, select 'load=False' to return filname of '.gmt' file in 
+    cache folder
 
     '''
     fname = _retrieve(
@@ -25,9 +27,12 @@ def MagneticPicks(load=True):
         return fname
 
 
-def GSFML_SF(feature_type, load=True):
+def SeafloorFabric(feature_type, load=True):
     '''
-    Seafloor fabric from 
+    Seafloor fabric from the 'Global Seafloor Fabric (and) Magnetic Linations'
+    database, returned as a geopandas dataframe. 
+    Alternatively, select 'load=False' to return filname of '.gmt' file in 
+    cache folder
 
     Parameters
     ----------
