@@ -468,8 +468,12 @@ class PlateSnapshot(object):
         """
         #ccrs.Mollweide()
         import cartopy
+        import cartopy.crs as ccrs
+        if not projection:
+            projection=ccrs.Mollweide()
         if not ax:
-            ax = plt.axes(projection=projection)
+            fig = plt.figure(figsize=(10, 5))
+            ax = fig.add_subplot(1, 1, 1, projection=projection)
             ax.set_global()
 
         for boundary in self.resolved_topological_sections:
