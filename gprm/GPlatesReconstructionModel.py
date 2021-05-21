@@ -278,19 +278,36 @@ class ReconstructedPolygonSnapshot(object):
         self.reconstruction_time = reconstruction_time
         self.anchor_plate_id = anchor_plate_id
 
-    def plot(self, fig, pen_color='black', fill_color='wheat', **kwargs):
+    def plot(self, fig, pen='black', color='wheat', **kwargs):
         """
         plot the reconstructed polygons into a pygmt map figure
 
         :param fig: (pygmt.Figure) pygmt figure object to plot to
-        :param pen_color: (string, optional) name of polygon boundary color (default is 'black')
-        :param fill_color: (string, optional) name of polygon fill color (default is 'wheat')
         :param kwargs: (optional) set of additonal keyword arguments to pass to the pygmt 'plot' command
         """
         for polygon in self.reconstructed_polygons:
             data = polygon.get_reconstructed_geometry().to_lat_lon_array()
             fig.plot(x=data[:,1],y=data[:,0], 
-                     pen=pen_color, color=fill_color, **kwargs)
+                     pen=pen, color=color, **kwargs)
+
+    def plot2(self, fig, pen='black', color='wheat', **kwargs):
+
+        # plotting is generally faster if saved to temporary file
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file.close()
+
+        features = []
+        for feature in self.reconstructed_polygons:
+            f = pygplates.Feature()
+            f.set_geometry(feature.get_reconstructed_geometry())
+            features.append(f)
+
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, pen=pen, color=color, **kwargs)
+
+        os.unlink(plot_file.name)
+
+    #TODO add a 'to_file' method? But that should be an option when creating the snapshot
 
 
 
