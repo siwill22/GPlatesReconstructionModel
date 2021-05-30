@@ -43,12 +43,30 @@ def BaseMetalDeposits(deposit_type, keep_unknown_age_samples=False):
     if deposit_type not in ['PbZn-CD', 'PbZn-MVT', 'Cu-sed', 'Magmatic Ni', 'VMS', 'Cu-por', 'IOCG']:
         raise ValueError('Unknown deposit type {}'.format(deposit_type))
 
-    df = _pd.read_excel('/Users/simon/GIT/gpdata/ore_deposits/41561_2020_593_MOESM3_ESM.xls', sheet_name=deposit_type)
+    df = _pd.read_excel(fname, sheet_name=deposit_type)
+    df.rename(columns={'Lon.':'Lon', 'Lat.':'Lat'}, inplace=True)
     gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Lon, df.Lat))
 
     if not keep_unknown_age_samples:
         return gdf[gdf['Age (Ga)'] != 'ND']
     else:
         return gdf
+
+
+def Kimberlites():
+    '''
+    Load the Kimberlite compilation from Faure (2010)
+    '''
+    fname = _retrieve(
+        url="https://consorem2.uqac.ca/production_scientifique/fiches_projets/world_kimberlites_and_lamproites_consorem_database_v2010.xls",
+        known_hash="sha256:8d9d8d89afa9304b6494ad32b8f66f6838de5631287c94155d498b7f6d413ac4",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+    )
+
+    df = _pd.read_excel(fname, skiprows=1)
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude))
+
+    return gdf
 
 
