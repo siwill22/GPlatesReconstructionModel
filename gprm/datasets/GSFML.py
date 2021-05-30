@@ -105,47 +105,81 @@ def PacificSeamountAges(load=True):
         return fname
 
 
-def SeamountCensus(load=True):
+def Seamounts(catalogue='KimWessel', load=True):
     '''
     Seamount Census from Kim and Wessel
 
     '''
-    fname = _retrieve(
-        url="http://www.soest.hawaii.edu/PT/SMTS/kwsmts/KWSMTSv01.txt",
-        known_hash="sha256:91c93302c44463a424835aa4051b7b2a1ea04d6675d928ca8405b231ae7cea9a",  
-        downloader=_HTTPDownloader(progressbar=True),
-        path=_os_cache('gprm'),
-    )
-    
-    if load:
-        df = _pd.read_csv(fname, delim_whitespace=True, skiprows=17, comment='>', 
-                 names=['Long', 'Lat', 'Azimuth', 'Major', 'Minor', 'Height', 'FAA', 'VGG', 'Depth', 'CrustAge', 'ID'])
-        return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+    if catalogue in ['KimWessel', 'KW']:
+        fname = _retrieve(
+            url="http://www.soest.hawaii.edu/PT/SMTS/kwsmts/KWSMTSv01.txt",
+            known_hash="sha256:91c93302c44463a424835aa4051b7b2a1ea04d6675d928ca8405b231ae7cea9a",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+        
+        if load:
+            df = _pd.read_csv(fname, delim_whitespace=True, skiprows=17, comment='>', 
+                    names=['Long', 'Lat', 'Azimuth', 'Major', 'Minor', 'Height', 'FAA', 'VGG', 'Depth', 'CrustAge', 'ID'])
+            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+        else:
+            return fname
+
+    elif catalogue in ['HillierWatts', 'HW']:
+        fname = _retrieve(
+            url="https://www.wattsgeophysics.co.uk/downloadfile/5616459",
+            known_hash="sha256:d0b9aa7d15754ad9aabecfedf881005d22254e79183af8edf0806be840a549ac",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+
+        if load:
+            df = _pd.read_csv(fname, delim_whitespace=True, names=['Long', 'Lat', 'Height'])
+            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+        else:
+            return fname
+
     else:
-        return fname
+        raise ValueError('Unknown catalogue {:s}'.format(catalogue))
 
 
 def LargeIgneousProvinces(catalogue='Whittaker', load=True):
     '''
-    (Large) Igneous Province polygons
+    (Large) Igneous Province polygons included in GPlates sample data:
+    - 'Whittaker' [default], from Whittaker et al (2015)
+    - 'Johansson' from Johansson et al (2018)
+    and also
+    - 'UTIG' from the 2011 version of the UTIG LIP compilation
 
     '''
-    fnames = _retrieve(
-            url="https://www.earthbyte.org/webdav/ftp/earthbyte/GPlates/SampleData_GPlates2.2/Individual/FeatureCollections/LargeIgneousProvinces_VolcanicProvinces.zip",
-            known_hash="sha256:8f86ab86a12761f5534beaaeaddbed5b4e3e6d3d9b52b0c87ee9b15af2a797cd",  
-            downloader=_HTTPDownloader(progressbar=True),
-            path=_os_cache('gprm'),
-            processor=_Unzip(),
-        )
+    if catalogue in ['Whittaker', 'Johansson']:
+        fnames = _retrieve(
+                url="https://www.earthbyte.org/webdav/ftp/earthbyte/GPlates/SampleData_GPlates2.2/Individual/FeatureCollections/LargeIgneousProvinces_VolcanicProvinces.zip",
+                known_hash="sha256:8f86ab86a12761f5534beaaeaddbed5b4e3e6d3d9b52b0c87ee9b15af2a797cd",  
+                downloader=_HTTPDownloader(progressbar=True),
+                path=_os_cache('gprm'),
+                processor=_Unzip(),
+            )
 
-    for fname in fnames:
-        if _os.path.split(fname)[1] == 'License.txt':
-            dirname = _os.path.split(fname)[0]
+        for fname in fnames:
+            if _os.path.split(fname)[1] == 'License.txt':
+                dirname = _os.path.split(fname)[0]
 
-    if catalogue=='Whittaker':
-        fname='{:s}/LargeIgneousProvinces_VolcanicProvinces/Whittaker_etal_2015_LargeIgneousProvinces/SHP/Whittaker_etal_2015_LIPs.shp'.format(dirname)
-    elif catalogue=='Johansson':
-        fname='{:s}/LargeIgneousProvinces_VolcanicProvinces/Johansson_etal_2018_VolcanicProvinces/SHP/Johansson_etal_2018_VolcanicProvinces_v2.shp'.format(dirname)
+        if catalogue=='Whittaker':
+            fname='{:s}/LargeIgneousProvinces_VolcanicProvinces/Whittaker_etal_2015_LargeIgneousProvinces/SHP/Whittaker_etal_2015_LIPs.shp'.format(dirname)
+        elif catalogue=='Johansson':
+            fname='{:s}/LargeIgneousProvinces_VolcanicProvinces/Johansson_etal_2018_VolcanicProvinces/SHP/Johansson_etal_2018_VolcanicProvinces_v2.shp'.format(dirname)
+
+    elif catalogue=='UTIG':
+        fname = _retrieve(
+                url="http://www-udc.ig.utexas.edu/external/plates/data/LIPS/Data/LIPS.2011.gmt",
+                known_hash="sha256:11cd037382c518ec0b54b93728fef5e476ec3d8d57e5c433a1ccf14420ee99dd",  
+                downloader=_HTTPDownloader(progressbar=True),
+                path=_os_cache('gprm'),
+            )
+
+    else:
+        raise ValueError('Unknown catalogue {:s}'.format(catalogue))
 
     if load:
         return _gpd.read_file(fname)
