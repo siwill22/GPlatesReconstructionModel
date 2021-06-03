@@ -256,7 +256,7 @@ def tree_snapshot(polygons, rotation_model, recon_time):
     return uniq_plates_from_polygons, chains, reconstruction_tree, reconstructed_polygons
 
 
-def plot_snapshot(polygons, rotation_model, recon_time, figsize=(14,9)):
+def plot_snapshot(polygons, rotation_model, recon_time, figsize=(14,9), show=True):
 
     (uniq_plates_from_polygons,
      chains,
@@ -292,7 +292,8 @@ def plot_snapshot(polygons, rotation_model, recon_time, figsize=(14,9)):
         plt.text(p0[1],p0[0],str(root_plate),zorder=4)
 
     plt.axis([-180,180,-90,90])
-    plt.show()
+    if show:
+        plt.show()
 
 
 def write_trees_to_file(input_features, rotation_model, filename,

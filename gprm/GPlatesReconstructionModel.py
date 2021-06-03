@@ -676,14 +676,16 @@ class PlateTree(object):
     def __init__(self, reconstruction_model):
         self.reconstruction_model = reconstruction_model
 
-    def plot_snapshot(self, reconstruction_time):
+    def plot_snapshot(self, reconstruction_time, figsize=(14,9), show=True):
         """
         simple snapshot of a platetree snapshot at a specified reconstruction time, rendered in matplotlib
         """
 
         utils.platetree.plot_snapshot(self.reconstruction_model.static_polygons,
                                       self.reconstruction_model.rotation_model,
-                                      reconstruction_time)
+                                      reconstruction_time, 
+                                      figsize=figsize,
+                                      show=show)
 
     def to_gpml(self, reconstruction_times, filename):
         """
