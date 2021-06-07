@@ -29,7 +29,7 @@ def MagneticPicks(load=True):
         return fname
 
 
-def SeafloorFabric(feature_type, load=True):
+def SeafloorFabric(feature_type='FZ', load=True):
     '''
     Seafloor fabric from the 'Global Seafloor Fabric (and) Magnetic Linations'
     database, returned as a geopandas dataframe. 
@@ -161,6 +161,7 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
                 processor=_Unzip(),
             )
 
+        print(fnames)
         for fname in fnames:
             if _os.path.split(fname)[1] == 'License.txt':
                 dirname = _os.path.split(fname)[0]
