@@ -5,7 +5,7 @@ from pooch import Unzip as _Unzip
 import pandas as _pd
 #import geopandas as _gpd
 import os as _os
-from gprm import ReconstructionModel as _ReconstructionModel
+#from gprm import ReconstructionModel as _ReconstructionModel
 
 
 # TODO
@@ -31,6 +31,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
 
     dirname = _os.path.split(fnames[0])[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel()
     reconstruction_model.add_rotation_model('{:s}/Global_EB_250-0Ma_GK07_2017_ASM.rot'.format(dirname))
     reconstruction_model.add_rotation_model('{:s}/triple_junction_superoceanic_plates.rot'.format(dirname))
@@ -72,6 +73,7 @@ def fetch_Li2008(load=True):
 
     dirname = _os.path.split(fnames[0])[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Li++2008')
     reconstruction_model.add_rotation_model('{:s}/Li_etal_2008_RodiniaModel/RodiniaModel_CompleteRotationFile.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Li_etal_2008_RodiniaModel/RodiniaBlocks_WithPlateIDColumnAndIDs.shp'.format(dirname))
@@ -96,6 +98,7 @@ def fetch_Matthews2016(load=True):
         if _os.path.split(fname)[1] == 'License.txt':
             dirname = _os.path.split(fname)[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Matthews++2016')
     reconstruction_model.add_rotation_model('{:s}/Matthews_etal_2016_Global_Plate_Model_GPC/Global_EB_250-0Ma_GK07_Matthews_etal.rot'.format(dirname))
     reconstruction_model.add_rotation_model('{:s}/Matthews_etal_2016_Global_Plate_Model_GPC/Global_EB_410-250Ma_GK07_Matthews_etal.rot'.format(dirname))
@@ -126,6 +129,7 @@ def fetch_Merdith2021(load=True):
             dirname = _os.path.split(fname)[0]
             break
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Merdith++2021')
     reconstruction_model.add_rotation_model('{:s}/SM2/1000_0_rotfile_Merdith_et_al.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/SM2/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
@@ -157,6 +161,7 @@ def fetch_Muller2016(load=True):
 
     dirname = _os.path.split(fnames[0])[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Muller++2016')
     reconstruction_model.add_rotation_model('{:s}/Muller_etal_2016_AREPS_Supplement_v1.17/Global_EarthByte_230-0Ma_GK07_AREPS.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Muller_etal_2016_AREPS_Supplement_v1.17/Shapefiles/StaticPolygons/Global_EarthByte_GPlates_PresentDay_StaticPlatePolygons_2015_v1.shp'.format(dirname))
@@ -187,6 +192,7 @@ def fetch_Muller2019(load=True):
         import shutil
         shutil.rmtree('{:s}/DeformingMeshPoints'.format(dirname))
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Muller++2019')
     reconstruction_model.add_rotation_model('{:s}/Alps_Mesh_Rotations_2019_v2.rot'.format(dirname))
     reconstruction_model.add_rotation_model('{:s}/Andes_Flat_Slabs_Rotations_2019_v2.rot'.format(dirname))
@@ -284,6 +290,7 @@ def fetch_Pehrsson2015(load=True):
             header=False,
             index=False)
     
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Pehrsson++2015')
     reconstruction_model.add_rotation_model('{:s}/T_Rot_Model_Abs_25Ma_20131004_sort.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/PlatePolygons.shp'.format(dirname))
@@ -306,6 +313,7 @@ def fetch_Seton2012(load=True):
 
     dirname = _os.path.split(fnames[0])[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Seton++2012')
     reconstruction_model.add_rotation_model('{:s}/Seton_etal_2012_ESR/Rotations/Seton_etal_ESR2012_2012.1.rot'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/Seton_etal_2012_ESR/Coastlines/Seton_etal_ESR2012_Coastline_2012.1.gpml'.format(dirname))
@@ -329,6 +337,7 @@ def fetch_TorsvikCocks2017(load=True):
 
     dirname = _os.path.split(fnames[0])[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Torsvik+Cocks2017')
     reconstruction_model.add_rotation_model('{:s}/Torsvik_Cocks_HybridRotationFile.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/CEED6_TERRANES.shp'.format(dirname))
@@ -354,6 +363,7 @@ def fetch_vanHinsbergen(load=True):
 
     dirname = _os.path.split(fnames[0])[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('vanHinsbergen++2017')
     reconstruction_model.add_rotation_model('{:s}/'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/.shp'.format(dirname))
@@ -380,6 +390,7 @@ def fetch_Young2019(load=True):
         if _os.path.split(fname)[1] == 'License.txt':
             dirname = _os.path.split(fname)[0]
 
+    from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Young++2019')
     reconstruction_model.add_rotation_model('{:s}/Young_etal_2018_GeoscienceFrontiers_GPlatesPlateMotionModel/Global_410-250Ma_Young_et_al.rot'.format(dirname))
     reconstruction_model.add_rotation_model('{:s}/Young_etal_2018_GeoscienceFrontiers_GPlatesPlateMotionModel/Global_250-0Ma_Young_et_al.rot'.format(dirname))
