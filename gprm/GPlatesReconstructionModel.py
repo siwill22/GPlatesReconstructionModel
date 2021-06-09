@@ -593,7 +593,7 @@ class MotionPathFeature:
     """
 
     def __init__(self, path_times=np.arange(0.,201.,10.), reconstruction_plate_id=0, seed_points=None, lats=None, longs=None,
-                 relative_plate_id=0, anchor_plate_id=0):
+                 relative_plate_id=0):
         """
         create a motion path feature 
 
@@ -603,7 +603,6 @@ class MotionPathFeature:
         :param path_times: (array)
         :param reconstruction_plate_id: (int)
         :param relative_plate_id: (int, optional)
-        :param anchor_plate_id: (int, optional)
         """
         if seed_points:
             if type(seed_points) is tuple:
@@ -628,7 +627,7 @@ class MotionPathFeature:
         self.motion_path_feature = motion_path_feature
 
 
-    def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0):
+    def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0, anchor_plated_id=0):
         """
         generate reconstructed trails from the motion path feature according to a specified reconstruction model
         """
@@ -636,6 +635,7 @@ class MotionPathFeature:
         reconstructed_motion_paths = []
         pygplates.reconstruct(self.motion_path_feature, reconstruction_model.rotation_model,
                               reconstructed_motion_paths, reconstruction_time,
+                              anchor_plated_id=anchor_plated_id,
                               reconstruct_type=pygplates.ReconstructType.motion_path)
 
         trails = []
@@ -644,7 +644,6 @@ class MotionPathFeature:
 
         return trails
 
-    #TODO add rate step plot
     def rate(self, reconstruction_model, reconstruction_time=0):
 
         reconstructed_motion_paths = []
