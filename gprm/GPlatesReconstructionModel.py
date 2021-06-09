@@ -690,6 +690,104 @@ class MotionPathFeature:
             return np.array(step_time), np.array(step_rates).squeeze()
 
 
+class FlowlineFeature:
+    
+    def __init__(self, path_times=np.arange(0.,151.,5.), seed_points=None, 
+                 left_plate=None, right_plate=None):
+    
+        #time_intervals = np.diff(times)
+
+        # CREATE FLOWLINE
+        # POINTS ON THE FLOWLINE
+        multi_point = pygplates.MultiPointOnSphere(seed_points)
+
+        reverse_reconstruct=(rotation_model, 0, 1)
+
+        flowline_feature = pygplates.Feature(pygplates.FeatureType.create_gpml('Flowline'))
+        flowline_feature.set_geometry(multi_point)
+        flowline_feature.set_times(path_times)
+        flowline_feature.set_valid_time(np.max(path_times), np.min(path_times))
+        flowline_feature.set_left_plate(left_plate)
+        flowline_feature.set_right_plate(right_plate)
+        flowline_feature.set_geometry(multi_point, reverse_reconstruct=(rotation_model,0))
+        
+        self.seed_point = seed_points
+        self.path_times = path_times
+        self.flowline_feature = flowline_feature
+        
+        
+    def reconstruct_flowline(self, reconstruction_model, reconstruction_time=0, anchor_plate_id=0):
+        # reconstruct the flowline
+
+        reconstructed_flowlines = []
+        pygplates.reconstruct(self.flowline_feature, reconstruction_model.rotation_model, 
+                              reconstructed_flowlines, reconstruction_time,
+                              anchor_plate_id=anchor_plate_id, 
+                              reconstruct_type=pygplates.ReconstructType.flowline)
+
+        flowlines = []
+        for reconstructed_flowline in reconstructed_flowlines:
+            trails.append(reconstructed_flowline.get_motion_path().to_lat_lon_array())
+
+        return flowlines
+
+    def rate(self, reconstruction_model, reconstruction_time=0):
+
+        reconstructed_flowlines = []
+        pygplates.reconstruct(self.flowline_feature, reconstruction_model.rotation_model, 
+                              reconstructed_flowlines, reconstruction_time,
+                              anchor_plate_id=0, 
+                              reconstruct_type=pygplates.ReconstructType.flowline)
+
+        rates = []
+        for reconstructed_flowline in reconstructed_flowlines:
+            # Iterate over the left flowline points
+            flowlinearray_left = np.empty([0,0])
+            for left_point in reconstructed_flowline.get_left_flowline():
+                flowlinearray_left = np.append(flowlinearray_left, left_point.to_lat_lon_array())
+            # Iterate over the right flowline points
+            flowlinearray_right = np.empty([0,0])
+            for right_point in reconstructed_flowline.get_right_flowline():
+                flowlinearray_right = np.append(flowlinearray_right, right_point.to_lat_lon_array())
+            
+            tmp = reconstructed_flowline.get_left_flowline()
+            dist = []
+            for segment in tmp.get_segments():
+                dist.append(segment.get_arc_length()*pygplates.Earth.mean_radius_in_kms)
+
+            rate = 2*np.asarray(dist)/np.diff(self.path_times)  # *2 for full spreading rate
+            
+            rates.append(rate)
+            
+        return rates
+            
+    def step_plot(self, reconstruction_model, reconstruction_time=0, show=False):
+        
+        rates = self.rate(reconstruction_model, reconstruction_time=0)
+        
+        step_rates = []
+        for rate in rates:
+            step_rate = np.zeros(len(rate)*2)
+            step_rate[::2] = rate
+            step_rate[1::2] = rate
+            step_rates.append(step_rate)
+
+        step_time = np.zeros(len(rate)*2)
+        step_time[::2] = self.path_times[:-1]
+        step_time[1::2] = self.path_times[1:]
+
+        if show:
+            fig = plt.figure(figsize=(10,4))
+            plt.plot(step_time,np.array(step_rates).T)
+            plt.xlabel('Reconstruction Time (Myr)')
+            plt.ylabel('Full Spreading Rate (mm/yr)')   ## IS this 
+            plt.gca().invert_xaxis()
+            plt.show()
+        else:
+            return np.array(step_time), np.array(step_rates).squeeze()
+
+
+
 class PlateTree(object):
     """
     Class describing a geographic representation of a plate hierarchy,
