@@ -161,7 +161,6 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
                 processor=_Unzip(),
             )
 
-        print(fnames)
         for fname in fnames:
             if _os.path.split(fname)[1] == 'License.txt':
                 dirname = _os.path.split(fname)[0]
