@@ -626,7 +626,6 @@ class MotionPathFeature:
         self.path_times = path_times
         self.motion_path_feature = motion_path_feature
 
-
     def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0, anchor_plated_id=0):
         """
         generate reconstructed trails from the motion path feature according to a specified reconstruction model
@@ -701,7 +700,7 @@ class FlowlineFeature:
         # POINTS ON THE FLOWLINE
         multi_point = pygplates.MultiPointOnSphere(seed_points)
 
-        reverse_reconstruct=(rotation_model, 0, 1)
+        #reverse_reconstruct=(rotation_model, 0, 1)
 
         flowline_feature = pygplates.Feature(pygplates.FeatureType.create_gpml('Flowline'))
         flowline_feature.set_geometry(multi_point)
@@ -709,7 +708,7 @@ class FlowlineFeature:
         flowline_feature.set_valid_time(np.max(path_times), np.min(path_times))
         flowline_feature.set_left_plate(left_plate)
         flowline_feature.set_right_plate(right_plate)
-        flowline_feature.set_geometry(multi_point, reverse_reconstruct=(rotation_model,0))
+        #flowline_feature.set_geometry(multi_point, reverse_reconstruct=(rotation_model,0))
         
         self.seed_point = seed_points
         self.path_times = path_times
@@ -727,7 +726,7 @@ class FlowlineFeature:
 
         flowlines = []
         for reconstructed_flowline in reconstructed_flowlines:
-            trails.append(reconstructed_flowline.get_motion_path().to_lat_lon_array())
+            flowlines.append(reconstructed_flowline.get_motion_path().to_lat_lon_array())
 
         return flowlines
 
