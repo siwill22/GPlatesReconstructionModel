@@ -278,8 +278,9 @@ class ReconstructedPolygonSnapshot(object):
         self.reconstruction_time = reconstruction_time
         self.anchor_plate_id = anchor_plate_id
 
-    def plot(self, fig, pen='black', color='wheat', **kwargs):
+    def _plot(self, fig, pen='black', color='wheat', **kwargs):
         """
+        DEPRECATED
         plot the reconstructed polygons into a pygmt map figure
 
         :param fig: (pygmt.Figure) pygmt figure object to plot to
@@ -290,7 +291,7 @@ class ReconstructedPolygonSnapshot(object):
             fig.plot(x=data[:,1],y=data[:,0], 
                      pen=pen, color=color, **kwargs)
 
-    def plot2(self, fig, pen='black', color='wheat', **kwargs):
+    def plot(self, fig, pen='black', color='wheat', **kwargs):
 
         # plotting is generally faster if saved to temporary file
         plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
@@ -521,17 +522,23 @@ class PlateSnapshot(object):
 
         resolved_boundary_segments = self.get_boundary_features(['subduction'])
 
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file.close()
+
+        features = []
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
-                data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
                 if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
-                    fig.plot(x=data[:,1],y=data[:,0], style='f10p/4p+l+t', 
-                             pen=color, color=color, **kwargs)
-                elif resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Right':
-                    fig.plot(x=data[:,1],y=data[:,0], style='f10p/4p+r+t',
-                             pen=color, color=color, **kwargs)
+                    resolved_boundary_segment.set_geometry(pygplates.PolylineOnSphere(resolved_boundary_segment.get_geometry().to_lat_lon_list()[::-1]))
+                features.append(resolved_boundary_segment)
+        
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, color=color, style='f10p/4p+r+t', **kwargs)
 
-    def plot_mid_ocean_ridges(self, fig, color='red', **kwargs):
+        os.unlink(plot_file.name)
+
+
+    def plot_mid_ocean_ridges(self, fig, pen='0.5p,red', **kwargs):
         """
         plot mid ocean ridges into a pygmt map figure
 
@@ -541,12 +548,21 @@ class PlateSnapshot(object):
         """
         resolved_boundary_segments = self.get_boundary_features(['midoceanridge'])
 
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file.close()
+
+        features = []
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
-                data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
-                fig.plot(x=data[:,1], y=data[:,0], pen=color, **kwargs)
+                features.append(resolved_boundary_segment)
 
-    def plot_other_boundaries(self, fig, color='gray70', **kwargs):
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, pen=pen, **kwargs)
+
+        os.unlink(plot_file.name)
+
+
+    def plot_other_boundaries(self, fig, pen='0.5p,gray70', **kwargs):
         """
         plot plate boundaries of 'other' types (ie not subduction zone 
         or mid ocean ridge) into a pygmt map figure
@@ -557,10 +573,18 @@ class PlateSnapshot(object):
         """
         resolved_boundary_segments = self.get_boundary_features(['other'])
 
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file.close()
+
+        features = []
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
-                data = resolved_boundary_segment.get_geometry().to_lat_lon_array()
-                fig.plot(x=data[:,1], y=data[:,0], pen=color, **kwargs)
+                features.append(resolved_boundary_segment)
+
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, pen=pen, **kwargs)
+
+        os.unlink(plot_file.name)
 
 
 class MotionPathFeature:
@@ -602,6 +626,7 @@ class MotionPathFeature:
         self.seed_points = seed_points
         self.path_times = path_times
         self.motion_path_feature = motion_path_feature
+
 
     def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0):
         """
@@ -1295,176 +1320,6 @@ class CrossSection(object):
                                                                                        self.profileX_kms)
 
 
-
-#class PresentDayAgeGrid(object):
-#
-#    def __init__(self):
-#        GPlatesRaster.__init__(self)
-#
-#
-#class TimeDependentRasterSequence(object):
-#
-#    def __init__(self, name):
-#
-#        self.name = name
-
-
-# plot_classes
-class gmt_reconstruction(object):
-
-    def __init__(self, reconstruction_model, output_dir, output_file_stem):
-        self.reconstruction_model = reconstruction_model
-        self.output_dir = output_dir
-        self.output_file_stem = output_file_stem
-
-    def set_projection(self, projection):
-        self.projection = projection
-
-    def set_region(self, region):
-        self.region = region
-
-    def plot_snapshot(self, reconstruction_time, anchor_plate_id = 0,
-                      layers=['continents','coastlines','dynamic_polygons'],
-                      custom_layer_colors = None,
-                      keep_ps_file=False, overlay=False, underlay=False):
-
-        # specify default colors
-        layer_colors = {'coastline_fill': 'darkolivegreen',
-                        'coastline_outline': 'darkolivegreen',
-                        'continent_fill': 'wheat',
-                        'continent_outline': 'wheat',
-                        'midoceanridge': 'red',
-                        'subduction': 'black',
-                        'other_boundary': 'gray70'}
-
-        if custom_layer_colors is not None:
-            for key in custom_layer_colors:
-                layer_colors[key] = custom_layer_colors[key]
-
-        region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
-
-        outfile='%s/%s_%dMa.ps' % (self.output_dir,self.output_file_stem,reconstruction_time)
-
-        call_system_command(['gmt','gmtset','COLOR_MODEL','RGB',
-                                            'MAP_FRAME_TYPE','inside',
-                                            'MAP_FRAME_PEN','1.0',
-                                            'MAP_TICK_PEN_PRIMARY','1.0',
-                                            'FONT_ANNOT_PRIMARY','9',
-                                            'FONT_LABEL','8',
-                                            'FONT_TITLE','8',
-                                            'FONT_ANNOT_PRIMARY','Helvetica',
-                                            'FORMAT_GEO_MAP','ddd'])
-
-        if not underlay:
-            call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
-                                 '-Ba30f30::wesn', '-K', '>', outfile])
-
-        call_system_command(['gmt', 'psclip', '-T', '-R%s' % region, self.projection,
-                             '-O', '-K', '>>', outfile])
-        
-        if 'continents' in layers:
-            if not self.reconstruction_model.continent_polygons:
-                warnings.warn('no continent polygons available for selected reconstruction model')
-            else:
-                output_reconstructed_continents_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
-                pygplates.reconstruct(self.reconstruction_model.continent_polygons,
-                                    self.reconstruction_model.rotation_model,
-                                    output_reconstructed_continents_filename,
-                                    reconstruction_time, anchor_plate_id=anchor_plate_id)
-                call_system_command(['gmt', 'psxy', '-R%s' % region, self.projection,
-                                    '-W0.1p,{:s}'.format(layer_colors['continent_outline']), 
-                                    '-G{:s}'.format(layer_colors['continent_fill']), 
-                                    output_reconstructed_continents_filename,
-                                    '-O', '-K', '-N', '>>', outfile])
-
-        if 'coastlines' in layers:
-            if not self.reconstruction_model.coastlines:
-                warnings.warn('no coastline polygons available for selected reconstruction model')
-            else:
-                output_reconstructed_coastlines_filename = tempfile.NamedTemporaryFile(suffix='.gmt').name
-                pygplates.reconstruct(self.reconstruction_model.coastlines,
-                                    self.reconstruction_model.rotation_model,
-                                    output_reconstructed_coastlines_filename,
-                                    reconstruction_time, anchor_plate_id=anchor_plate_id)
-                call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                    '-W0.2p,{:s}'.format(layer_colors['coastline_outline']), 
-                                    '-G{:s}'.format(layer_colors['coastline_fill']),
-                                    '-O', '-K', output_reconstructed_coastlines_filename, '-V', '>>', outfile])
-
-        if 'dynamic_polygons' in layers:
-            if not self.reconstruction_model.dynamic_polygons:
-                warnings.warn('no dynamic polygons available for selected reconstruction model')
-            else:
-                output_filename_prefix = '%s/' % tempfile.mkdtemp()
-                output_filename_extension = 'gmt'
-                topology2gmt(self.reconstruction_model.rotation_model,
-                    self.reconstruction_model.dynamic_polygons,
-                    reconstruction_time,
-                    output_filename_prefix,
-                    output_filename_extension,
-                    anchor_plate_id)
-
-                call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                    '-W0.6p,{:s}'.format(layer_colors['other_boundary']), 
-                                    '-K', '-O',
-                                    '%s/boundary_polygons_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                    '-V', '>>', outfile])
-                call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                    '-W0.6p,{:s}'.format(layer_colors['midoceanridge']), 
-                                    '-K', '-O',
-                                    '%s/ridge_transform_boundaries_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                    '-V', '>>', outfile])
-
-                #plot subduction zones
-                call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                    '-W0.6p,{:s}'.format(layer_colors['subduction']), 
-                                    '-G{:s}'.format(layer_colors['subduction']), 
-                                    '-Sf10p/3p+l+t', '-K', '-O',
-                                    '%s/subduction_boundaries_sL_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                    '-V', '>>', outfile])
-                call_system_command(['gmt', 'psxy', '-R', self.projection,
-                                    '-W0.6p,{:s}'.format(layer_colors['subduction']), 
-                                    '-G{:s}'.format(layer_colors['subduction']), 
-                                    '-Sf10p/3p+r+t', '-K', '-O',
-                                    '%s/subduction_boundaries_sR_%0.2fMa.gmt' % (output_filename_prefix,reconstruction_time),
-                                    '-V', '>>', outfile])
-
-        if not overlay:
-            self.finish_plot(reconstruction_time, keep_ps_file=keep_ps_file)
-
-    def finish_plot(self, reconstruction_time, keep_ps_file=False):
-
-        region = '%f/%f/%f/%f' % (self.region[0],self.region[1],self.region[2],self.region[3])
-        outfile = '%s/%s_%dMa.ps' % (self.output_dir,self.output_file_stem,reconstruction_time)
-
-        call_system_command(['gmt', 'psclip', '-C', '-O', '-K', '>>', outfile])
-        call_system_command(['gmt', 'psbasemap', '-R%s' % region, self.projection,
-                             '-Ba30f30::wesn', '-O', '>>', outfile])
-
-        #convert ps into raster, -E set the resolution
-        call_system_command(['gmt', 'ps2raster', outfile, '-A0.2c', '-E300', '-Tg', '-P'])
-
-        if keep_ps_file:
-            self.image_postscript = outfile
-        else:
-            os.remove(outfile)
-        self.image_file = '%s.png' % outfile[:-3]
-
-
-    def animation(self, reconstruction_times, anchor_plate_id = 0,
-                  layers=['continents','coastlines','dynamic_polygons'],
-                  gif_filename=None):
-        import moviepy.editor as mpy
-
-        frame_list = []
-        for reconstruction_time in reconstruction_times:
-            self.plot_snapshot(reconstruction_time, anchor_plate_id=anchor_plate_id, layers=layers)
-            frame_list.append(self.image_file)
-
-        if gif_filename is not None:
-            frame_list.reverse()
-            clip = mpy.ImageSequenceClip(frame_list, fps=2)
-            clip.write_gif(gif_filename)
 
 
 # reconstructable datasets
