@@ -586,6 +586,8 @@ class PlateSnapshot(object):
 
         os.unlink(plot_file.name)
 
+    #TODO plot polygpns
+
 
 class MotionPathFeature:
     """
@@ -626,7 +628,7 @@ class MotionPathFeature:
         self.path_times = path_times
         self.motion_path_feature = motion_path_feature
 
-    def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0, anchor_plated_id=0):
+    def reconstruct_motion_path(self, reconstruction_model, reconstruction_time=0, anchor_plate_id=0):
         """
         generate reconstructed trails from the motion path feature according to a specified reconstruction model
         """
@@ -634,7 +636,7 @@ class MotionPathFeature:
         reconstructed_motion_paths = []
         pygplates.reconstruct(self.motion_path_feature, reconstruction_model.rotation_model,
                               reconstructed_motion_paths, reconstruction_time,
-                              anchor_plated_id=anchor_plated_id,
+                              anchor_plate_id=anchor_plate_id,
                               reconstruct_type=pygplates.ReconstructType.motion_path)
 
         trails = []
@@ -726,7 +728,8 @@ class FlowlineFeature:
 
         flowlines = []
         for reconstructed_flowline in reconstructed_flowlines:
-            flowlines.append(reconstructed_flowline.get_motion_path().to_lat_lon_array())
+            flowlines.append(reconstructed_flowline.get_left_flowline().to_lat_lon_array())
+            flowlines.append(reconstructed_flowline.get_right_flowline().to_lat_lon_array())
 
         return flowlines
 
