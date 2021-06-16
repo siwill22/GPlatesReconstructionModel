@@ -7,9 +7,15 @@ import geopandas as _gpd
 import os as _os
 
 
-def Geochem(usecols=None, return_column_names=False):
+def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=True):
     '''
     Load the geochemistry database of Gard et al (2019)
+
+    Options:
+    usecols: optionally define a list of columns to load (rather than the full table) [default=None]
+    remove_invalid_coordinates: specify whether to remove rows from the table for which the latitude
+                                and/or longitide are invalid [default=True] 
+    return_column_names: instead of loading table into memory, return a list of column names
 
     '''
     fname = _retrieve(
@@ -25,13 +31,18 @@ def Geochem(usecols=None, return_column_names=False):
 
     else:
         df = _pd.read_csv(fname, usecols=usecols, engine='python', encoding="ISO-8859-1")
-        return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.longitude, df.latitude))
+        if remove_invalid_coordinates:
+            df = df.dropna(subset=['longitude','latitude'])
+        df.rename(columns={'longitude':'Longitude', 'latitude':'Latitude'}, inplace=True)
+        return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
 
 
 def BaseMetalDeposits(deposit_type, keep_unknown_age_samples=False):
     '''
     Load the base metal deposit compilation from Hoggard et al (2020)
+
+    deposit_type must be one of: 'PbZn-CD', 'PbZn-MVT', 'Cu-sed', 'Magmatic Ni', 'VMS', 'Cu-por', 'IOCG'
     '''
     fname = _retrieve(
         url="https://static-content.springer.com/esm/art%3A10.1038%2Fs41561-020-0593-2/MediaObjects/41561_2020_593_MOESM3_ESM.xls",
@@ -44,8 +55,9 @@ def BaseMetalDeposits(deposit_type, keep_unknown_age_samples=False):
         raise ValueError('Unknown deposit type {}'.format(deposit_type))
 
     df = _pd.read_excel(fname, sheet_name=deposit_type)
-    df.rename(columns={'Lon.':'Lon', 'Lat.':'Lat'}, inplace=True)
-    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Lon, df.Lat))
+    df.rename(columns={'Lon.':'Longitude', 'Lat.':'Latitude',
+                       'Lon':'Longitude', 'Lat':'Latitude'}, inplace=True)
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
     if not keep_unknown_age_samples:
         return gdf[gdf['Age (Ga)'] != 'ND']
@@ -65,7 +77,7 @@ def Kimberlites():
     )
 
     df = _pd.read_excel(fname, skiprows=1)
-    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude))
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
     return gdf
 
