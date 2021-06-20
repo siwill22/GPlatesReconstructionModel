@@ -106,6 +106,23 @@ class ReconstructionModel(object):
         self.continent_polygons = []
         self.continent_polygons_files = []
 
+    def info(self, show_full_paths=False):
+
+        print('Name: {:s}'.format(self.name))
+
+        for item in [('Rotation', self.rotation_files),
+                     ('Static Polygon', self.static_polygon_files), 
+                     ('Coastlines', self.coastlines_files),
+                     ('Continent Polygon', self.continent_polygons), 
+                     ('Dynamic Polygon', self.dynamic_polygon_files)]:
+            print('{:s} Files:'.format(item[0]))
+            for f in item[1]:
+                if show_full_paths:
+                    print('   - {:s}'.format(f))
+                else:
+                    print('   - {:s}'.format(os.path.split(f)[1]))
+
+
     def add_rotation_model(self, rotation_file, replace=False):
         """
         Add a rotation model by specifying the path and filename to a .rot file_extension.
