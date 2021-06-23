@@ -1,5 +1,9 @@
 import numpy as np
 import xarray as xr
+import pygplates
+import pandas as _pd
+import geopandas as _gpd
+import os
 
 
 def write_xyz_file(output_filename, output_data):
@@ -51,7 +55,66 @@ def load_netcdf(grdfile,z_field_name='z'):
 
 
 def write_netcdf_grid(filename, x, y, z, xname='x', yname='y', zname='z', format='NETCDF4'):
+    '''
+    write grid to a netcdf file
+    '''
     ds = xr.DataArray(z, coords=[(yname,y), (xname,x)], name=zname)
     ds.to_netcdf(filename, format=format)
     ds.close()
+
+
+
+def gpml_to_dataframe(feature_collection, as_geodataframe=True):
+    '''
+    function to read in any gplates-compatible feature collection and 
+    place it into a pandas dataframe
+    # TODO handle polylines and polygons
+    '''
+
+    if os.path.isfile(feature_collection):
+        feature_collection = pygplates.FeatureCollection(feature_collection)
+    elif isinstance(feature_collection, pygplates.FeatureCollection):
+        pass
+    else:
+        raise ValueError('Unable to load {:s} as vgp input'.format(feature_collection))
+
+
+    DataFrameTemplate = ['Longitude','Latitude','Name','Description',
+                         'MaximumAge','MinimumAge','PlateID']
+
+    # Get attribute (other than coordinate) names from first feature
+    for feature in feature_collection: 
+        for attribute in feature.get_shapefile_attributes():
+            DataFrameTemplate.append(attribute) 
+        break
+
+    fs = []
+    for feature in feature_collection:
+        f = []
+        f.append(feature.get_geometry().to_lat_lon()[1])
+        f.append(feature.get_geometry().to_lat_lon()[0])
+        f.append(str(feature.get_name()))
+        f.append(str(feature.get_description()))
+        geom = feature.get_geometry().to_lat_lon()
+        f.append(float(geom[1]))
+        f.append(float(geom[0]))
+        feature_valid_time = feature.get_valid_time()
+        f.append(float(feature_valid_time[0]))
+        f.append(float(feature_valid_time[1]))
+        f.append(int(feature.get_reconstruction_plate_id()))
+        f.append(str(feature.get_feature_type()))
+        f.append(str(feature.get_feature_id()))
+
+        for attribute in feature.get_shapefile_attributes():
+            f.append(feature.get_shapefile_attribute(attribute))
+        fs.append(f)
+
+    if as_geodataframe:
+        df = _pd.DataFrame(fs,columns=DataFrameTemplate)
+        return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.AverageSampleSiteLongitude, 
+                                                                  df.AverageSampleSiteLatitude), crs=4326)
+    
+    else:
+        return _pd.DataFrame(fs,columns=DataFrameTemplate)
+
 
