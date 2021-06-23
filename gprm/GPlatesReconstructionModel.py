@@ -43,18 +43,7 @@ import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
-
-
 import warnings
-try:
-    import cartopy.crs as ccrs
-except:
-    warnings.warn('cartopy plotting options not available')
-try:
-    import requests, gwsFeatureCollection
-except:
-    warnings.warn('web service options not available')
-
 
 
 DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'Data')
@@ -206,6 +195,7 @@ class ReconstructionModel(object):
         """
         Add a reconstruction model directly from the GPlates web service.
         """
+        import gwsFeatureCollection
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
@@ -1043,6 +1033,7 @@ class AgeCodedPointDataset(object):
             if file_extension == '.csv':
                 self._df = pd.read_csv(source)
             elif "http://" in source or "https://" in source:
+                import requests
                 r = requests.get(source)
                 self._df = pd.read_csv(StringIO(r.text))
                 field_mapping = {'latitude_field':'lat', 'longitude_field':'lng',
