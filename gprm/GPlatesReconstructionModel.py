@@ -1456,7 +1456,21 @@ class litho1_scalar_coverage(object):
 
         pygplates.FeatureCollection(ct_feature).write(filename)
 
-    def write_layer_thickness_to_scalar_coverage(self, filename, layer_names='All'):
+    def write_layer_thickness_to_scalar_coverage(self, top_layer_name='CRUST1-TOP', bottom_layer_name='CRUST3-BOTTOM'):
 
-        if layer_names == 'All':
-            layer_names = [name[0] for name in self.layer_keys]
+        #if layer_names == 'All':
+        #    layer_names = [name[0] for name in self.layer_keys]
+        top_layer_depth = litho.layer_depth(self.points.latitude, self.points.longitude, top_layer_name)
+        bottom_layer_depth = litho.layer_depth(self.points.latitude, self.points.longitude, bottom_layer_name)
+        
+        scalar_coverage = {}
+        #layer_name = 'THICKNESS.{:s}--{:s}'.format(top_layer_name, bottom_layer_name)
+        layer_name = 'CrustalThickness'
+        layerZ = bottom_layer_depth-top_layer_depth
+        scalar_coverage[pygplates.ScalarType.create_gpml(layer_name)] = layerZ
+
+        ct_feature = pygplates.Feature()
+        ct_feature.set_geometry((self.points.multipoint,scalar_coverage))
+        ct_feature.set_name('litho1.0 layer thickness, {:s} to {:s}'.format(top_layer_name, bottom_layer_name))
+        
+        return ct_feature
