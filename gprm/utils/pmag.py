@@ -28,7 +28,7 @@ def vgp_to_dataframe(vgp_feature_collection, as_geodataframe=True, return_featur
 
 
     DataFrameTemplate = ['AverageSampleSiteLongitude','AverageSampleSiteLatitude',
-                         'Name','Description','PoleLongitude','PoleLatitude','poleA95',
+                         'Name','Description','PoleLongitude','PoleLatitude','PoleA95',
                          'AverageAge','MaximumAge','MinimumAge','PlateID']
     if return_feature_id:
         DataFrameTemplate.append('Feature_ID')
@@ -162,7 +162,7 @@ def generate_running_mean_path(vgps,time_list,time_window=20,right=True):
     running_mean_path = []
 
     if isinstance(vgps, _gpd.GeoDataFrame):
-        vgps_df = vgps[['PoleLatitude', 'PoleLongitude', 'AverageAge', 'poleA95']]
+        vgps_df = vgps[['PoleLatitude', 'PoleLongitude', 'AverageAge', 'PoleA95']]
     elif isinstance(vgps, pygplates.FeatureCollection):
         vgp_list = []
         for vgp in vgps:
@@ -170,7 +170,7 @@ def generate_running_mean_path(vgps,time_list,time_window=20,right=True):
                              vgp.get_geometry().to_lat_lon()[1],
                              float(vgp.get(pygplates.PropertyName.create_gpml('averageAge')).get_value().get_double()),
                              float(vgp.get(pygplates.PropertyName.create_gpml('poleA95')).get_value().get_double())))
-        vgps_df = _pd.DataFrame(vgp_list, columns=['PoleLatitude', 'PoleLongitude', 'AverageAge','poleA95'])
+        vgps_df = _pd.DataFrame(vgp_list, columns=['PoleLatitude', 'PoleLongitude', 'AverageAge','PoleA95'])
     else:
         raise TypeError('Unexpected type {:s} for vgp input'.format(type(vgps)))
         
@@ -187,7 +187,7 @@ def generate_running_mean_path(vgps,time_list,time_window=20,right=True):
 
         elif len(vgps_window)==1:
             running_mean_path.append((mean_pole_age, np.array(vgps_window['PoleLongitude'])[0], 
-                                      np.array(vgps_window['PoleLatitude'])[0], np.array(vgps_window['poleA95'])[0]))
+                                      np.array(vgps_window['PoleLatitude'])[0], np.array(vgps_window['PoleA95'])[0]))
 
         else:
             #print(vgps_window)
@@ -199,5 +199,45 @@ def generate_running_mean_path(vgps,time_list,time_window=20,right=True):
                                       mean_pole['inc'],mean_pole['alpha95']))
         
 
-    return _pd.DataFrame(running_mean_path, columns=['Age','PoleLongitude','PoleLatitude','poleA95'])
+    return _pd.DataFrame(running_mean_path, columns=['Age','PoleLongitude','PoleLatitude','PoleA95'])
+
+
+def write_vgp_feature(vgp, mapping, half_time_range = 10.):
+    '''
+    Create a vgp feature from one row of a dataframe
+    TODO handle cases where some fields (e.g. description) are not present
+    '''
+    
+    vgpFeature = pygplates.Feature.create_reconstructable_feature(
+                 pygplates.FeatureType.create_gpml('VirtualGeomagneticPole'),
+                 pygplates.PointOnSphere([vgp[mapping['PoleLatitude']], vgp[mapping['PoleLongitude']]]),
+                 name = str(vgp[mapping['Name']]),
+                 description = str(vgp[mapping['Description']]),
+                 valid_time=(float(vgp[mapping['AverageAge']])+half_time_range, float(vgp[mapping['AverageAge']])-half_time_range),
+                 other_properties = [(pygplates.PropertyName.create_gpml('poleA95'), pygplates.XsDouble(vgp[mapping['PoleA95']])),
+                                     (pygplates.PropertyName.create_gpml('averageAge'), pygplates.XsDouble(vgp[mapping['AverageAge']])),
+                                     (pygplates.PropertyName.create_gpml('averageSampleSitePosition'),
+                                      pygplates.GmlPoint(pygplates.PointOnSphere([float(float(vgp.geometry.y)), 
+                                                                                  float(float(vgp.geometry.x))])))])
+
+    return vgpFeature
+
+
+def dataframe_to_vgps(gdf, mapping={'Name':'Name',
+                                    'Description':'Description',
+                                    'PoleLongitude':'PoleLongitude',
+                                    'PoleLatitude':'PoleLatitude',
+                                    'PoleA95':'PoleA95',
+                                    'AverageAge':'AverageAge'}):
+    
+    vpgFeatureCollection = []
+
+    for i,row in gdf.iterrows():
+
+        vgpFeature = write_vgp_feature(row, mapping)
+        
+        # Add newly created feature to existing Feature Collection
+        vpgFeatureCollection.append(vgpFeature)
+    
+    return pygplates.FeatureCollection(vpgFeatureCollection)
 
