@@ -1,6 +1,7 @@
 import numpy as np
 import pygplates
 from scipy import spatial
+import pandas as pd
 
 
 def marsaglias_method(N=10000):
@@ -145,3 +146,34 @@ def healpix_mesh(nSide):
 
     # ophis -> longitude, othetas -> latitude
     return np.degrees(ophis), np.degrees(othetas)
+
+
+## Some functions for data binning
+def groupby_healpix(df, equal_area_points, return_point_indices=True):
+    # Given a (geo)dataframe with irregularly distributed point in lat,long, 
+    # and equal area point distribution, this functions will bin the dataframe point
+    # based on the equal area pixel extents (using the underlying healpix function).
+    # The function returns a groupby object that can be interrogated to get the 
+    # statistics of points within each bin, and (optionally) a list of point indices  
+
+    # TODO force input to be dataframe??
+    bin_counts, bin_indices = equal_area_points.point_feature_heatmap(
+        [pygplates.PointOnSphere(point) for point in zip(df['Latitude'],
+                                                         df['Longitude'])], return_indices=True)
+
+    point_indices = np.unique(bin_indices)
+    df['bin_id'] = bin_indices
+
+    grouped_points = df.groupby(by=['bin_id'])
+
+    #binned_df = pd.DataFrame(columns=df.columns)
+    #for i,group in enumerate(grouped_points.groups):
+    #    points_selection = grouped_points.get_group(group)
+    #    binned_df.loc[i] = points_selection.median()
+
+    if return_point_indices:
+        return grouped_points, point_indices
+    else:
+        return grouped_points
+
+
