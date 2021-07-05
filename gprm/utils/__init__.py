@@ -3,6 +3,7 @@ from . import create_gpml
 from . import inpaint
 from . import kinematic_tools
 from . import paleogeography
+from . import pmag
 from . import platetree
 from . import points_in_polygons
 from . import points_spatial_tree
