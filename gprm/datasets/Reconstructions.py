@@ -11,7 +11,6 @@ import os as _os
 # TODO
 # Add: Domeier and Torsvik
 #      Shephard?? (or a version of Seton with Static Polygons)
-#      Muller 2019 Deforming
 #      Scotese
 #      Golonka??
 
