@@ -518,12 +518,14 @@ class PlateSnapshot(object):
         return ax
 
     # pygmt functions
-    def plot_subduction_zones(self, fig, color='black', **kwargs):
+    def plot_subduction_zones(self, fig, color='black', gap=10, size=4, **kwargs):
         """
         plot subduction zones into a pygmt map figure
 
         :param fig: (pygmt.Figure) pygmt figure object to plot to
         :param color: (string, optional) color of the subduction lines and triangle (default is 'black') 
+        :param gap: (float, optional) gap between trianges (default is 10p)
+        :param size: (float, optional) size of triangles (default is 4p)
         :param kwargs: (optional) additional arguments to pygmt plot command
         """
 
@@ -540,7 +542,7 @@ class PlateSnapshot(object):
                 features.append(resolved_boundary_segment)
         
         pygplates.FeatureCollection(features).write(plot_file.name)
-        fig.plot(data = plot_file.name, color=color, style='f10p/4p+r+t', **kwargs)
+        fig.plot(data = plot_file.name, color=color, style='f{:f}p/{:f}p+r+t'.format(float(gap), float(size)), **kwargs)
 
         os.unlink(plot_file.name)
 
