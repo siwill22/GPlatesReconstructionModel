@@ -858,6 +858,7 @@ class VelocityField(object):
         self.velocity_magnitude = vel_mag
         self.velocity_azimuth = vel_azim
 
+
     def rms_velocity(self, plate_id_selection=None):
         """
         compute the rms velocity for a specific plate, or list of plates, or all plates within
@@ -875,6 +876,19 @@ class VelocityField(object):
 
         #print index
         return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude)[index])))
+
+
+    def plot(self, fig, style="v0.1c+e", pen="0.1p,black", color="black", **kwargs):
+        """
+        Plot velocity vectors to a pygmt figure
+        """
+
+        tmp = np.vstack((velocity_field.longitude, velocity_field.latitude,
+                        np.degrees(velocity_field.velocity_azimuth),
+                        np.array(velocity_field.velocity_magnitude)/250.)).T
+
+        fig.plot(data=tmp, style=style, pen=pen, color=color, **kwargs)
+
 
 
 
