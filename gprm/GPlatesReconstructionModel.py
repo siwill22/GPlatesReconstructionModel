@@ -878,14 +878,14 @@ class VelocityField(object):
         return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude)[index])))
 
 
-    def plot(self, fig, style="v0.1c+e", pen="0.1p,black", color="black", **kwargs):
+    def plot(self, fig, scaling=500., style="v0.1c+e", pen="0.1p,black", color="black", **kwargs):
         """
         Plot velocity vectors to a pygmt figure
         """
 
         tmp = np.vstack((velocity_field.longitude, velocity_field.latitude,
                         np.degrees(velocity_field.velocity_azimuth),
-                        np.array(velocity_field.velocity_magnitude)/250.)).T
+                        np.array(velocity_field.velocity_magnitude)/scaling)).T
 
         fig.plot(data=tmp, style=style, pen=pen, color=color, **kwargs)
 
