@@ -883,9 +883,9 @@ class VelocityField(object):
         Plot velocity vectors to a pygmt figure
         """
 
-        tmp = np.vstack((velocity_field.longitude, velocity_field.latitude,
-                        np.degrees(velocity_field.velocity_azimuth),
-                        np.array(velocity_field.velocity_magnitude)/scaling)).T
+        tmp = np.vstack((self.longitude, self.latitude,
+                        np.degrees(self.velocity_azimuth),
+                        np.array(self.velocity_magnitude)/scaling)).T
 
         fig.plot(data=tmp, style=style, pen=pen, color=color, **kwargs)
 
