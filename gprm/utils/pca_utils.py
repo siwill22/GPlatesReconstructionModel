@@ -1,5 +1,5 @@
 import math
-from call_system_command import call_system_command
+from ptt.utils.call_system_command import call_system_command
 import pygplates
 import numpy as np
 
