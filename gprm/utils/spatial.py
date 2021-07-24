@@ -8,7 +8,7 @@ from skimage import measure
 
 
 def merge_polygons(polygons,rotation_model,
-                   time=0,sampling=1.,area_threshold=None,filename=None,
+                   reconstruction_time=0,sampling=1.,area_threshold=None,filename=None,
                    return_raster=False):
 
     multipoints = create_gpml_regular_long_lat_mesh(sampling)
@@ -18,7 +18,7 @@ def merge_polygons(polygons,rotation_model,
         for mp in multipoint.get_all_geometries():
             points = mp.to_lat_lon_point_list()
 
-    bi = run_grid_pip(time,points,polygons,rotation_model,grid_dims)
+    bi = run_grid_pip(reconstruction_time,points,polygons,rotation_model,grid_dims)
     
     if return_raster:
         return bi
