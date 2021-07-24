@@ -180,8 +180,7 @@ def grdcontour2feature(grdfile,clevel,return_polygons=True):
                          grdfile,
                          '-C+%0.8f' % clevel,
                          '-S4',
-                         '-Dcontour_%c.txt',
-                         '-V'])
+                         '-Dcontour_%c.txt'])
 
     # read in the GMT delimited xyz ascii file, 
     # create a list of lists with polygon coordinates
