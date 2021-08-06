@@ -81,12 +81,12 @@ def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90], alon
         graticule_lines_gdf = geometries_to_geodataframe(graticule_lines, geometry_type='PolyLine')
         polygon_gdf = geometries_to_geodataframe([polygon.to_lat_lon_array()])
         graticule_lines_in_polygon_gdf = gpd.overlay(graticule_lines_gdf, polygon_gdf, how='intersection', keep_geom_type=False)
-        graticule_lines = dataframe_to_geometries(graticule_lines_in_polygon_gdf)
+        graticule_lines = geodataframe_to_geometries(graticule_lines_in_polygon_gdf)
 
     return graticule_lines
 
 
-def get_crustal_thickness(points, grid=None, top_name='CRUST1-TOP', bottom_name='CRUST3-BOTTOM'):
+def get_crustal_thickness_points(points, grid=None, top_name='CRUST1-TOP', bottom_name='CRUST3-BOTTOM'):
     
     # if no grid is provided, we take the layer thickness from litho1.0
     if not grid:
@@ -110,8 +110,12 @@ def get_crustal_thickness(points, grid=None, top_name='CRUST1-TOP', bottom_name=
         return np.array(layer_thickness['z'])
 
 
-def topological_reconstruction(topological_model, points, reconstruction_time, initial_scalars=None):
+def topological_reconstruction(topological_model, points, reconstruction_time, 
+                               initial_time=0, final_time=None, initial_scalars=None):
 
+    if not final_time:
+        final_time = reconstruction_time
+        
     # TODO determine default behaviour for optional arguments
     time_spans = topological_model.reconstruct_geometry(
         points,
@@ -129,6 +133,13 @@ def topological_reconstruction(topological_model, points, reconstruction_time, i
     #TODO iterate over scalar values and get reconstructed value
 
 
+def geodataframe_topological_reconstruction():
 
+    return
+
+
+def feature_collection_topological_reconstruction():
+
+    return
 
 
