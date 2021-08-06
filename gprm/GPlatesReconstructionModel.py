@@ -22,10 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+from xarray.core.utils import to_0d_object_array
 import pygplates
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import os
 from io import StringIO
@@ -267,6 +269,36 @@ class ReconstructionModel(object):
         rotation_features = utils.rotation.generate_rotation_feature(self.rotation_files)
 
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
+
+
+    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
+
+        if not topological:
+            if isinstance(features, pygplates.FeatureCollection):
+
+                reconstructed_features = []
+                pygplates.reconstruct(features, self.rotation_model, reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
+                return reconstructed_features
+
+            elif isinstance(features, gpd.GeoDataFrame):
+
+                # TODO
+                # select only the features that are valid at reconstruction time?
+                # convert geometries to gpml (features?)
+                # reconstruct
+                # somehow map reconstructed features back to original attribute table
+                return
+
+        else:
+             
+             #TODO perform a topological reconstruction
+
+             return
+
+
+
+
+
 
 
 
