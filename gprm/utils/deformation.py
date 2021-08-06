@@ -2,6 +2,7 @@ import pygplates
 import numpy as np
 import geopandas as gpd
 from shapely.geometry import LineString, Polygon
+import pygmt
 #import litho1pt0 as litho
 
 
@@ -83,3 +84,51 @@ def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90], alon
         graticule_lines = dataframe_to_geometries(graticule_lines_in_polygon_gdf)
 
     return graticule_lines
+
+
+def get_crustal_thickness(points, grid=None, top_name='CRUST1-TOP', bottom_name='CRUST3-BOTTOM'):
+    
+    # if no grid is provided, we take the layer thickness from litho1.0
+    if not grid:
+        import litho1pt0 as litho
+    
+        ptlats = np.array([pt.to_lat_lon()[0] for pt in points])
+        ptlons = np.array([pt.to_lat_lon()[1] for pt in points])
+        top_depth = litho.layer_depth(ptlats, ptlons, top_name)
+        bottom_depth = litho.layer_depth(ptlats, ptlons, bottom_name)
+        layer_thickness = bottom_depth-top_depth
+
+        return layer_thickness
+
+    # if a grid is provided, sample using grdtrack
+    else:
+
+        ptlats = np.array([pt.to_lat_lon()[0] for pt in points])
+        ptlons = np.array([pt.to_lat_lon()[1] for pt in points])
+        layer_thickness = pygmt.grdtrack(points=np.vstack((ptlons, ptlats)), grid=grid, newcolname='z')
+        
+        return np.array(layer_thickness['z'])
+
+
+def topological_reconstruction(topological_model, points, reconstruction_time, initial_scalars=None):
+
+    # TODO determine default behaviour for optional arguments
+    time_spans = topological_model.reconstruct_geometry(
+        points,
+        initial_time=initial_time,
+        oldest_time=final_time,
+        youngest_time=initial_time,
+        initial_scalars=initial_scalars,
+        # All our points are on continental crust so we keep them active through time (ie, never deactivate them)...
+        deactivate_points = pygplates.ReconstructedGeometryTimeSpan.DefaultDeactivatePoints(
+            deactivate_points_that_fall_outside_a_network = True))
+
+    reconstructed_points = time_spans.get_geometry_points(reconstruction_time, return_inactive_points=False)
+    #def_pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
+
+    #TODO iterate over scalar values and get reconstructed value
+
+
+
+
+
