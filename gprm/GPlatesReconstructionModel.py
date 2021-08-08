@@ -39,7 +39,7 @@ import xarray as xr
 import gprm.utils as utils
 
 from ptt.utils.proximity_query import find_closest_geometries_to_points
-from gprm.utils.proximity import distance_between_reconstructed_points_and_features
+from gprm.utils.geometry import distance_between_reconstructed_points_and_features
 
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
