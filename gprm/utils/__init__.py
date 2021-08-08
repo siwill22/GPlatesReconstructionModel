@@ -4,7 +4,7 @@ from . import inpaint
 from . import paleogeography
 from . import pmag
 from . import platetree
-from . import proximity
+from . import geometry
 from . import raster
 from . import velocity_tools
 #from . import wrapping_tools
