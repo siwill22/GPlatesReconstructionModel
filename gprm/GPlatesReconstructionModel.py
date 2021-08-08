@@ -271,10 +271,25 @@ class ReconstructionModel(object):
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
 
 
+    def construct_topological_model(self, anchor_plate_id=0,
+                          default_resolve_topology_parameters=pygplates.ResolveTopologyParameters(enable_strain_rate_clamping=True)):
+
+        # tell the object to generate a TopologicalModel object based on the already
+        # assigned rotations and topologies
+        self.topological_model = pygplates.TopologicalModel(
+            self.dynamic_polygons,
+            self.rotation_model,
+            anchor_plate_id=anchor_plate_id,
+            # Enable strain rate clamping to better control crustal stretching factors...
+            default_resolve_topology_parameters=default_resolve_topology_parameters)
+
+
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
 
         if not topological:
             if isinstance(features, pygplates.FeatureCollection):
+
+                # TODO assign plate ids if not available already (or option selected)
 
                 reconstructed_features = []
                 pygplates.reconstruct(features, self.rotation_model, reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
@@ -283,6 +298,7 @@ class ReconstructionModel(object):
             elif isinstance(features, gpd.GeoDataFrame):
 
                 # TODO
+
                 # select only the features that are valid at reconstruction time?
                 # convert geometries to gpml (features?)
                 # reconstruct
@@ -627,7 +643,21 @@ class PlateSnapshot(object):
 
         os.unlink(plot_file.name)
 
-    #TODO plot polygpns
+    #TODO plot polygons
+    def plot_deformation_zones(self, fig, pen='0.5p,gray10', color='p14+b+r300', **kwargs):
+
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file.close()
+
+        features = []
+        for topology in self.resolved_topologies:
+            if isinstance(topology, pygplates.ResolvedTopologicalNetwork):
+                features.append(topology.get_resolved_feature())
+
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, pen=pen, color=color, **kwargs)
+
+        os.unlink(plot_file.name)
 
 
 class MotionPathFeature:
