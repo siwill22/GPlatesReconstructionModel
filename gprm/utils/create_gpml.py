@@ -2,7 +2,7 @@ import pygplates
 import numpy as np
 import geopandas as gpd
 from .sphere import healpix_mesh
-import tempfile
+import os, tempfile
 
 
 def create_gpml_crustal_thickness(longitude_array,latitude_array,thickness,filename=None):
@@ -102,25 +102,25 @@ def geodataframe_to_geometries(gdf):
 
 def gdf2gpml(gdf):
 
-    tempfile = tempfile.NamedTemporaryFile(delete=False, suffix='.geojson')
-    tempfile.close()
+    temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.gmt')
+    temporary_file.close()
 
-    gdf.to_file(tempfile.name, driver='GeoJSON')
-    feature_collection = pygplates.FeatureCollection(tempfile.name)
+    gdf.to_file(temporary_file.name, driver='GeoJSON')
+    feature_collection = pygplates.FeatureCollection(temporary_file.name)
 
-    os.unlink(tempfile.name)
+    os.unlink(temporary_file.name)
     
     return feature_collection
 
 
 def gpml2gdf(feature_collection):
 
-    tempfile = tempfile.NamedTemporaryFile(delete=False, suffix='.geojson')
-    tempfile.close()
+    temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.gmt')
+    temporary_file.close()
 
-    feature_collection.write(tempfile.name)
-    gdf = gpd.read_file(tempfile.name)
+    feature_collection.write(temporary_file.name)
+    gdf = gpd.read_file(temporary_file.name)
 
-    os.unlink(tempfile.name)
+    os.unlink(temporary_file.name)
     
     return gdf
