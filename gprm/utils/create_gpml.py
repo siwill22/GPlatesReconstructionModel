@@ -1,6 +1,9 @@
 import pygplates
 import numpy as np
+import geopandas as gpd
 from .sphere import healpix_mesh
+import tempfile
+
 
 def create_gpml_crustal_thickness(longitude_array,latitude_array,thickness,filename=None):
 
@@ -74,3 +77,50 @@ def create_gpml_regular_long_lat_mesh(Sampling=1,filename=None,feature_type=None
         output_feature_collection.write(filename)
     else:
         return output_feature_collection
+
+
+def geometries_to_geodataframe(geometries, geometry_type='polygon'):
+    gdf = gpd.GeoDataFrame()
+    gdf['geometry'] = None
+    for i,geometry in enumerate(geometries):
+        if geometry_type in ['PolyLine','Polyline']:
+            poly = LineString([tuple(coord) for coord in np.fliplr(geometry)])
+        else:
+            poly = Polygon([tuple(coord) for coord in np.fliplr(geometry)])
+        gdf.loc[i, 'geometry'] = poly
+
+    return gdf
+
+
+def geodataframe_to_geometries(gdf):
+    geometry_list = []
+    gdf = gdf.explode()
+    for i,row in gdf.iterrows():
+        geometry_list.append([(lat,lon) for lat,lon in zip(row.geometry.xy[1], row.geometry.xy[0])])
+    return geometry_list 
+
+
+def gdf2gpml(gdf):
+
+    tempfile = tempfile.NamedTemporaryFile(delete=False, suffix='.geojson')
+    tempfile.close()
+
+    gdf.to_file(tempfile.name, driver='GeoJSON')
+    feature_collection = pygplates.FeatureCollection(tempfile.name)
+
+    os.unlink(tempfile.name)
+    
+    return feature_collection
+
+
+def gpml2gdf(feature_collection):
+
+    tempfile = tempfile.NamedTemporaryFile(delete=False, suffix='.geojson')
+    tempfile.close()
+
+    feature_collection.write(tempfile.name)
+    gdf = gpd.read_file(tempfile.name)
+
+    os.unlink(tempfile.name)
+    
+    return gdf
