@@ -93,6 +93,8 @@ def geometries_to_geodataframe(geometries, geometry_type='polygon'):
 
 
 def geodataframe_to_geometries(gdf):
+# from a geopandas geodataframe, return a list of the geometries (as type pygplates.GeometryOnSphere)
+    
     geometry_list = []
     gdf = gdf.explode()
     for i,row in gdf.iterrows():
@@ -101,6 +103,7 @@ def geodataframe_to_geometries(gdf):
 
 
 def gdf2gpml(gdf):
+# function to convert a geopandas geodataframe to a gplates feature collection
 
     temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.gmt')
     temporary_file.close()
@@ -114,6 +117,7 @@ def gdf2gpml(gdf):
 
 
 def gpml2gdf(feature_collection):
+# function to convert a gplates feature collection to a geopandas geodataframe
 
     temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.gmt')
     temporary_file.close()
@@ -124,3 +128,4 @@ def gpml2gdf(feature_collection):
     os.unlink(temporary_file.name)
     
     return gdf
+    
