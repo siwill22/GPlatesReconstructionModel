@@ -1,8 +1,8 @@
 import pygplates
 import numpy as np
 import geopandas as gpd
-from shapely.geometry import LineString, Polygon
 import pygmt
+from .create_gpml import geometries_to_geodataframe, geodataframe_to_geometries
 #import litho1pt0 as litho
 
 
@@ -18,27 +18,6 @@ def points_within_mesh_geometry(pts, geom):
         if geom.is_point_in_polygon(pt):
             pts_in_poly.append(pt) 
     return pts_in_poly
-
-
-def geometries_to_geodataframe(geometries, geometry_type='polygon'):
-    gdf = gpd.GeoDataFrame()
-    gdf['geometry'] = None
-    for i,geometry in enumerate(geometries):
-        if geometry_type in ['PolyLine','Polyline']:
-            poly = LineString([tuple(coord) for coord in np.fliplr(geometry)])
-        else:
-            poly = Polygon([tuple(coord) for coord in np.fliplr(geometry)])
-        gdf.loc[i, 'geometry'] = poly
-
-    return gdf
-
-
-def geodataframe_to_geometries(gdf):
-    geometry_list = []
-    gdf = gdf.explode()
-    for i,row in gdf.iterrows():
-        geometry_list.append([(lat,lon) for lat,lon in zip(row.geometry.xy[1], row.geometry.xy[0])])
-    return geometry_list
 
 
 def create_circles(centre_points, circle_radius_degrees=0.5, polygon=None):
@@ -139,6 +118,8 @@ def geodataframe_topological_reconstruction():
 
 
 def feature_collection_topological_reconstruction():
+
+    
 
     return
 

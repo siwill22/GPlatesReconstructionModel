@@ -1,6 +1,7 @@
 import pygplates
 import numpy as np
 import geopandas as gpd
+from shapely.geometry import LineString, Polygon
 from .sphere import healpix_mesh
 import os, tempfile
 
@@ -128,4 +129,3 @@ def gpml2gdf(feature_collection):
     os.unlink(temporary_file.name)
     
     return gdf
-    
