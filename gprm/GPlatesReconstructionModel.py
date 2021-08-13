@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-from xarray.core.utils import to_0d_object_array
+#from xarray.core.utils import to_0d_object_array
 import pygplates
 
 import numpy as np
