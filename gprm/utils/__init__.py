@@ -6,7 +6,7 @@ from . import pmag
 from . import platetree
 from . import geometry
 from . import raster
-from . import velocity_tools
+from . import vector
 #from . import wrapping_tools
 from . import fileio
 from . import spatial
