@@ -83,3 +83,25 @@ def get_velocities(rotation_model,topology_features,time,velocity_domain_feature
         pt_lat.append(pt.to_lat_lon()[0])
 
     return pt_lat,pt_lon,pt_vel1,pt_vel2,plate_ids
+
+
+
+def reconstruct_vector_points(point_tuples, vector_tuples, point_rotation):
+    # given lists of points and vectors, a rotation pole, returns 
+    # a list of reconstructed points and vector directions
+   
+    if len(point_tuples) != len(vector_tuples):
+        raise ValueError('expected same number of points and vectors')
+        
+    reconstructed_points = [point_rotation * pygplates.PointOnSphere(point_tuple) for point_tuple in point_tuples]
+   
+    reconstructed_vectors = [point_rotation * pygplates.LocalCartesian.convert_from_magnitude_azimuth_inclination_to_geocentric(point_tuple, vector_tuple) for (point_tuple,vector_tuple) in zip(point_tuples,vector_tuples)]
+   
+    reconstructed_vector_magnitude_azimuth_inclinations = pygplates.LocalCartesian.convert_from_geocentric_to_magnitude_azimuth_inclination(reconstructed_points,
+                                                                                                                                            reconstructed_vectors)
+                                                                                                                                            
+    return (
+        [reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points],
+        reconstructed_vector_magnitude_azimuth_inclinations)
+
+
