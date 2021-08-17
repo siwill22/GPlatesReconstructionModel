@@ -313,6 +313,47 @@ class ReconstructionModel(object):
 
 
 
+    def reconstruct_vector():
+
+        return
+
+
+
+    def assign_plate_ids(self, features, polygons='static', copy_valid_times=False):
+        """
+        assign plate ids to a data set using polygons from the ReconstructionModel 
+        """
+        if polygons=='continents':
+            partitioning_polygon_features = self.continent_polygons
+        elif polygons=='coastlines':
+            partitioning_polygon_features = self.coastlines
+        else:
+            partitioning_polygon_features = self.static_polygons
+        if not partitioning_polygon_features:
+            raise ValueError('No polygons found for partitioning')
+
+        if isinstance(features, pygplates.FeatureCollection):
+            if copy_valid_times:
+                properties_to_copy = [pygplates.PartitionProperty.reconstruction_plate_id,
+                                      pygplates.PartitionProperty.valid_time_period]
+            else:
+                properties_to_copy = [pygplates.PartitionProperty.reconstruction_plate_id]
+            return pygplates.partition_into_plates(partitioning_polygon_features,
+                                                   self.rotation_model,
+                                                   features,
+                                                   properties_to_copy=properties_to_copy)
+
+        elif isinstance(features, gpd.GeoDataFrame):
+
+            # TODO handle cases where static polygons are spread across multiple feature collections
+            polygon_gdf = utils.create_gpml.gpml2gdf(pygplates.FeatureCollection(partitioning_polygon_features[0]))
+            # TODO handle the FROMAGE and TOAGE
+            if copy_valid_times:
+                polygon_gdf = polygon_gdf[['geometry', 'PLATEID1', 'FROMAGE', 'TOAGE']]
+            else:
+                polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
+
+            return gpd.overlay(features, polygon_gdf, how='intersection', keep_geom_type=False)
 
 
 
