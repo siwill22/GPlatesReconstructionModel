@@ -3,7 +3,8 @@ import numpy as np
 import geopandas as gpd
 import pygmt
 from .create_gpml import geometries_to_geodataframe, geodataframe_to_geometries
-#import litho1pt0 as litho
+from shapely.geometry import LineString, Polygon
+# import litho1pt0 as litho
 
 
 def find_deforming_mesh_geometry(polygons, name):
@@ -90,10 +91,15 @@ def get_crustal_thickness_points(points, grid=None, top_name='CRUST1-TOP', botto
 
 
 def topological_reconstruction(topological_model, points, reconstruction_time, 
-                               initial_time=0, final_time=None, initial_scalars=None):
+                               initial_time=0, final_time=None, initial_scalars=None,
+                               return_inactive_points=True, deactivate_points=None):
 
     if not final_time:
         final_time = reconstruction_time
+
+    if deactivate_points:
+        deactivate_points = pygplates.ReconstructedGeometryTimeSpan.DefaultDeactivatePoints(
+            deactivate_points_that_fall_outside_a_network = True)
         
     # TODO determine default behaviour for optional arguments
     time_spans = topological_model.reconstruct_geometry(
@@ -102,25 +108,86 @@ def topological_reconstruction(topological_model, points, reconstruction_time,
         oldest_time=final_time,
         youngest_time=initial_time,
         initial_scalars=initial_scalars,
-        # All our points are on continental crust so we keep them active through time (ie, never deactivate them)...
-        deactivate_points = pygplates.ReconstructedGeometryTimeSpan.DefaultDeactivatePoints(
-            deactivate_points_that_fall_outside_a_network = True))
+        deactivate_points = deactivate_points)
 
-    reconstructed_points = time_spans.get_geometry_points(reconstruction_time, return_inactive_points=False)
-    #def_pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
+    reconstructed_points = time_spans.get_geometry_points(reconstruction_time, return_inactive_points=return_inactive_points)
 
     #TODO iterate over scalar values and get reconstructed value
 
+    #TODO for cases where this could lead to an array of inconsistent length - maybe should allow points to be 'None'??
+    valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
+    pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
 
-def geodataframe_topological_reconstruction():
-
-    return
+    return pts, valid_index
 
 
-def feature_collection_topological_reconstruction():
+def geodataframe_topological_reconstruction(gdf, topological_model, 
+                                            reconstruction_time, initial_time=0, final_time=None,
+                                            deactivate_points_that_fall_outside_a_network=True):
 
+    # Given a geodataframe, will reconstruct using a topological model to a given reconstruction time    
+    if not final_time:
+        final_time = reconstruction_time
+        
+    # Preprocessing:
+    gdf = gdf[gdf.geometry.is_valid]   # remove invalid geometries
+    if all([item in gdf.columns for item in ['FROMAGE','TOAGE']]):
+        gdf = gdf[(gdf.FROMAGE>=reconstruction_time) & (gdf.TOAGE<=reconstruction_time)]   # select points valid at reconstruction time
+    gdf = gdf.explode()   # multipart to singlepart
+    gdf.reset_index(inplace=True)   # reset index
     
+     
+    # It is quicker to reconstruct features with just one call to the topological model, but we need 
+    # to check that this is possible for the input dataframe
+    if len(gdf.geom_type.unique())==1 and gdf.geom_type.unique()[0]=='Point':  
 
-    return
+        # Should work for points, but for polygon/polyline need to iterate over each feature 
+        geometry_points = [(lat,lon) for lat,lon in zip(gdf.geometry.y,gdf.geometry.x)]
+
+        (pts, 
+         valid_index) = topological_reconstruction(topological_model, geometry_points, reconstruction_time, 
+                                                   initial_time, final_time)
+        
+        reconstructed_gdf = gdf.iloc[valid_index]
+        reconstructed_gdf = reconstructed_gdf.set_geometry(gpd.points_from_xy(pts[1], pts[0]))
+
+    # For all polylines and polygons, and points treated as individual features, we reconstruct by iterating over features
+    else:
+        
+        reconstructed_gdf = gdf.copy()  #gpd.GeoDataFrame(columns=gdf.columns)
+        
+        for i,feature in gdf.iterrows():
+            
+            # Point features not handled yet
+            if feature.geometry.geom_type in ['LineString']:
+                geometry_points = [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], feature.geometry.xy[0])]
+            elif feature.geometry.geom_type in ['Polygon']:
+                geometry_points = [(lat,lon) for lat,lon in zip(feature.geometry.exterior.coords.xy[1], 
+                                                                feature.geometry.exterior.coords.xy[0])]
+            
+            # TODO add option to tesselate features??
+
+            (pts, 
+             valid_index) = topological_reconstruction(topological_model, geometry_points, reconstruction_time, 
+                                                  initial_time, final_time)
+            
+            # TODO put something in here to deal with cases where the whole geometry has become invalid
+            # 
+            if feature.geometry.geom_type in ['LineString']:
+                geom = LineString([tuple(coord) for coord in zip(pts[1], pts[0])])
+            elif feature.geometry.geom_type in ['Polygon']:
+                geom = Polygon([tuple(coord) for coord in zip(pts[1], pts[0])])
+            #else:
+            #    geom = Point(tuple(pts[1], pts[0]))
+            reconstructed_gdf.loc[i, 'geometry'] = geom
+            
+    return reconstructed_gdf
+
+
+
+#def feature_collection_topological_reconstruction():
+#
+#    
+#    return
 
 
