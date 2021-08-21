@@ -123,6 +123,7 @@ def topological_reconstruction(topological_model, points, reconstruction_time,
 
 def geodataframe_topological_reconstruction(gdf, topological_model, 
                                             reconstruction_time, initial_time=0, final_time=None,
+                                            return_inactive_points=True,
                                             deactivate_points_that_fall_outside_a_network=True):
 
     # Given a geodataframe, will reconstruct using a topological model to a given reconstruction time    
@@ -146,7 +147,9 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
 
         (pts, 
          valid_index) = topological_reconstruction(topological_model, geometry_points, reconstruction_time, 
-                                                   initial_time, final_time)
+                                                   initial_time, final_time, 
+                                                   return_inactive_points=return_inactive_points,
+                                                   deactivate_points_that_fall_outside_a_network=deactivate_points_that_fall_outside_a_network)
         
         reconstructed_gdf = gdf.iloc[valid_index]
         reconstructed_gdf = reconstructed_gdf.set_geometry(gpd.points_from_xy(pts[1], pts[0]))
@@ -154,7 +157,7 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
     # For all polylines and polygons, and points treated as individual features, we reconstruct by iterating over features
     else:
         
-        reconstructed_gdf = gdf.copy()  #gpd.GeoDataFrame(columns=gdf.columns)
+        reconstructed_gdf = gdf.copy()
         
         for i,feature in gdf.iterrows():
             
@@ -169,7 +172,7 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
 
             (pts, 
              valid_index) = topological_reconstruction(topological_model, geometry_points, reconstruction_time, 
-                                                  initial_time, final_time)
+                                                       initial_time, final_time)
             
             # TODO put something in here to deal with cases where the whole geometry has become invalid
             # 
