@@ -27,3 +27,4 @@ gprm/.ipynb_checkpoints/*
 doc/_build/*
 doc/_examples/*
 gprm/.vscode/settings.json
+test_notebooks/tmp.gmt
