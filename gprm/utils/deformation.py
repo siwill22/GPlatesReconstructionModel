@@ -92,14 +92,18 @@ def get_crustal_thickness_points(points, grid=None, top_name='CRUST1-TOP', botto
 
 def topological_reconstruction(topological_model, points, reconstruction_time, 
                                initial_time=0, final_time=None, initial_scalars=None,
-                               return_inactive_points=True, deactivate_points=None):
+                               return_inactive_points=True, deactivate_points=True):
 
     if not final_time:
         final_time = reconstruction_time
 
-    if deactivate_points:
+    # If deactivate points is a boolean, we use it with the default thresholds
+    if deactivate_points is not None:
         deactivate_points = pygplates.ReconstructedGeometryTimeSpan.DefaultDeactivatePoints(
-            deactivate_points_that_fall_outside_a_network = True)
+            threshold_velocity_delta=0.7, 
+            threshold_distance_to_boundary=10,
+            deactivate_points_that_fall_outside_a_network = deactivate_points)
+
         
     # TODO determine default behaviour for optional arguments
     time_spans = topological_model.reconstruct_geometry(
@@ -165,6 +169,7 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
             if feature.geometry.geom_type in ['LineString']:
                 geometry_points = [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], feature.geometry.xy[0])]
             elif feature.geometry.geom_type in ['Polygon']:
+                # clearly this isn't handling interior rings
                 geometry_points = [(lat,lon) for lat,lon in zip(feature.geometry.exterior.coords.xy[1], 
                                                                 feature.geometry.exterior.coords.xy[0])]
             
