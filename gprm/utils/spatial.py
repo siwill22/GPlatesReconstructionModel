@@ -4,12 +4,13 @@ from ptt.utils import points_spatial_tree
 from ptt.utils.proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
 import numpy as np
-from skimage import measure
 
 
 def merge_polygons(polygons,rotation_model,
                    reconstruction_time=0,sampling=1.,area_threshold=None,filename=None,
                    return_raster=False):
+
+    from skimage import measure
 
     multipoints = create_gpml_regular_long_lat_mesh(sampling)
     grid_dims = (int(180/sampling)+1,int(360/sampling)+1)

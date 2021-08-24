@@ -7,6 +7,12 @@ from shapely.geometry import LineString, Polygon
 # import litho1pt0 as litho
 
 
+DEFAULT_COLLISION_PARAMETERS = (0.7, 10)
+DEFAULT_RECONSTRUCTION_TIME_INCREMENT = 1.
+DEFAULT_DEACTIVATE_POINTS = True
+DEFAULT_RETURN_INACTIVE_POINTS = True
+
+
 def find_deforming_mesh_geometry(polygons, name):
     for polygon in polygons:
         if polygon.get_feature().get_name() == name:
@@ -46,7 +52,8 @@ def create_circles(centre_points, circle_radius_degrees=0.5, polygon=None):
     return circle_list
 
     
-def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90], along_line_point_density=0.1, polygon=None):
+def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90], 
+                     along_line_point_density=0.1, polygon=None):
     # create a latitude-longitude graticule, in the form of line geometries along each meridian and parallel 
     # optionally specify the graticule spacing, extent on the globe, sampling of the vertices along each line
     # optionally clip the graticule to a user-provided polygon geometry
@@ -66,7 +73,9 @@ def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90], alon
     return graticule_lines
 
 
-def get_crustal_thickness_points(points, grid=None, top_name='CRUST1-TOP', bottom_name='CRUST3-BOTTOM'):
+def get_crustal_thickness_points(points, grid=None, 
+                                 top_name='CRUST1-TOP', 
+                                 bottom_name='CRUST3-BOTTOM'):
     
     # if no grid is provided, we take the layer thickness from litho1.0
     if not grid:
@@ -90,34 +99,42 @@ def get_crustal_thickness_points(points, grid=None, top_name='CRUST1-TOP', botto
         return np.array(layer_thickness['z'])
 
 
-def topological_reconstruction(topological_model, points, reconstruction_time, 
-                               initial_time=0, final_time=None, initial_scalars=None,
-                               return_inactive_points=True, deactivate_points=True):
+def topological_reconstruction(topological_model, points, 
+                               reconstruction_time, 
+                               initial_time=0., 
+                               oldest_time=None, 
+                               youngest_time=0., 
+                               time_increment=DEFAULT_RECONSTRUCTION_TIME_INCREMENT,
+                               initial_scalars=None, 
+                               return_inactive_points=DEFAULT_RETURN_INACTIVE_POINTS, 
+                               deactivate_points=DEFAULT_DEACTIVATE_POINTS, 
+                               collision_parameters=DEFAULT_COLLISION_PARAMETERS):
 
-    if not final_time:
-        final_time = reconstruction_time
+    if not oldest_time:
+        oldest_time = reconstruction_time
 
     # If deactivate points is a boolean, we use it with the default thresholds
     if deactivate_points is not None:
         deactivate_points = pygplates.ReconstructedGeometryTimeSpan.DefaultDeactivatePoints(
-            threshold_velocity_delta=0.7, 
-            threshold_distance_to_boundary=10,
+            threshold_velocity_delta=collision_parameters[0], 
+            threshold_distance_to_boundary=collision_parameters[1],
             deactivate_points_that_fall_outside_a_network = deactivate_points)
 
-        
     # TODO determine default behaviour for optional arguments
     time_spans = topological_model.reconstruct_geometry(
         points,
         initial_time=initial_time,
-        oldest_time=final_time,
-        youngest_time=initial_time,
+        oldest_time=oldest_time,
+        youngest_time=youngest_time,
         initial_scalars=initial_scalars,
+        time_increment=time_increment,
         deactivate_points = deactivate_points)
 
     reconstructed_points = time_spans.get_geometry_points(reconstruction_time, return_inactive_points=return_inactive_points)
 
     #TODO iterate over scalar values and get reconstructed value
 
+    #print(points,reconstructed_points)
     #TODO for cases where this could lead to an array of inconsistent length - maybe should allow points to be 'None'??
     valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
     pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
@@ -126,14 +143,19 @@ def topological_reconstruction(topological_model, points, reconstruction_time,
 
 
 def geodataframe_topological_reconstruction(gdf, topological_model, 
-                                            reconstruction_time, initial_time=0, final_time=None,
-                                            return_inactive_points=True,
-                                            deactivate_points_that_fall_outside_a_network=True):
+                                            reconstruction_time, 
+                                            initial_time=0, 
+                                            oldest_time=None,
+                                            youngest_time=0., 
+                                            time_increment=DEFAULT_RECONSTRUCTION_TIME_INCREMENT,
+                                            return_inactive_points=DEFAULT_RETURN_INACTIVE_POINTS, 
+                                            deactivate_points=DEFAULT_DEACTIVATE_POINTS):
 
-    # Given a geodataframe, will reconstruct using a topological model to a given reconstruction time    
-    if not final_time:
-        final_time = reconstruction_time
-        
+    # Given a geodataframe, will reconstruct using a topological model to a given reconstruction time   
+    # TODO check if this is the default behaviour anyway??? 
+    if not oldest_time:
+        oldest_time = reconstruction_time
+    
     # Preprocessing:
     gdf = gdf[gdf.geometry.is_valid]   # remove invalid geometries
     if all([item in gdf.columns for item in ['FROMAGE','TOAGE']]):
@@ -151,9 +173,9 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
 
         (pts, 
          valid_index) = topological_reconstruction(topological_model, geometry_points, reconstruction_time, 
-                                                   initial_time, final_time, 
+                                                   initial_time, oldest_time, youngest_time, time_increment,
                                                    return_inactive_points=return_inactive_points,
-                                                   deactivate_points_that_fall_outside_a_network=deactivate_points_that_fall_outside_a_network)
+                                                   deactivate_points=deactivate_points)
         
         reconstructed_gdf = gdf.iloc[valid_index]
         reconstructed_gdf = reconstructed_gdf.set_geometry(gpd.points_from_xy(pts[1], pts[0]))
@@ -177,7 +199,9 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
 
             (pts, 
              valid_index) = topological_reconstruction(topological_model, geometry_points, reconstruction_time, 
-                                                       initial_time, final_time)
+                                                       initial_time, oldest_time, youngest_time, time_increment,
+                                                       return_inactive_points=return_inactive_points,
+                                                       deactivate_points=deactivate_points)
             
             # TODO put something in here to deal with cases where the whole geometry has become invalid
             # 
