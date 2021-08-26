@@ -33,6 +33,7 @@ def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=
         df = _pd.read_csv(fname, usecols=usecols, engine='python', encoding="ISO-8859-1")
         if remove_invalid_coordinates:
             df = df.dropna(subset=['longitude','latitude'])
+            df.reset_index(inplace=True)
         df.rename(columns={'longitude':'Longitude', 'latitude':'Latitude'}, inplace=True)
         return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 

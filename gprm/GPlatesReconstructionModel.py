@@ -22,10 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+#from xarray.core.utils import to_0d_object_array
 import pygplates
 
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import os
 from io import StringIO
@@ -37,7 +39,7 @@ import xarray as xr
 import gprm.utils as utils
 
 from ptt.utils.proximity_query import find_closest_geometries_to_points
-from gprm.utils.proximity import distance_between_reconstructed_points_and_features
+from gprm.utils.geometry import distance_between_reconstructed_points_and_features
 
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
@@ -267,6 +269,93 @@ class ReconstructionModel(object):
         rotation_features = utils.rotation.generate_rotation_feature(self.rotation_files)
 
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
+
+
+    def construct_topological_model(self, anchor_plate_id=0,
+                          default_resolve_topology_parameters=pygplates.ResolveTopologyParameters(enable_strain_rate_clamping=True)):
+
+        # tell the object to generate a TopologicalModel object based on the already
+        # assigned rotations and topologies
+        self.topological_model = pygplates.TopologicalModel(
+            self.dynamic_polygons,
+            self.rotation_model,
+            anchor_plate_id=anchor_plate_id,
+            # Enable strain rate clamping to better control crustal stretching factors...
+            default_resolve_topology_parameters=default_resolve_topology_parameters)
+
+
+    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
+
+        if not topological:
+            if isinstance(features, pygplates.FeatureCollection):
+
+                # TODO assign plate ids if not available already (or option selected)
+
+                reconstructed_features = []
+                pygplates.reconstruct(features, self.rotation_model, reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
+                return reconstructed_features
+
+            elif isinstance(features, gpd.GeoDataFrame):
+
+                # TODO
+
+                # select only the features that are valid at reconstruction time?
+                # convert geometries to gpml (features?)
+                # reconstruct
+                # somehow map reconstructed features back to original attribute table
+                return
+
+        else:
+             
+             #TODO perform a topological reconstruction
+
+             return
+
+
+
+    def reconstruct_vector():
+
+        return
+
+
+
+    def assign_plate_ids(self, features, polygons='static', copy_valid_times=False):
+        """
+        assign plate ids to a data set using polygons from the ReconstructionModel 
+        """
+        if polygons=='continents':
+            partitioning_polygon_features = self.continent_polygons
+        elif polygons=='coastlines':
+            partitioning_polygon_features = self.coastlines
+        else:
+            partitioning_polygon_features = self.static_polygons
+        if not partitioning_polygon_features:
+            raise ValueError('No polygons found for partitioning')
+
+        if isinstance(features, pygplates.FeatureCollection):
+            if copy_valid_times:
+                properties_to_copy = [pygplates.PartitionProperty.reconstruction_plate_id,
+                                      pygplates.PartitionProperty.valid_time_period]
+            else:
+                properties_to_copy = [pygplates.PartitionProperty.reconstruction_plate_id]
+            return pygplates.partition_into_plates(partitioning_polygon_features,
+                                                   self.rotation_model,
+                                                   features,
+                                                   properties_to_copy=properties_to_copy)
+
+        elif isinstance(features, gpd.GeoDataFrame):
+
+            # TODO handle cases where static polygons are spread across multiple feature collections
+            polygon_gdf = utils.create_gpml.gpml2gdf(pygplates.FeatureCollection(partitioning_polygon_features[0]))
+            # TODO handle the FROMAGE and TOAGE
+            if copy_valid_times:
+                polygon_gdf = polygon_gdf[['geometry', 'PLATEID1', 'FROMAGE', 'TOAGE']]
+            else:
+                polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
+
+            return gpd.overlay(features, polygon_gdf, how='intersection', keep_geom_type=False)
+
+
 
 
 
@@ -595,7 +684,21 @@ class PlateSnapshot(object):
 
         os.unlink(plot_file.name)
 
-    #TODO plot polygpns
+    #TODO plot polygons
+    def plot_deformation_zones(self, fig, pen='0.5p,gray10', color='p14+b+r300', **kwargs):
+
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file.close()
+
+        features = []
+        for topology in self.resolved_topologies:
+            if isinstance(topology, pygplates.ResolvedTopologicalNetwork):
+                features.append(topology.get_resolved_feature())
+
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, pen=pen, color=color, **kwargs)
+
+        os.unlink(plot_file.name)
 
 
 class MotionPathFeature:

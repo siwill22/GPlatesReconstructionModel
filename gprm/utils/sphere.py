@@ -176,4 +176,3 @@ def groupby_healpix(df, equal_area_points, return_point_indices=True):
     else:
         return grouped_points
 
-

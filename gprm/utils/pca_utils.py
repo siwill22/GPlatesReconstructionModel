@@ -178,6 +178,7 @@ def grdcontour2feature(grdfile,clevel,return_polygons=True):
     call_system_command(['gmt',
                          'grdcontour',
                          grdfile,
+                         '-Rd',
                          '-C+%0.8f' % clevel,
                          '-S4',
                          '-Dcontour_%c.txt'])
