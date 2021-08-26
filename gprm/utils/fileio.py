@@ -54,7 +54,7 @@ def load_netcdf(grdfile,z_field_name='z'):
     return gridX,gridY,gridZ
 
 
-def write_netcdf_grid(filename, x, y, z, xname='x', yname='y', zname='z', format='NETCDF4'):
+def write_netcdf_grid(filename, x, y, z, xname='x', yname='y', zname='z', format='NETCDF4_CLASSIC'):
     '''
     write grid to a netcdf file
     '''
