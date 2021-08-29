@@ -10,6 +10,7 @@ import os as _os
 def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=True):
     '''
     Load the geochemistry database of Gard et al (2019)
+    doi: https://doi.org/10.5194/essd-11-1553-2019
 
     Options:
     usecols: optionally define a list of columns to load (rather than the full table) [default=None]
@@ -26,6 +27,13 @@ def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=
         processor=_Unzip(),
     )[0]
     
+    if usecols:
+        # TODO if 'Long and Lat fields are not included, the attempt to create a gdf will throw an error - fix this
+        usecols = ['longitude' if x=='Longitude' else x for x in usecols]
+        usecols = ['latitude' if x=='Latitude' else x for x in usecols]
+
+    # TODO include some shorthands for the usecols, e.g. 'Major', 'REE', etc
+
     if return_column_names:
         return _pd.read_csv(fname, index_col=0, nrows=0, engine='python').columns.tolist()
 
@@ -42,6 +50,7 @@ def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=
 def BaseMetalDeposits(deposit_type, keep_unknown_age_samples=False):
     '''
     Load the base metal deposit compilation from Hoggard et al (2020)
+    doi: https://doi.org/10.1038/s41561-020-0593-2
 
     deposit_type must be one of: 'PbZn-CD', 'PbZn-MVT', 'Cu-sed', 'Magmatic Ni', 'VMS', 'Cu-por', 'IOCG'
     '''
