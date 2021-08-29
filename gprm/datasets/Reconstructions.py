@@ -17,9 +17,12 @@ import os as _os
 
 def fetch_CaoToyRodinia(load=True, model_case='NNR'):
     '''
-    Load Toy Billion-year reconstructions from Cao et al (2020), doi:
+    Load Toy Billion-year reconstructions from Cao et al (2020), 
+    doi:
 
+    model_case options: 'NNR', 'OV', 'SSL'
     '''
+    
     fnames = _retrieve(
         url="https://zenodo.org/record/3854549/files/1000Myr_synthetic_tectonic_reconstructions.zip?download=1",
         known_hash="md5:b7ea40c77826ef5d5e3b99affa3e9d66",  
