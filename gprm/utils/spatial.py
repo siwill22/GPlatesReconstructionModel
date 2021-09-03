@@ -209,7 +209,7 @@ def get_merged_cob_terrane_polygons(COBterrane_file, rotation_model, reconstruct
 
     cobter = force_polygon_geometries(polygon_features)
 
-    cf = merge_polygons(cobter, rotation_model, time=reconstruction_time, sampling=sampling)
+    cf = merge_polygons(cobter, rotation_model, reconstruction_time=reconstruction_time, sampling=sampling)
     
     if area_threshold is not None:
         sieve_polygons = polygon_area_threshold(cf, area_threshold)
@@ -227,7 +227,7 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
 
     cobter = force_polygon_geometries(polygon_features)
 
-    mask = merge_polygons(cobter, rotation_model, time=reconstruction_time,
+    mask = merge_polygons(cobter, rotation_model, reconstruction_time=reconstruction_time,
                              sampling=sampling, return_raster=True)
     
     return mask
