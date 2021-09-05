@@ -6,16 +6,18 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 import xarray as xr
 
-from . import paleogeography_tweening as pgt
+#from . import paleogeography_tweening as pgt
 
-from .proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh
-from . import points_in_polygons
 from .sphere import sampleOnSphere
-from . import points_spatial_tree
+from . import paleogeography as pg
 from .fileio import load_netcdf
-from .spatial import polygon_area_threshold, merge_polygons
+from .spatial import polygon_area_threshold, merge_polygons, get_merged_cob_terrane_polygons
+from .fileio import write_xyz_file
 
+from ptt.utils.proximity_query import *
+from ptt.utils import points_in_polygons
+from ptt.utils import points_spatial_tree
 from ptt.utils.call_system_command import call_system_command
 import tempfile
 
@@ -61,19 +63,19 @@ def add_reconstructed_points_to_xyz(points_file,rotation_model,reconstruction_ti
 
 # function to facilitate the smoothing of topography
 # at the edge of mountain range polygons
-def get_distance_to_mountain_edge(point_array,reconstruction_basedir,rotation_model,time,area_threshold):
+def get_distance_to_mountain_edge(point_array,reconstruction_basedir,rotation_model,reconstruction_time,area_threshold):
     
     distance_threshold_radians=None
     env_list = ['m']
 
-    if time==0:
+    if reconstruction_time==0:
         pg_dir = './present_day_paleogeography.gmt'
         pg_features = pg.load_paleogeography(pg_dir,env_list,single_file=True,env_field='Layer')
     else:
-        pg_dir = '%s/PresentDay_Paleogeog_Matthews2016_%dMa/' % (reconstruction_basedir,time)
+        pg_dir = '%s/PresentDay_Paleogeog_Matthews2016_%dMa/' % (reconstruction_basedir,reconstruction_time)
         pg_features = pg.load_paleogeography(pg_dir,env_list)
 
-    cf = merge_polygons(pg_features, rotation_model, time=time, sampling=0.25)
+    cf = merge_polygons(pg_features, rotation_model, reconstruction_time=reconstruction_time, sampling=0.25)
     sieve_polygons_t1 = polygon_area_threshold(cf, area_threshold)
 
     polygons_as_list = []
@@ -84,7 +86,7 @@ def get_distance_to_mountain_edge(point_array,reconstruction_basedir,rotation_mo
                                              polygons_as_list,
                                              distance_threshold_radians = distance_threshold_radians)
     
-    distance_to_polygon_boundary = np.degrees(np.array(zip(*res1)[0]))
+    distance_to_polygon_boundary = np.degrees(np.array(list(zip(*res1))[0]))
 
     # Make a copy of list of distances.
     distance_to_polygon = list(distance_to_polygon_boundary)
@@ -361,8 +363,8 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
         paleodepth = pg.age2depth(ageZ,model='GDH1')
 
         # get index for grid nodes where age grid is nan, replace values with topography/shallow bathymetry
-        land_or_ocean_precedence = 'land'
-        if land_or_ocean_precedence is 'ocean':
+        #land_or_ocean_precedence = 'land'
+        if land_or_ocean_precedence == 'ocean':
             not_bathy_index = np.isnan(paleodepth)
             paleodepth[not_bathy_index] = topoZ[not_bathy_index]
         else:
