@@ -338,10 +338,11 @@ class ReconstructionModel(object):
                                       pygplates.PartitionProperty.valid_time_period]
             else:
                 properties_to_copy = [pygplates.PartitionProperty.reconstruction_plate_id]
-            return pygplates.partition_into_plates(partitioning_polygon_features,
+            return pygplates.FeatureCollection(
+                pygplates.partition_into_plates(partitioning_polygon_features,
                                                    self.rotation_model,
                                                    features,
-                                                   properties_to_copy=properties_to_copy)
+                                                   properties_to_copy=properties_to_copy))
 
         elif isinstance(features, gpd.GeoDataFrame):
 
