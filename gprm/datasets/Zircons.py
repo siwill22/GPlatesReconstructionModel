@@ -81,7 +81,8 @@ def load_Hf():
 def get_igneous_samples(df_SampleDetails,df_Data):       
     # igneous samples
     df_IgneousSamples = df_SampleDetails[df_SampleDetails['Class-1 Rock Type'].str.contains('igneous')]
-    IgneousZircons = _pd.merge(df_IgneousSamples,df_Data,on='Sample Key')
+    df = _pd.merge(df_IgneousSamples,df_Data,on='Sample Key')
+    IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
     return IgneousZircons
 
@@ -89,7 +90,8 @@ def get_igneous_samples(df_SampleDetails,df_Data):
 def get_sedimentary_samples(df_SampleDetails,df_Data):
     # sedimentary samples
     df_SamplesWithDepositionalAge = df_SampleDetails.dropna(subset=['Est_Depos_Age_Ma'])
-    SedimentaryZircons = _pd.merge(df_SamplesWithDepositionalAge,df_Data,on='Sample Key')
+    df = _pd.merge(df_SamplesWithDepositionalAge,df_Data,on='Sample Key')
+    SedimentaryZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
     return SedimentaryZircons
 
