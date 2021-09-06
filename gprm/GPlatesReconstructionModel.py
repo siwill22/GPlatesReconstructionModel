@@ -271,17 +271,18 @@ class ReconstructionModel(object):
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
 
 
-    def construct_topological_model(self, anchor_plate_id=0,
-                          default_resolve_topology_parameters=pygplates.ResolveTopologyParameters(enable_strain_rate_clamping=True)):
+    if pygplates.Version.get_imported_version() >= pygplates.Version(32):
+        def construct_topological_model(self, anchor_plate_id=0,
+                            default_resolve_topology_parameters=pygplates.ResolveTopologyParameters(enable_strain_rate_clamping=True)):
 
-        # tell the object to generate a TopologicalModel object based on the already
-        # assigned rotations and topologies
-        self.topological_model = pygplates.TopologicalModel(
-            self.dynamic_polygons,
-            self.rotation_model,
-            anchor_plate_id=anchor_plate_id,
-            # Enable strain rate clamping to better control crustal stretching factors...
-            default_resolve_topology_parameters=default_resolve_topology_parameters)
+            # tell the object to generate a TopologicalModel object based on the already
+            # assigned rotations and topologies
+            self.topological_model = pygplates.TopologicalModel(
+                self.dynamic_polygons,
+                self.rotation_model,
+                anchor_plate_id=anchor_plate_id,
+                # Enable strain rate clamping to better control crustal stretching factors...
+                default_resolve_topology_parameters=default_resolve_topology_parameters)
 
 
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
