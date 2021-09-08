@@ -251,6 +251,8 @@ class ReconstructionModel(object):
                               reconstructed_polygons,
                               reconstruction_time, anchor_plate_id=anchor_plate_id)
 
+        # TODO detect if reconstructed_polygons is empty, return None if so?
+
         return ReconstructedPolygonSnapshot(reconstructed_polygons,
                                             self.rotation_model,
                                             reconstruction_time,
@@ -390,6 +392,10 @@ class ReconstructedPolygonSnapshot(object):
                      pen=pen, color=color, **kwargs)
 
     def plot(self, fig, pen='black', color='wheat', **kwargs):
+
+        if not self.reconstructed_polygons:
+            print('No polygons to plot')
+            return
 
         # plotting is generally faster if saved to temporary file
         plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
@@ -632,6 +638,10 @@ class PlateSnapshot(object):
                     resolved_boundary_segment.set_geometry(pygplates.PolylineOnSphere(resolved_boundary_segment.get_geometry().to_lat_lon_list()[::-1]))
                 features.append(resolved_boundary_segment)
         
+        if not features:
+            print('No subduction zones to plot')
+            return
+
         pygplates.FeatureCollection(features).write(plot_file.name)
         fig.plot(data = plot_file.name, color=color, style='f{:f}p/{:f}p+r+t'.format(float(gap), float(size)), **kwargs)
 
@@ -655,6 +665,10 @@ class PlateSnapshot(object):
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
                 features.append(resolved_boundary_segment)
+
+        if not features:
+            print('No mid-ocean ridges to plot')
+            return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
         fig.plot(data = plot_file.name, pen=pen, **kwargs)
@@ -680,6 +694,10 @@ class PlateSnapshot(object):
         for resolved_boundary_segment in resolved_boundary_segments:
             if resolved_boundary_segment.get_geometry() is not None:
                 features.append(resolved_boundary_segment)
+        
+        if not features:
+            print('No plate boundaries to plot')
+            return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
         fig.plot(data = plot_file.name, pen=pen, **kwargs)
@@ -696,6 +714,10 @@ class PlateSnapshot(object):
         for topology in self.resolved_topologies:
             if isinstance(topology, pygplates.ResolvedTopologicalNetwork):
                 features.append(topology.get_resolved_feature())
+
+        if not features:
+            print('No deformation zones to plot')
+            return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
         fig.plot(data = plot_file.name, pen=pen, color=color, **kwargs)
