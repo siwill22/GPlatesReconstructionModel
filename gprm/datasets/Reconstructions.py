@@ -42,6 +42,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
 
     reconstruction_model.add_continent_polygons('{:s}/COBfile_1000_0_Toy_introversion.gpml'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/coastline_file_1000_250_new_valid_time.gpml'.format(dirname))
+    reconstruction_model.add_coastlines('{:s}/coastline_file_250_0_new_valid_time.gpml'.format(dirname))
 
     reconstruction_model.add_dynamic_polygons('{:s}/Global_EarthByte_Mesozoic-Cenozoic_plate_boundaries_2016_v5.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/TopologyBuildingBlocks_AREPS.gpml'.format(dirname))
