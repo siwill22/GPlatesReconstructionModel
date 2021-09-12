@@ -1,9 +1,12 @@
 import pygplates
 import numpy as np
+import pandas as pd
 import geopandas as gpd
+import xarray as xr
 import pygmt
 from .create_gpml import geometries_to_geodataframe, geodataframe_to_geometries
 from shapely.geometry import LineString, Polygon
+from .raster import xyz2grd
 # import litho1pt0 as litho
 
 
@@ -215,6 +218,31 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
             
     return reconstructed_gdf
 
+
+def raster_topological_reconstruction(grid, topological_model, reconstruction_time, reverse=True):
+    
+    XX,YY = np.meshgrid(grid.lon.data, grid.lat.data)
+
+    geometry_points = [(lat,lon) for lat,lon in zip(YY.flatten(),XX.flatten())]
+
+    if reverse:
+        pts, valid_index = topological_reconstruction(topological_model, geometry_points, 0., initial_time=reconstruction_time, oldest_time=reconstruction_time, 
+                                                      return_inactive_points=True, deactivate_points=False)
+
+        res = pygmt.grdtrack(grid=grid, 
+                             points=pd.DataFrame(data={'x':pts[1],'y':pts[0]}), newcolname='z')
+        x=XX.flatten()[valid_index] 
+        y=YY.flatten()[valid_index]
+
+        resg = xyz2grd(x,y,np.array(res['z']),XX,YY)
+        
+        reconstructed_raster = xr.DataArray(resg, coords=[('lat',grid.lat.data), ('lon',grid.lon.data)], name='z')
+        
+        return reconstructed_raster
+
+    else:
+        print('Forward reconstruction not yet implemented')
+    # TODO implement the forward reconstruction case
 
 
 #def feature_collection_topological_reconstruction():
