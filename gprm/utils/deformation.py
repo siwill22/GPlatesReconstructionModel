@@ -16,17 +16,36 @@ DEFAULT_DEACTIVATE_POINTS = True
 DEFAULT_RETURN_INACTIVE_POINTS = True
 
 
-def find_deforming_mesh_geometry(polygons, name):
-    for polygon in polygons:
-        if polygon.get_feature().get_name() == name:
-            return polygon.get_resolved_geometry()
+def find_deforming_mesh_geometry(polygons, names):
+    """
+    Given a list of polygons and a name or list of names,
+    returns a list of polygons with names matching the list
+    """
+
+    if isinstance(names, str):
+        names = [names]
+
+    selected_polygons = []
+    for name in names:
+        for polygon in polygons:
+            if polygon.get_feature().get_name() == name:
+                selected_polygons.append(polygon.get_resolved_geometry())
+
+    return selected_polygons
 
 
-def points_within_mesh_geometry(pts, geom):
+def points_within_mesh_geometry(pts, mesh_geoms):
+    """
+    Given a list of point geometries and a list of polygon geometries,
+    returns a list of point geometries within the polygons
+    """
+
     pts_in_poly = []
-    for pt in pts.multipoint.get_points():
-        if geom.is_point_in_polygon(pt):
-            pts_in_poly.append(pt) 
+    for mesh_geom in mesh_geoms:
+        for pt in pts.multipoint.get_points():
+            if mesh_geom.is_point_in_polygon(pt):
+                pts_in_poly.append(pt) 
+
     return pts_in_poly
 
 
@@ -219,9 +238,23 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
     return reconstructed_gdf
 
 
-def raster_topological_reconstruction(grid, topological_model, reconstruction_time, reverse=True):
+def raster_topological_reconstruction(grid, topological_model, reconstruction_time, reverse=True,
+                                      region=None, spacing=1.):
+    """
+    Generate a reconstructed raster based on a topological reconstruction
     
-    XX,YY = np.meshgrid(grid.lon.data, grid.lat.data)
+    By default, the operation will use the input raster to determine the extent and sampling
+    of the output raster (Which would work for global grids).
+    Optionally, a different region and sampling for the output grid can be specified.
+    """
+    
+    if region:
+        coords = [('lat',np.arange(region[2],region[3]+spacing, spacing)), ('lon',np.arange(region[0],region[1]+spacing, spacing))]
+        XX,YY = np.meshgrid(np.arange(region[0],region[1]+spacing, spacing),
+                            np.arange(region[2],region[3]+spacing, spacing))
+    else:
+        coords = [('lat',grid.lat.data), ('lon',grid.lon.data)]
+        XX,YY = np.meshgrid(grid.lon.data, grid.lat.data)
 
     geometry_points = [(lat,lon) for lat,lon in zip(YY.flatten(),XX.flatten())]
 
@@ -236,7 +269,7 @@ def raster_topological_reconstruction(grid, topological_model, reconstruction_ti
 
         resg = xyz2grd(x,y,np.array(res['z']),XX,YY)
         
-        reconstructed_raster = xr.DataArray(resg, coords=[('lat',grid.lat.data), ('lon',grid.lon.data)], name='z')
+        reconstructed_raster = xr.DataArray(resg, coords=coords, name='z')
         
         return reconstructed_raster
 
