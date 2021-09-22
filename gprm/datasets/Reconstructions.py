@@ -406,3 +406,49 @@ def fetch_Young2019(load=True):
 
     return reconstruction_model
 
+def fetch_Scotese(load=True):
+    '''
+    Load 0-, doi:
+
+    '''
+    fnames = _retrieve(
+        url="https://static.cambridge.org/content/id/urn:cambridge.org:id:article:S0016756818000110/resource/name/S0016756818000110sup001.zip",
+        known_hash="sha256:e01b19cee7c65a011ca4c42f187aba0ec24c1a87b842e2061eab9d22dc52ca80",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(),
+    )
+
+    dirname = _os.path.split(fnames[0])[0]
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('Scotese2008')
+    reconstruction_model.add_rotation_model('{:s}/Rotation_models/Scotese_2008_Rotation.rot'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
+    
+    return reconstruction_model
+
+
+def fetch_Golonka(load=True):
+    '''
+    Load 0-, doi:
+
+    '''
+    fnames = _retrieve(
+        url="https://static.cambridge.org/content/id/urn:cambridge.org:id:article:S0016756818000110/resource/name/S0016756818000110sup001.zip",
+        known_hash="sha256:e01b19cee7c65a011ca4c42f187aba0ec24c1a87b842e2061eab9d22dc52ca80",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(),
+    )
+    
+    dirname = _os.path.split(fnames[0])[0]
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('Golonka2007')
+    reconstruction_model.add_rotation_model('{:s}/Rotation_models/Golonka_2007_Rotation.rot'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/Rotation_models/Golonka_2007_PresentDay_ContinentalPolygons.shp'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/Rotation_models/Golonka_2007_PresentDay_ContinentalPolygons.shp'.format(dirname))
+    
+    return reconstruction_model
