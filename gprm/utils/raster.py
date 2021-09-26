@@ -12,6 +12,10 @@ import scipy.interpolate as spi
 from scipy.interpolate.interpnd import _ndim_coords_from_arrays
 from scipy.spatial import cKDTree
 
+import pandas as pd
+import xarray as xr
+import pygmt
+
 
 def xyzfile_to_spatial_tree_of_points(xyzfile):
 
@@ -207,7 +211,13 @@ def reconstruct_raster(raster_class, static_polygons, rotation_model, time_from,
 
 
 def xyz2grd(point_lons,point_lats,point_zvals,grid_lons,grid_lats):
-# https://stackoverflow.com/questions/30655749/how-to-set-a-maximum-distance-between-points-for-interpolation-when-using-scipy
+    """
+    Taking as input lists/flat arrays of longitudes, latitudes, and z values - already on a regular
+    grid, convert to a 2D array containing the same values (suitable to be saved as netcdf for example)
+    """
+    # https://stackoverflow.com/questions/30655749/how-to-set-a-maximum-distance-between-points-for-interpolation-when-using-scipy
+    
+    # TODO change this to the pygmt implementation?
 
     if grid_lons.ndim == 1:
         grid_lons, grid_lats = np.meshgrid(grid_lons, grid_lats)
@@ -229,3 +239,44 @@ def xyz2grd(point_lons,point_lats,point_zvals,grid_lons,grid_lats):
     result[dists > grid_sampling/2.] = np.nan
 
     return result
+
+
+def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
+                    new_anchor_plate_id, old_anchor_plate_id=0,
+                    region=None, spacing=1.):
+    """
+    Given an xarray raster object or filename of a pygmt-compatible grid, derive a 
+    new raster with all values rotated into the frame of a different reference plate.
+    
+    Optionally, specify a new region and grid sampling (default is to take the same region
+    and grid sampling as the input)
+    """
+
+    if region:
+        coords = [('lat',np.arange(region[2],region[3]+spacing, spacing)), ('lon',np.arange(region[0],region[1]+spacing, spacing))]
+        XX,YY = np.meshgrid(np.arange(region[0],region[1]+spacing, spacing),
+                            np.arange(region[2],region[3]+spacing, spacing))
+    else:
+        coords = [('lat',grid.lat.data), ('lon',grid.lon.data)]
+        XX,YY = np.meshgrid(grid.lon.data, grid.lat.data)
+
+    mp = pygplates.MultiPointOnSphere(zip(YY.flatten().tolist(),XX.flatten().tolist()))
+
+    adjustment_rotation = reconstruction_model.rotation_model.get_rotation(reconstruction_time,
+                                                                           new_anchor_plate_id,
+                                                                           0,
+                                                                           old_anchor_plate_id)
+
+    multipoint_at_from_time = adjustment_rotation * mp
+
+    point_raster_values = pygmt.grdtrack(grid=grid, 
+                                         points=pd.DataFrame(data={'x':multipoint_at_from_time.to_lat_lon_array()[:,1],
+                                                                   'y':multipoint_at_from_time.to_lat_lon_array()[:,0]}), 
+                                        newcolname='z')
+
+    ds = xr.DataArray(np.array(point_raster_values['z']).reshape(XX.shape),
+                      coords=coords,
+                      name='z')
+
+    return ds
+
