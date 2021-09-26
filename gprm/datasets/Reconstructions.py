@@ -431,7 +431,7 @@ def fetch_Scotese(load=True):
 
 def fetch_Golonka(load=True):
     '''
-    Load 0-, doi:
+    Load 0-5XX Ma, doi:
 
     '''
     fnames = _retrieve(
@@ -451,3 +451,133 @@ def fetch_Golonka(load=True):
     reconstruction_model.add_static_polygons('{:s}/Rotation_models/Golonka_2007_PresentDay_ContinentalPolygons.shp'.format(dirname))
     
     return reconstruction_model
+
+
+def fetch_Clennett(load=True, model_case='M2019'):
+    """
+    7749aac19c2d07c80a2cd77ba6a9038c8911fa8804c1d4adb3c9da7cb635b691
+
+    model case must be either 'M2019' (default, version based on deforming model of Muller et al 2019)
+    or 'S2013' (rigid topological model based on Shephard et al, 2013)
+    """
+    if model_case=='M2019':
+        fnames = _retrieve(
+            url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Clennett_etal_2020_G3/Clennett_etal_2020_M2019.zip",
+            known_hash="sha256:1ad6a29ceb396b581930734b1f6e8409e52dc4e2ae9658156ac2dd732cb82ab8",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(),
+        )
+
+        #dirname = _os.path.split(fnames[0])[0]
+        dirname = '{:s}/Clennett_etal_2020_M2019/'.format(_os.path.split(fnames[0])[0])
+
+        # if downloading for first time, remove the unwanted MeshPoint files
+        if _os.path.isdir('{:s}/DeformingMeshPoints'.format(dirname)):
+            import shutil
+            shutil.rmtree('{:s}/DeformingMeshPoints'.format(dirname))
+
+        from gprm import ReconstructionModel as _ReconstructionModel
+        reconstruction_model = _ReconstructionModel('Clennett++M2019')
+        
+        reconstruction_model.add_rotation_model('{:s}/Global_250-0Ma_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/Clennett_etal_2020_Rotations.rot'.format(dirname))
+
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Alps_Mesh_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Andes_Flat_Slabs_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Andes_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Australia_Antarctica_Mesh_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Australia_North_Zealandia_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Eurasia_Arabia_Mesh_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/North_America_Flat_Slabs_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/North_America_Mesh_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/North_China_Mesh_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/South_Atlantic_Rotations_2019_v2.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/DeformingMeshes/Southeast_Asia_Rotations_2019_v2.rot'.format(dirname))
+
+        reconstruction_model.add_continent_polygons('{:s}/Clennett_etal_2020_Terranes.gpml'.format(dirname))
+        #reconstruction_model.add_static_polygons('{:s}/StaticGeometries/StaticPolygons/Global_EarthByte_GPlates_PresentDay_StaticPlatePolygons_2019_v1.shp'.format(dirname))
+        reconstruction_model.add_coastlines('{:s}/Clennett_etal_2020_Coastlines.gpml'.format(dirname))
+        
+        reconstruction_model.add_dynamic_polygons('{:s}/Clennett__etal_2020_NAm_boundaries.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/Clennett_etal_2020_Plates.gpml'.format(dirname))
+
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Alps_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Alps_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/America_Anyui_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/America_Anyui_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Andes_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Andes_Flat_Slabs_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Andes_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Arctic_Eurasia_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Australia_Antarctica_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Australia_Antarctica_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Australia_North_Zealandia_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Australia_North_Zealandia_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Baja_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Coral_Sea_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Coral_Sea_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/East_African_Rift_Deforming_Mesh_and_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/East-West_Gondwana_Deforming_Mesh_and_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Ellesmere__Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Eurasia_Arabia_Deforming_Mesh_and_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Greater_India_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Greater_India_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        #reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Inactive_Meshes_and_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/North_America_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/North_Atlantic_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/North_Atlantic_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/North_China_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/North_China_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Northern_Andes_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Northern_Andes_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Papua_New_Guinea_Deforming_Meshes_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Papua_New_Guinea_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Scotia_Deforming_Mesh_and_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Siberia_Eurasia_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Siberia_Eurasia_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/South_Atlantic_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/South_Atlantic_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/South_China_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/South_China_Sea_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/South_Zealandia_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/South_Zealandia_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Southeast_Asia_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Southeast_Asia_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/West_Antarctic_Zealandia_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/West_Antarctica_Zealandia_Mesh_Topologies_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Western_North_America_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Western_Tethys_Deforming_Mesh_2019_v2.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Western_Tethys_Tectonic_Boundary_Topologies_2019_v2.gpml'.format(dirname))
+
+        return reconstruction_model
+
+    elif model_case=='S2013':
+        fnames = _retrieve(
+            url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Clennett_etal_2020_G3/Clennett_etal_2020_S2013.zip",
+            known_hash="sha256:7749aac19c2d07c80a2cd77ba6a9038c8911fa8804c1d4adb3c9da7cb635b691",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(),
+        )
+
+        dirname = '{:s}/Clennett_etal_2020_S2013/'.format(_os.path.split(fnames[0])[0])
+
+        from gprm import ReconstructionModel as _ReconstructionModel
+        reconstruction_model = _ReconstructionModel('Clennett++S2013')
+        
+        reconstruction_model.add_rotation_model('{:s}/Clennett_etal_2020_Rotations.rot'.format(dirname))
+
+        reconstruction_model.add_continent_polygons('{:s}/Clennett_etal_2020_Terranes.gpml'.format(dirname))
+        reconstruction_model.add_coastlines('{:s}/Clennett_etal_2020_Coastlines.gpml'.format(dirname))
+        
+        reconstruction_model.add_dynamic_polygons('{:s}/Clennett__etal_2020_NAm_boundaries.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/Clennett_etal_2020_Plates.gpml'.format(dirname))
+
+        return reconstruction_model 
+
+    else:
+        ValueError('Unrecognised model name {}'.format(model_case))
+
+    
+    
