@@ -253,13 +253,13 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
     """
 
     # should be a better way to do this (ie pass the gridfile to grdtrack directly)
-    if not isinstance(grid, xarray.core.dataarray.DataArray):
+    if not isinstance(grid, xr.core.dataarray.DataArray):
         if os.path.isfile(grid):
             grid = xr.open_dataarray(grid)
         else:
             raise ValueError('Unrecognised input grid object: {}'.format(grid))
         
-
+    # Sort out the coordinates (move this to a generic function??)
     coord_keys = [key for key in grid.coords.keys()]
 
     if region:
@@ -270,6 +270,9 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
         coords = [('lat',grid.coords[coord_keys[0]].data), ('lon',grid.coords[coord_keys[1]].data)]
         XX,YY = np.meshgrid(grid.coords[coord_keys[1]].data, grid.coords[coord_keys[0]].data)
 
+    # us a multipoint as the basis for the raster coordinates. 
+    # multipoints vertices are the coordinates of the adjusted grid - then we unrotate them
+    # to the source reference frame, sample the grid and assign values to new raster
     mp = pygplates.MultiPointOnSphere(zip(YY.flatten().tolist(),XX.flatten().tolist()))
 
     adjustment_rotation = reconstruction_model.rotation_model.get_rotation(reconstruction_time,
