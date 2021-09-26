@@ -11,8 +11,7 @@ import os as _os
 # TODO
 # Add: Domeier and Torsvik
 #      Shephard?? (or a version of Seton with Static Polygons)
-#      Scotese
-#      Golonka??
+
 
 
 def fetch_CaoToyRodinia(load=True, model_case='NNR'):
