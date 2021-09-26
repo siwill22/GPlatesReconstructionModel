@@ -730,7 +730,9 @@ class MotionPathFeature:
     Class to define a motion path feature.
     """
 
-    def __init__(self, path_times=np.arange(0.,201.,10.), reconstruction_plate_id=0, seed_points=None, lats=None, longs=None,
+    def __init__(self, path_times=np.arange(0.,201.,10.), 
+                 reconstruction_plate_id=0, 
+                 seed_points=None, lats=None, longs=None,
                  relative_plate_id=0):
         """
         create a motion path feature 
@@ -829,10 +831,29 @@ class MotionPathFeature:
 
 class FlowlineFeature:
     
-    def __init__(self, path_times=np.arange(0.,151.,5.), seed_points=None, 
+    def __init__(self, path_times=np.arange(0.,151.,5.), 
+                 seed_points=None, lats=None, longs=None,
                  left_plate=None, right_plate=None):
-    
-        #time_intervals = np.diff(times)
+        """
+        Create a reconstructable flowline feature
+
+        :param seed_points: (tuple or list of tuples) lat,lon coordinates of the seed point(s)
+        :param lats: 
+        :param longs:
+        :param path_times: (array)
+        :param reconstruction_plate_id: (int)
+        :param relative_plate_id: (int, optional)
+        """
+        
+        if seed_points:
+            if type(seed_points) is tuple:
+                seed_points = [seed_points]
+        elif lats and longs:
+            seed_points = []
+            for x,y in zip(lats,longs):
+                seed_points.append((x,y))
+        else:
+            raise ValueError('Unrecognised format for seed point coordinates')
 
         # CREATE FLOWLINE
         # POINTS ON THE FLOWLINE
@@ -854,7 +875,16 @@ class FlowlineFeature:
         
         
     def reconstruct_flowline(self, reconstruction_model, reconstruction_time=0, anchor_plate_id=0):
-        # reconstruct the flowline
+        """
+        reconstruct the flowline and return a list of reconstructed flowline geometries
+
+        :param reconstruction_model: object of type ReconstructionModel containing rotation model
+        :param reconstruction_time: time at which the reconstructed flowline is defined (typically 
+                                    0 for overlaying on present day bathymetry, but can be any age value)
+                                    [default is 0]
+        :param anchor_plate_id: plate_id of fixed plate, relevant if reconstruction_time is not 0
+                                [default is 0]
+        """
 
         reconstructed_flowlines = []
         pygplates.reconstruct(self.flowline_feature, reconstruction_model.rotation_model, 
@@ -870,6 +900,14 @@ class FlowlineFeature:
         return flowlines
 
     def rate(self, reconstruction_model, reconstruction_time=0):
+        """
+        calculate half=spreading rate along flowline assumung symmetric spreading
+
+        :param reconstruction_model: object of type ReconstructionModel containing rotation model
+        :param reconstruction_time: time at which the reconstructed flowline is defined (typically 
+                                    0 for overlaying on present day bathymetry, but can be any age value)
+                                    [default is 0]
+        """
 
         reconstructed_flowlines = []
         pygplates.reconstruct(self.flowline_feature, reconstruction_model.rotation_model, 
