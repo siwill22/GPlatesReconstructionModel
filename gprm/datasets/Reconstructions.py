@@ -571,7 +571,7 @@ def fetch_Clennett(load=True, model_case='M2019'):
         reconstruction_model.add_continent_polygons('{:s}/Clennett_etal_2020_Terranes.gpml'.format(dirname))
         reconstruction_model.add_coastlines('{:s}/Clennett_etal_2020_Coastlines.gpml'.format(dirname))
         
-        reconstruction_model.add_dynamic_polygons('{:s}/Clennett__etal_2020_NAm_boundaries.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/Clennett_etal_2020_NAm_boundaries.gpml'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/Clennett_etal_2020_Plates.gpml'.format(dirname))
 
         return reconstruction_model 
