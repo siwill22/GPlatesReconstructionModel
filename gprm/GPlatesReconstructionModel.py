@@ -288,6 +288,11 @@ class ReconstructionModel(object):
 
 
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
+        """
+        Reconstruct feature collection or a geopandas dataframe using the 
+        """
+
+        print(isinstance(features, gpd.GeoDataFrame))
 
         if not topological:
             if isinstance(features, pygplates.FeatureCollection):
@@ -295,18 +300,41 @@ class ReconstructionModel(object):
                 # TODO assign plate ids if not available already (or option selected)
 
                 reconstructed_features = []
-                pygplates.reconstruct(features, self.rotation_model, reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
+                pygplates.reconstruct(features, self.rotation_model, 
+                                      reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
                 return reconstructed_features
 
             elif isinstance(features, gpd.GeoDataFrame):
-
-                # TODO
 
                 # select only the features that are valid at reconstruction time?
                 # convert geometries to gpml (features?)
                 # reconstruct
                 # somehow map reconstructed features back to original attribute table
-                return
+
+                temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
+                temporary_file.close()
+
+                temporary_file_r = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
+                temporary_file_r.close()
+
+                features.to_file(temporary_file.name, driver='GeoJSON')  #GeoJSON
+
+                pygplates.reconstruct(temporary_file.name, self.rotation_model, 
+                                      temporary_file_r.name, reconstruction_time,
+                                      anchor_plate_id=anchor_plate_id)
+
+                reconstructed_gdf = gpd.read_file(temporary_file_r.name)
+
+                # The reconstructed file will have various extra columns, of which the name
+                # of the temporary file is definitelt not useful so we delete it
+                # (checking for the unlikely event of the column 'FILE1' already existing)
+                if not 'FILE1' in features.columns:
+                    reconstructed_gdf.drop(columns=['FILE1'], inplace=True)
+
+                os.unlink(temporary_file.name)
+
+                return reconstructed_gdf
+
 
         else:
              
