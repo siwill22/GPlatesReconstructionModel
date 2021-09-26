@@ -245,20 +245,30 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
                     new_anchor_plate_id, old_anchor_plate_id=0,
                     region=None, spacing=1.):
     """
-    Given an xarray raster object or filename of a pygmt-compatible grid, derive a 
+    Given an xarray raster object, derive a 
     new raster with all values rotated into the frame of a different reference plate.
     
     Optionally, specify a new region and grid sampling (default is to take the same region
     and grid sampling as the input)
     """
 
+    # should be a better way to do this (ie pass the gridfile to grdtrack directly)
+    if not isinstance(grid, xarray.core.dataarray.DataArray):
+        if os.path.isfile(grid):
+            grid = xr.open_dataarray(grid)
+        else:
+            raise ValueError('Unrecognised input grid object: {}'.format(grid))
+        
+
+    coord_keys = [key for key in grid.coords.keys()]
+
     if region:
         coords = [('lat',np.arange(region[2],region[3]+spacing, spacing)), ('lon',np.arange(region[0],region[1]+spacing, spacing))]
         XX,YY = np.meshgrid(np.arange(region[0],region[1]+spacing, spacing),
                             np.arange(region[2],region[3]+spacing, spacing))
     else:
-        coords = [('lat',grid.lat.data), ('lon',grid.lon.data)]
-        XX,YY = np.meshgrid(grid.lon.data, grid.lat.data)
+        coords = [('lat',grid.coords[coord_keys[0]].data), ('lon',grid.coords[coord_keys[1]].data)]
+        XX,YY = np.meshgrid(grid.coords[coord_keys[1]].data, grid.coords[coord_keys[0]].data)
 
     mp = pygplates.MultiPointOnSphere(zip(YY.flatten().tolist(),XX.flatten().tolist()))
 
