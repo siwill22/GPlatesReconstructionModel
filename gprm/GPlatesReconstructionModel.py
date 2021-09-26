@@ -153,6 +153,10 @@ class ReconstructionModel(object):
         Add topology files to be used in resolving topological polygons.
         Can be called multiple times to add a series of file into a single object instance.
         """
+
+        #TODO add option to add a list in one go, otherwise the loading is very slow 
+        # for models with many files such as M2019
+
         if not os.path.isfile(dynamic_polygons_file):
             raise ValueError('Unable to find file {:s}'.format(dynamic_polygons_file))
 
@@ -289,10 +293,15 @@ class ReconstructionModel(object):
 
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
         """
-        Reconstruct feature collection or a geopandas dataframe using the 
+        Reconstruct feature collection or a geopandas dataframe using the reconstruction model
+
+        Assumes that plate_ids have already been assigned
+
+        Return type matches the input (either feature collection or geodataframe)
         """
 
-        print(isinstance(features, gpd.GeoDataFrame))
+            
+
 
         if not topological:
             if isinstance(features, pygplates.FeatureCollection):
@@ -317,7 +326,10 @@ class ReconstructionModel(object):
                 temporary_file_r = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
                 temporary_file_r.close()
 
-                features.to_file(temporary_file.name, driver='GeoJSON')  #GeoJSON
+                # Note: trying the OGR_GMT driver here resulted in some unusual column
+                # names being mangled in the output, so going with geojson now that pygplates 
+                # supports it
+                features.to_file(temporary_file.name, driver='GeoJSON')  #OGR_GMT
 
                 pygplates.reconstruct(temporary_file.name, self.rotation_model, 
                                       temporary_file_r.name, reconstruction_time,
