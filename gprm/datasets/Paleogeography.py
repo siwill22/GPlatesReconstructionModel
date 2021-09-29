@@ -8,6 +8,9 @@ import os as _os
 import collections
 
 def fetch_Paleomap(resolution='01d'):
+    """
+    PaleoDEM rasters from Scotese and Wright (2018)
+    """
 
     if resolution=='01d':
         fnames = _retrieve(
@@ -44,7 +47,6 @@ def fetch_Paleomap(resolution='01d'):
             processor=_Unzip(),
         )
 
-        #print(fnames[0])
         dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_6minX6min_PaleoDEMS_nc'.format(_os.path.split(fnames[0])[0])
 
         raster_dict = {}
