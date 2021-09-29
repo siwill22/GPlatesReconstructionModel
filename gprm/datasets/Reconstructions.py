@@ -16,8 +16,8 @@ import os as _os
 
 def fetch_CaoToyRodinia(load=True, model_case='NNR'):
     '''
-    Load Toy Billion-year reconstructions from Cao et al (2020), 
-    doi:
+    Load Toy Billion-year reconstructions from Cao et al (2020), Tectonics
+    doi: 10.1029/2020GC009244
 
     model_case options: 'NNR', 'OV', 'SSL'
     '''
@@ -62,8 +62,10 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
 
 def fetch_Li2008(load=True):
     '''
-    Load Rodinia reconstruction from Li et al (2008), doi:
-
+    Load Rodinia reconstruction from Li et al (2008), 
+    doi: 10.1016/j.precamres.2007.04.021
+    and updated in Li et al (2013) Sedimentary Geology
+    doi: 10.1016/j.sedgeo.2013.05.016
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Li_etal_2008_RodiniaModel.zip",
@@ -115,8 +117,8 @@ def fetch_Matthews2016(load=True):
 
 def fetch_Merdith2021(load=True):
     '''
-    Load Billion-year reconstruction from Merdith et al (2021), doi:
-
+    Load Billion-year reconstruction from Merdith et al (2021) Earth Science Reviews
+    doi: https://doi.org/10.1016/j.earscirev.2020.103477
     '''
     fnames = _retrieve(
         url="https://zenodo.org/record/4320873/files/SM2-Merdith_et_al_1_Ga_reconstruction.zip?download=1",
@@ -150,8 +152,8 @@ def fetch_Merdith2021(load=True):
 
 def fetch_Muller2016(load=True):
     '''
-    Load Pangea breakup reconstruction from Muller et al, doi:
-
+    Load Pangea breakup reconstruction from Muller et al (2016) Ann Rev Earth & Plan Sci
+    doi: 
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Muller_etal_2016_AREPS/Muller_etal_2016_AREPS_Supplement/Muller_etal_2016_AREPS_Supplement_v1.17.zip",
@@ -176,8 +178,8 @@ def fetch_Muller2016(load=True):
 
 def fetch_Muller2019(load=True):
     '''
-    Load Pangea breakup reconstruction from Muller et al, doi:
-
+    Load Pangea breakup reconstruction from Muller et al, (2019) Tectonics
+    doi: https://doi.org/10.1029/2018TC005462
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Muller_etal_2019_Tectonics/Muller_etal_2019_PlateMotionModel/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics.zip",
@@ -267,8 +269,8 @@ def fetch_Muller2019(load=True):
 
 def fetch_Pehrsson2015(load=True):
     '''
-    Load Nuna reconstruction from Pehrsson et al, doi:
-
+    Load Nuna reconstruction from Pehrsson et al, (2015) Geol Soc London Spec Pub 
+    doi: http://doi.org/10.1144/SP424.5
     '''
     fnames = _retrieve(
         url="https://www.geolsoc.org.uk/~/media/Files/GSL/shared/Sup_pubs/2015/18822_7.zip",
@@ -302,7 +304,8 @@ def fetch_Pehrsson2015(load=True):
 
 def fetch_Seton2012(load=True):
     '''
-    Load Pangea breakup reconstruction from Seton et al (2012), doi:
+    Load Pangea breakup reconstruction from Seton et al (2012)
+    doi:10.1016/j.earscirev.2012.03.002
 
     '''
     fnames = _retrieve(
@@ -326,7 +329,9 @@ def fetch_Seton2012(load=True):
 
 def fetch_TorsvikCocks2017(load=True):
     '''
-    Load Phanerozoic reconstruction from Torvsik and Cocks (2017), doi:
+    Load Phanerozoic reconstruction from the book 'Earth History and Paleogeography'
+    by Torvsik and Cocks (2017)
+    doi: https://doi.org/10.1017/9781316225523
 
     '''
     fnames = _retrieve(
@@ -377,7 +382,8 @@ def fetch_vanHinsbergen(load=True):
 
 def fetch_Young2019(load=True):
     '''
-    Load 0-410 Ma reconstruction from Young et al, doi:
+    Load 0-410 Ma reconstruction from Young et al (2019) Geoscience Frontiers 
+    doi: https://doi.org/10.1016/j.gsf.2018.05.011
 
     '''
     fnames = _retrieve(
@@ -431,7 +437,8 @@ def fetch_Scotese(load=True):
 
 def fetch_Golonka(load=True):
     '''
-    Load 0-5XX Ma, doi:
+    Load reconstruction of Golonka, 2007, spanning the time range 0-5XX Ma, 
+    doi:
 
     '''
     fnames = _retrieve(
@@ -455,10 +462,13 @@ def fetch_Golonka(load=True):
 
 def fetch_Clennett(load=True, model_case='M2019'):
     """
-    7749aac19c2d07c80a2cd77ba6a9038c8911fa8804c1d4adb3c9da7cb635b691
+    Load reconstruction files associated with the study of Clennett et al (2020),
+    Geochemistry, Geophysics, Geosystems
+    doi: https://doi.org/10.1029/2020GC009117
 
-    model case must be either 'M2019' (default, version based on deforming model of Muller et al 2019)
-    or 'S2013' (rigid topological model based on Shephard et al, 2013)
+    model case must be either:
+     - 'M2019' (default, version based on deforming model of Muller et al 2019), or 
+     - 'S2013' (rigid topological model based on Shephard et al, 2013)
     """
     if model_case=='M2019':
         fnames = _retrieve(
