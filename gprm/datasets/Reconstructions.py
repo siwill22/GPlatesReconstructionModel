@@ -19,7 +19,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
     Load Toy Billion-year reconstructions from Cao et al (2020), Tectonics
     doi: 10.1029/2020GC009244
 
-    model_case options: 'NNR', 'OV', 'SSL'
+    model_case options: 'NNR' [default], 'OV', 'SSL'
     '''
     
     fnames = _retrieve(
@@ -153,7 +153,7 @@ def fetch_Merdith2021(load=True):
 def fetch_Muller2016(load=True):
     '''
     Load Pangea breakup reconstruction from Muller et al (2016) Ann Rev Earth & Plan Sci
-    doi: 
+    doi: 10.1146/annurev-earth-060115-012211
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Muller_etal_2016_AREPS/Muller_etal_2016_AREPS_Supplement/Muller_etal_2016_AREPS_Supplement_v1.17.zip",
@@ -306,7 +306,6 @@ def fetch_Seton2012(load=True):
     '''
     Load Pangea breakup reconstruction from Seton et al (2012)
     doi:10.1016/j.earscirev.2012.03.002
-
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Seton_etal_2012_ESR.zip",
@@ -384,7 +383,6 @@ def fetch_Young2019(load=True):
     '''
     Load 0-410 Ma reconstruction from Young et al (2019) Geoscience Frontiers 
     doi: https://doi.org/10.1016/j.gsf.2018.05.011
-
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Young_etal_2018_GeoscienceFrontiers/Young_etal_2018_GeoscienceFrontiers_GPlatesPlateMotionModel.zip",
@@ -424,7 +422,7 @@ def fetch_Scotese(load=True):
         processor=_Unzip(),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/SupplementaryMaterial_Cao_etal/'.format(_os.path.split(fnames[0])[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Scotese2008')
@@ -449,7 +447,7 @@ def fetch_Golonka(load=True):
         processor=_Unzip(),
     )
     
-    dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/SupplementaryMaterial_Cao_etal/'.format(_os.path.split(fnames[0])[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Golonka2007')
