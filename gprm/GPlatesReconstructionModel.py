@@ -146,7 +146,7 @@ class ReconstructionModel(object):
             self.static_polygon_files = []
 
         self.static_polygon_files.append(static_polygons_file)
-        self.static_polygons.append(static_polygons_file)  # Should this be loaded into memory like dynamic polygons??
+        self.static_polygons.append(pygplates.FeatureCollection(static_polygons_file))  # Should this be loaded into memory like dynamic polygons??
 
     def add_dynamic_polygons(self, dynamic_polygons_file, replace=False):
         """
@@ -165,7 +165,8 @@ class ReconstructionModel(object):
             self.dynamic_polygon_files = []
 
         self.dynamic_polygon_files.append(dynamic_polygons_file)
-        self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
+        self.dynamic_polygons.append(pygplates.FeatureCollection(dynamic_polygons_file))
+        #self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
     def add_coastlines(self, coastlines_file, replace=False):
         """
@@ -180,7 +181,7 @@ class ReconstructionModel(object):
             self.coastlines_files = []
 
         self.coastlines_files.append(coastlines_file)
-        self.coastlines.append(coastlines_file)
+        self.coastlines.append(pygplates.FeatureCollection(coastlines_file))
 
     def add_continent_polygons(self, continent_polygons_file, replace=False):
         """
@@ -195,7 +196,7 @@ class ReconstructionModel(object):
             self.continent_polygons_files = []
 
         self.continent_polygons_files.append(continent_polygons_file)
-        self.continent_polygons.append(continent_polygons_file)
+        self.continent_polygons.append(pygplates.FeatureCollection(continent_polygons_file))
 
     def from_web_service(self, model='MULLER2016', url='https://gws.gplates.org'):
         """
@@ -1660,7 +1661,8 @@ class litho1_scalar_coverage(object):
         self.layer_keys = litho.l1_layer_decode.items()
         self.value_keys = litho.l1_data_decode.items()
 
-    def write_layer_depth_to_scalar_coverage(self, filename, layer_names='All'):
+
+    def write_layer_depth_to_scalar_coverage(self, filename=None, layer_names='All'):
 
         if layer_names == 'All':
             layer_names = [name[0] for name in self.layer_keys]
@@ -1675,9 +1677,15 @@ class litho1_scalar_coverage(object):
         ct_feature.set_geometry((self.points.multipoint,scalar_coverages))
         ct_feature.set_name('litho1.0 layers')
 
-        pygplates.FeatureCollection(ct_feature).write(filename)
+        if filename:
+            pygplates.FeatureCollection(ct_feature).write(filename)
+        else:
+            return ct_feature
 
-    def write_layer_thickness_to_scalar_coverage(self, top_layer_name='CRUST1-TOP', bottom_layer_name='CRUST3-BOTTOM'):
+
+    def write_layer_thickness_to_scalar_coverage(self, filename=None, 
+                                                 top_layer_name='CRUST1-TOP', 
+                                                 bottom_layer_name='CRUST3-BOTTOM'):
 
         #if layer_names == 'All':
         #    layer_names = [name[0] for name in self.layer_keys]
@@ -1694,4 +1702,7 @@ class litho1_scalar_coverage(object):
         ct_feature.set_geometry((self.points.multipoint,scalar_coverage))
         ct_feature.set_name('litho1.0 layer thickness, {:s} to {:s}'.format(top_layer_name, bottom_layer_name))
         
-        return ct_feature
+        if filename:
+            pygplates.FeatureCollection(ct_feature).write(filename)
+        else:
+            return ct_feature
