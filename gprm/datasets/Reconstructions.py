@@ -27,7 +27,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
         known_hash="md5:b7ea40c77826ef5d5e3b99affa3e9d66",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='CaoToyRodinia'),
     )
 
     dirname = _os.path.split(fnames[0])[0]
@@ -68,11 +68,11 @@ def fetch_Li2008(load=True):
     doi: 10.1016/j.sedgeo.2013.05.016
     '''
     fnames = _retrieve(
-        url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Li_etal_2008_RodiniaModel.zip",
+        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Li_etal_2008_RodiniaModel.zip",
         known_hash="sha256:e659371df79acfd7e599d0a358be0b154705b84d92388c042e6382ef78a3f4f6",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Li2008'),
     )
 
     dirname = _os.path.split(fnames[0])[0]
@@ -95,7 +95,7 @@ def fetch_Matthews2016(load=True):
         known_hash="sha256:c88acba32f7e5a00734d14d8c512a20392dc8e62d75fd1777d351eb7e6ada28f",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Matthews2016'),
     )
 
     for fname in fnames:
@@ -125,13 +125,14 @@ def fetch_Merdith2021(load=True):
         known_hash="md5:1786d68e949c4242de1801388c68cb8c",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Merdith2021'),
     )
 
-    for fname in fnames:
-        if '__MACOSX' not in _os.path.split(fname)[0]:
-            dirname = _os.path.split(fname)[0]
-            break
+    dirname = '{:s}/Merdith2021/'.format(fnames[0].split('Merdith2021')[0])
+    #for fname in fnames:
+    #    if '__MACOSX' not in _os.path.split(fname)[0]:
+    #        dirname = _os.path.split(fname)[0]
+    #        break
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Merdith++2021')
@@ -156,14 +157,16 @@ def fetch_Muller2016(load=True):
     doi: 10.1146/annurev-earth-060115-012211
     '''
     fnames = _retrieve(
-        url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Muller_etal_2016_AREPS/Muller_etal_2016_AREPS_Supplement/Muller_etal_2016_AREPS_Supplement_v1.17.zip",
+        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2016_AREPS/Muller_etal_2016_AREPS_Supplement/Muller_etal_2016_AREPS_Supplement_v1.17.zip",
         known_hash="sha256:a671d6f2318b329e6f633065771fe37d29b6932e805e619039c4405dcb0fb91a",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Muller2016'),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/Muller2016/'.format(fnames[0].split('Muller2016')[0])
+
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Muller++2016')
@@ -182,14 +185,15 @@ def fetch_Muller2019(load=True):
     doi: https://doi.org/10.1029/2018TC005462
     '''
     fnames = _retrieve(
-        url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Muller_etal_2019_Tectonics/Muller_etal_2019_PlateMotionModel/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics.zip",
-        known_hash="sha256:6e8d193f61ebeaa2f68cc55afe399a654bf31a8c564d5305245c91c32162814c",  
+        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2019_Tectonics/Muller_etal_2019_PlateMotionModel/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics.zip",
+        known_hash="sha256:32c30c80cd165fe0d28b3fda44a8b7d42e660a2a95baf508bdf7d1666977be9d",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Muller2019'),
     )
 
-    dirname = '{:s}/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics/'.format(_os.path.split(fnames[0])[0])
+    dirname = '{:s}/Muller2019/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics/'.format(fnames[0].split('Muller2019')[0])
+    #dirname = '{:s}/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics/'.format(_os.path.split(fnames[0])[0])
 
     # if downloading for first time, remove the unwanted MeshPoint files
     if _os.path.isdir('{:s}/DeformingMeshPoints'.format(dirname)):
@@ -277,7 +281,7 @@ def fetch_Pehrsson2015(load=True):
         known_hash="sha256:12e7ed7f1f736b0421a60c60151fed7b46ce028b3348f8bf39ba6d7916651b6f",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Pehrsson2015'),
     )
 
     dirname = _os.path.split(fnames[0])[0]
@@ -312,7 +316,7 @@ def fetch_Seton2012(load=True):
         known_hash="sha256:b117354f93296dc1035d6709c7d475bf9ad517dc3f882b1621ef68db712c603e",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Seton2012'),
     )
 
     dirname = _os.path.split(fnames[0])[0]
@@ -338,7 +342,7 @@ def fetch_TorsvikCocks2017(load=True):
         known_hash="sha256:9b6d6f8a9a6299a269fd16f07aeb48dc0b4d591743d6691b86fde7b550d1ce7b",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='TC2017'),
     )
 
     dirname = _os.path.split(fnames[0])[0]
@@ -364,7 +368,7 @@ def fetch_vanHinsbergen(load=True):
         known_hash="sha256:7ed6319f11b4f4626c8211359cfeb8b454cb4381a81ee368fa11effbf06c1eeb",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='vanHinsbergen'),
     )
 
     dirname = _os.path.split(fnames[0])[0]
@@ -389,7 +393,7 @@ def fetch_Young2019(load=True):
         known_hash="sha256:3cffdd988b802ad8961aad65901a95890a7b0058a3de3c353cf46986cca9f1f1",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Y2019'),
     )
 
     for fname in fnames:
@@ -419,10 +423,12 @@ def fetch_Scotese(load=True):
         known_hash="sha256:e01b19cee7c65a011ca4c42f187aba0ec24c1a87b842e2061eab9d22dc52ca80",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Cao2018_SM'),
     )
 
+    #print(fnames[0].split('.unzip'))
     dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
+    #dirname = '{:s}.unzip/SupplementaryMaterial_Cao_etal/'.format(fnames[0].split('.unzip')[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Scotese2008')
@@ -444,7 +450,7 @@ def fetch_Golonka(load=True):
         known_hash="sha256:e01b19cee7c65a011ca4c42f187aba0ec24c1a87b842e2061eab9d22dc52ca80",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='Cao2018_SM'),
     )
     
     dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
@@ -474,7 +480,7 @@ def fetch_Clennett(load=True, model_case='M2019'):
             known_hash="sha256:1ad6a29ceb396b581930734b1f6e8409e52dc4e2ae9658156ac2dd732cb82ab8",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(),
+            processor=_Unzip(extract_dir='Clennett2020'),
         )
 
         #dirname = _os.path.split(fnames[0])[0]
