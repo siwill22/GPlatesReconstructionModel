@@ -422,7 +422,7 @@ def fetch_Scotese(load=True):
         processor=_Unzip(),
     )
 
-    dirname = '{:s}/SupplementaryMaterial_Cao_etal/'.format(_os.path.split(fnames[0])[0])
+    dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Scotese2008')
@@ -447,7 +447,7 @@ def fetch_Golonka(load=True):
         processor=_Unzip(),
     )
     
-    dirname = '{:s}/SupplementaryMaterial_Cao_etal/'.format(_os.path.split(fnames[0])[0])
+    dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Golonka2007')
