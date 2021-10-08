@@ -58,7 +58,7 @@ def SeafloorFabric(feature_type='FZ', load=True):
         known_hash="sha256:e27a73dc544611685144b4587d17f03bde24438ee4646963f10761f8ec2e6036",
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Untar(),
+        processor=_Untar(extract_dir='SeafloorFabric'),
     )
     
     FABRIC_TYPE = {
@@ -158,7 +158,7 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
                 known_hash="sha256:8f86ab86a12761f5534beaaeaddbed5b4e3e6d3d9b52b0c87ee9b15af2a797cd",  
                 downloader=_HTTPDownloader(progressbar=True),
                 path=_os_cache('gprm'),
-                processor=_Unzip(),
+                processor=_Unzip(extract_dir='LIPs'),
             )
 
         for fname in fnames:
