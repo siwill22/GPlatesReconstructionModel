@@ -21,10 +21,10 @@ def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=
     '''
     fname = _retrieve(
         url="https://zenodo.org/record/3359791/files/complete.zip",
-        known_hash="sha256:c9054b2f87ec51589d1974aa35e00ce2efb696e5db7f265ef279e8c67beb61ba",  
+        known_hash="md5:9b97b54887ee7184c6650c845b4e92d4",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(),
+        processor=_Unzip(extract_dir='GeochemDB'),
     )[0]
     
     if usecols:
