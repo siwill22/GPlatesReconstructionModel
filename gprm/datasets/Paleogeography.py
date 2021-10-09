@@ -48,12 +48,15 @@ def fetch_Paleomap(resolution='01d'):
             processor=_Unzip(extract_dir='Paleomap_06m'),
         )
 
-        dirname = '{:s}/Paleomap_06m/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(fnames[0].split('Paleomap_06m')[0])
+        dirname = '{:s}/Paleomap_06m/Scotese_Wright_2018_Maps_1-88_6minX6min_PaleoDEMS_nc'.format(fnames[0].split('Paleomap_06m')[0])
         #dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_6minX6min_PaleoDEMS_nc'.format(_os.path.split(fnames[0])[0])
 
         raster_dict = {}
         for file in _os.listdir(dirname):
             if file.endswith(".nc"):
+                # Replace whitespace with underscore to help pygmt plotting
+                if ' ' in file:
+                    _os.rename('{:s}/{:s}'.format(dirname,file), '{:s}/{:s}'.format(dirname,file.replace(' ','_')))
                 raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file)
 
         ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
