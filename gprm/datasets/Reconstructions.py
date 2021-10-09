@@ -284,7 +284,9 @@ def fetch_Pehrsson2015(load=True):
         processor=_Unzip(extract_dir='Pehrsson2015'),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/Pehrsson2015/'.format(fnames[0].split('Pehrsson2015')[0])
+
 
     # process the rotation file to enable continuous reconstruction
     df = _pd.read_fwf('{:s}/T_Rot_Model_Abs_25Ma_20131004.rot'.format(dirname),
@@ -319,7 +321,8 @@ def fetch_Seton2012(load=True):
         processor=_Unzip(extract_dir='Seton2012'),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/Seton2012/'.format(fnames[0].split('Seton2012')[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Seton++2012')
@@ -342,10 +345,11 @@ def fetch_TorsvikCocks2017(load=True):
         known_hash="sha256:9b6d6f8a9a6299a269fd16f07aeb48dc0b4d591743d6691b86fde7b550d1ce7b",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(extract_dir='TC2017'),
+        processor=_Unzip(extract_dir='TorsvikCocks2017'),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/TorsvikCocks2017/'.format(fnames[0].split('TorsvikCocks2017')[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Torsvik+Cocks2017')
@@ -362,6 +366,8 @@ def fetch_vanHinsbergen(load=True):
     '''
     Load global reconstructions compiled from Douwe van Hinsbergen's work
 
+    NB CURRENTLY INCOMPLETE - NEED TO ESTABLISH A SET OF POLYGONS TO USE
+
     '''
     fnames = _retrieve(
         url="http://www.geologist.nl/wp-content/uploads/2019/09/vanHinsbergen_GPlates_reconstructions.zip",
@@ -371,7 +377,8 @@ def fetch_vanHinsbergen(load=True):
         processor=_Unzip(extract_dir='vanHinsbergen'),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/vanHinsbergen/'.format(fnames[0].split('vanHinsbergen')[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('vanHinsbergen++2017')
@@ -393,12 +400,13 @@ def fetch_Young2019(load=True):
         known_hash="sha256:3cffdd988b802ad8961aad65901a95890a7b0058a3de3c353cf46986cca9f1f1",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(extract_dir='Y2019'),
+        processor=_Unzip(extract_dir='Young2019'),
     )
 
-    for fname in fnames:
-        if _os.path.split(fname)[1] == 'License.txt':
-            dirname = _os.path.split(fname)[0]
+    #for fname in fnames:
+    #    if _os.path.split(fname)[1] == 'License.txt':
+    #        dirname = _os.path.split(fname)[0]
+    dirname = '{:s}/Young2019/'.format(fnames[0].split('Young2019')[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Young++2019')
@@ -480,11 +488,12 @@ def fetch_Clennett(load=True, model_case='M2019'):
             known_hash="sha256:1ad6a29ceb396b581930734b1f6e8409e52dc4e2ae9658156ac2dd732cb82ab8",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(extract_dir='Clennett2020'),
+            processor=_Unzip(extract_dir='Clennett2020_M2019'),
         )
 
         #dirname = _os.path.split(fnames[0])[0]
-        dirname = '{:s}/Clennett_etal_2020_M2019/'.format(_os.path.split(fnames[0])[0])
+        #dirname = '{:s}/Clennett_etal_2020_M2019/'.format(_os.path.split(fnames[0])[0])
+        dirname = '{:s}/Clennett2020_M2019/Clennett_etal_2020_M2019/'.format(fnames[0].split('Clennett2020_M2019')[0])
 
         # if downloading for first time, remove the unwanted MeshPoint files
         if _os.path.isdir('{:s}/DeformingMeshPoints'.format(dirname)):
@@ -572,10 +581,12 @@ def fetch_Clennett(load=True, model_case='M2019'):
             known_hash="sha256:7749aac19c2d07c80a2cd77ba6a9038c8911fa8804c1d4adb3c9da7cb635b691",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(),
+            processor=_Unzip(extract_dir='Clennett2020_S2013'),
         )
 
-        dirname = '{:s}/Clennett_etal_2020_S2013/'.format(_os.path.split(fnames[0])[0])
+        #dirname = '{:s}/Clennett_etal_2020_S2013/'.format(_os.path.split(fnames[0])[0])
+        dirname = '{:s}/Clennett2020_S2013/Clennett_etal_2020_S2013/'.format(fnames[0].split('Clennett2020_S2013')[0])
+
 
         from gprm import ReconstructionModel as _ReconstructionModel
         reconstruction_model = _ReconstructionModel('Clennett++S2013')
