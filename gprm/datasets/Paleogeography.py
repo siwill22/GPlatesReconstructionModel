@@ -18,10 +18,11 @@ def fetch_Paleomap(resolution='01d'):
             known_hash="md5:77147998623ab039d86ff3e0b5e40344",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(),
+            processor=_Unzip(extract_dir='Paleomap_01d'),
         )
 
-        dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(_os.path.split(fnames[0])[0])
+        dirname = '{:s}/Paleomap_01d/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(fnames[0].split('Paleomap_01d')[0])
+        #dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(_os.path.split(fnames[0])[0])
 
         # if downloading for first time, remove the unwanted cache files
         for file in _os.listdir(dirname):
@@ -44,10 +45,11 @@ def fetch_Paleomap(resolution='01d'):
             known_hash="md5:89eb50d8645707ab221b023078535bda",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(),
+            processor=_Unzip(extract_dir='Paleomap_06m'),
         )
 
-        dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_6minX6min_PaleoDEMS_nc'.format(_os.path.split(fnames[0])[0])
+        dirname = '{:s}/Paleomap_06m/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(fnames[0].split('Paleomap_06m')[0])
+        #dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_6minX6min_PaleoDEMS_nc'.format(_os.path.split(fnames[0])[0])
 
         raster_dict = {}
         for file in _os.listdir(dirname):
