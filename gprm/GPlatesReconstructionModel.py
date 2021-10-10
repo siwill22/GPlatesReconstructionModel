@@ -104,7 +104,7 @@ class ReconstructionModel(object):
         for item in [('Rotation', self.rotation_files),
                      ('Static Polygon', self.static_polygon_files), 
                      ('Coastlines', self.coastlines_files),
-                     ('Continent Polygon', self.continent_polygons), 
+                     ('Continent Polygon', self.continent_polygons_files), 
                      ('Dynamic Polygon', self.dynamic_polygon_files)]:
             print('{:s} Files:'.format(item[0]))
             for f in item[1]:
