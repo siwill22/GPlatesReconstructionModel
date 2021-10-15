@@ -104,7 +104,9 @@ def geodataframe_to_geometries(gdf):
 
 
 def gdf2gpml(gdf):
-# function to convert a geopandas geodataframe to a gplates feature collection
+    """ 
+    Given a geopandas geodataframe, returns a gplates feature collection
+    """
 
     temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
     temporary_file.close()
@@ -118,7 +120,9 @@ def gdf2gpml(gdf):
 
 
 def gpml2gdf(feature_collection):
-# function to convert a gplates feature collection to a geopandas geodataframe
+    """ 
+    Given a gplates feature collection, returns a geopandas geodataframe
+    """
 
     temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
     temporary_file.close()
