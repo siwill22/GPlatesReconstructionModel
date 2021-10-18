@@ -119,17 +119,45 @@ def gdf2gpml(gdf):
     return feature_collection
 
 
-def gpml2gdf(feature_collection):
+def gpml2gdf(features):
     """ 
-    Given a gplates feature collection, returns a geopandas geodataframe
+    Given a gplates feature collection, or a list of features, or a list
+    of reconstructed features, returns a geopandas geodataframe containing 
+    the same features
     """
+
+    if isinstance(features, pygplates.FeatureCollection):
+        pass
+    elif isinstance(features, list):
+        if isinstance(features[0], pygplates.Feature):
+            features = pygplates.FeatureCollection(features)
+        elif isinstance(features[0], pygplates.ReconstructedFeatureGeometry):
+            features = _reconstructed_features_to_features(features)
+            features = pygplates.FeatureCollection(features)
+        else:
+            raise TypeError('Unexpected list item of type {:s} for gpml2gdf input'.format(type(features[0])))
+    else:
+        raise TypeError('Unexpected type {:s} for gpml2gdf input'.format(type(features)))
+
 
     temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
     temporary_file.close()
 
-    feature_collection.write(temporary_file.name)
+    features.write(temporary_file.name)
     gdf = gpd.read_file(temporary_file.name)
+
+    gdf['NAME'] = gdf['NAME'].astype(str)
 
     os.unlink(temporary_file.name)
     
     return gdf
+
+def _reconstructed_features_to_features(reconstructed_features):
+
+    features = []
+    for feature in reconstructed_features:
+        f = feature.get_feature().clone()
+        f.set_geometry(feature.get_reconstructed_geometry())
+        features.append(f)
+
+    return features
