@@ -254,7 +254,8 @@ class ReconstructionModel(object):
         pygplates.reconstruct(polygons_to_reconstruct,
                               self.rotation_model,
                               reconstructed_polygons,
-                              reconstruction_time, anchor_plate_id=anchor_plate_id)
+                              reconstruction_time, 
+                              anchor_plate_id=anchor_plate_id)
 
         # TODO detect if reconstructed_polygons is empty, return None if so?
 
