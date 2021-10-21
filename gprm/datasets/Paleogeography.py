@@ -32,6 +32,9 @@ def fetch_Paleomap(resolution='01d'):
         raster_dict = {}
         for file in _os.listdir(dirname):
             if file.endswith(".nc"):
+                # Replace whitespace with underscore to help pygmt plotting
+                if ' ' in file:
+                    _os.rename('{:s}/{:s}'.format(dirname,file), '{:s}/{:s}'.format(dirname,file.replace(' ','_')))
                 raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file)
 
         ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
