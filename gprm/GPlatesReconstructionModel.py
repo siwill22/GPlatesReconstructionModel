@@ -23,11 +23,15 @@ SOFTWARE.
 '''
 
 #from xarray.core.utils import to_0d_object_array
-import pygplates
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+
+# NB importing pygplates before geopandas (and thus fiona) can cause issues
+# related to (probably) conflicting gdal versions
+import pygplates
+
 import matplotlib.pyplot as plt
 import os
 from io import StringIO
@@ -980,8 +984,11 @@ class FlowlineFeature:
         return rates
             
     def step_plot(self, reconstruction_model, reconstruction_time=0, show=False):
+        """
+        plot plate motions rates
+        """
         
-        rates = self.rate(reconstruction_model, reconstruction_time=0)
+        rates = self.rate(reconstruction_model, reconstruction_time=reconstruction_time)
         
         step_rates = []
         for rate in rates:
@@ -1026,6 +1033,34 @@ class PlateTree(object):
                                       reconstruction_time, 
                                       figsize=figsize,
                                       show=show)
+
+
+    def plot_gmt(self, fig, reconstruction_time, polygons='static'):
+        """
+        plot geographic representation of plate hierarchy at a specified reconstruction time
+        into a pygmt figure 
+
+        
+        
+
+        """
+
+        links_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        links_file.close()
+        nodes_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        nodes_file.close()
+
+        utils.platetree.write_trees_to_file(self.reconstruction_model.static_polygons, 
+                                            self.reconstruction_model.rotation_model, 
+                                            links_file.name, [reconstruction_time,reconstruction_time],
+                                            polygon_type='static', root_feature_filename=nodes_file.name)
+
+        fig.plot(data=links_file.name, pen='0.6p,red')
+        fig.plot(data=nodes_file.name, style='a0.4c', pen='0.6p,blue', color='gold')
+
+        os.unlink(links_file.name)
+        os.unlink(nodes_file.name)
+
 
     def to_gpml(self, reconstruction_times, filename):
         """
