@@ -35,7 +35,7 @@ def fetch_Paleomap(resolution='01d'):
                 # Replace whitespace with underscore to help pygmt plotting
                 if ' ' in file:
                     _os.rename('{:s}/{:s}'.format(dirname,file), '{:s}/{:s}'.format(dirname,file.replace(' ','_')))
-                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file)
+                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file.replace(' ','_'))
 
         ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
 
@@ -60,7 +60,7 @@ def fetch_Paleomap(resolution='01d'):
                 # Replace whitespace with underscore to help pygmt plotting
                 if ' ' in file:
                     _os.rename('{:s}/{:s}'.format(dirname,file), '{:s}/{:s}'.format(dirname,file.replace(' ','_')))
-                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file)
+                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file.replace(' ','_'))
 
         ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
 
