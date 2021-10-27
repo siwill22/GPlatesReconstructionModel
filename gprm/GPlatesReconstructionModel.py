@@ -550,7 +550,7 @@ class PlateSnapshot(object):
         all_velocities_magaz = []
         plate_ids = []
 
-        rotation_model = pygplates.RotationModel(self.rotation_model)
+        rotation_model = pygplates.RotationModel(self.rotation_model, default_anchor_plate_id=self.anchor_plate)
 
         # Partition our velocity domain features into our topological plate polygons at the current 'time'.
         plate_partitioner = pygplates.PlatePartitioner(self.resolved_topologies,
