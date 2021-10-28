@@ -1120,7 +1120,7 @@ class VelocityField(object):
         return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude)[index])))
 
 
-    def plot(self, fig, scaling=500., style="v0.1c+e", pen="0.1p,black", color="black", **kwargs):
+    def plot(self, fig, scaling=500., style="V0.1c+e", pen="0.1p,black", color="black", **kwargs):
         """
         Plot velocity vectors to a pygmt figure
         """
