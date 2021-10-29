@@ -326,16 +326,26 @@ class ReconstructionModel(object):
                 # reconstruct
                 # somehow map reconstructed features back to original attribute table
 
-                temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
+                if pygplates.Version.get_imported_version() <= pygplates.Version(32):
+                    warnings.warn('Using version of pygplates that relies on OGR_GMT files for interoperability with geodataframes, \
+                                which will likely result in garbled column names')
+                    temp_file_suffix = '.gmt'
+                    driver = 'OGR_GMT'
+                else:
+                    temp_file_suffix = '.geojson'
+                    driver = 'GeoJSON'
+
+                temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix=temp_file_suffix)
                 temporary_file.close()
 
-                temporary_file_r = tempfile.NamedTemporaryFile(delete=True, suffix='.geojson')
+                temporary_file_r = tempfile.NamedTemporaryFile(delete=True, suffix=temp_file_suffix)
                 temporary_file_r.close()
 
                 # Note: trying the OGR_GMT driver here resulted in some unusual column
                 # names being mangled in the output, so going with geojson now that pygplates 
                 # supports it
-                features.to_file(temporary_file.name, driver='GeoJSON')  #OGR_GMT
+
+                features.to_file(temporary_file.name, driver=driver)
 
                 pygplates.reconstruct(temporary_file.name, self.rotation_model, 
                                       temporary_file_r.name, reconstruction_time,
@@ -398,12 +408,17 @@ class ReconstructionModel(object):
             # TODO handle cases where static polygons are spread across multiple feature collections
             polygon_gdf = utils.create_gpml.gpml2gdf(pygplates.FeatureCollection(partitioning_polygon_features[0]))
             # TODO handle the FROMAGE and TOAGE
+            # TODO handle case where the field names already exist and we want to overwrite them
             if copy_valid_times:
                 polygon_gdf = polygon_gdf[['geometry', 'PLATEID1', 'FROMAGE', 'TOAGE']]
+                # To ensure the column names are the 'standard' ones (and overwrite any existing values),
+                # we must remove columns with these names
+                gpd.drop(['PLATEID1', 'FROMAGE', 'TOAGE'], inplace=True)
             else:
                 polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
+                gpd.drop(['PLATEID1'], inplace=True)
 
-            return gpd.overlay(features, polygon_gdf, how='intersection', keep_geom_type=False)
+            return features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
 
 
 
