@@ -326,7 +326,7 @@ class ReconstructionModel(object):
                 # reconstruct
                 # somehow map reconstructed features back to original attribute table
 
-                if pygplates.Version.get_imported_version() <= pygplates.Version(32):
+                if pygplates.Version.get_imported_version() < pygplates.Version(32):
                     warnings.warn('Using version of pygplates that relies on OGR_GMT files for interoperability with geodataframes, \
                                 which will likely result in garbled column names')
                     temp_file_suffix = '.gmt'
@@ -413,10 +413,11 @@ class ReconstructionModel(object):
                 polygon_gdf = polygon_gdf[['geometry', 'PLATEID1', 'FROMAGE', 'TOAGE']]
                 # To ensure the column names are the 'standard' ones (and overwrite any existing values),
                 # we must remove columns with these names
-                gpd.drop(['PLATEID1', 'FROMAGE', 'TOAGE'], inplace=True)
+                # Note the "errors='ignore'" is needed to handle cases that the columns may not exist
+                features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], inplace=True, errors='ignore')
             else:
                 polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
-                gpd.drop(['PLATEID1'], inplace=True)
+                features.drop(columns=['PLATEID1'], inplace=True, errors='ignore')
 
             return features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
 
