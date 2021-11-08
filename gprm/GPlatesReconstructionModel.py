@@ -351,7 +351,12 @@ class ReconstructionModel(object):
                                       temporary_file_r.name, reconstruction_time,
                                       anchor_plate_id=anchor_plate_id)
 
-                reconstructed_gdf = gpd.read_file(temporary_file_r.name)
+                # TODO handle case where there are no reconstructed features, hence file doesn't get created
+                try:
+                    reconstructed_gdf = gpd.read_file(temporary_file_r.name)
+                except:
+                    return print('No reconstructed features returned')
+
 
                 # The reconstructed file will have various extra columns, of which the name
                 # of the temporary file is definitelt not useful so we delete it
