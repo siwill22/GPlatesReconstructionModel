@@ -1,6 +1,10 @@
 import numpy as np
 import pygplates
 from scipy import spatial
+import os
+import tempfile
+import pygmt
+
 import pandas as pd
 
 
@@ -129,8 +133,8 @@ def sampleOnSphere(inputLons, inputLats, inputVals, sample_points_lons, sample_p
         tree = create_tree_for_spherical_data(inputLons, inputLats, inputVals, n=n)
 
     othetas = np.radians(90.-sample_points_lats)
-    ophis   = np.radians(sample_points_lons)
-    oxyzs=rtp2xyz(np.ones(np.shape(othetas)), othetas, ophis)
+    ophis = np.radians(sample_points_lons)
+    oxyzs = rtp2xyz(np.ones(np.shape(othetas)), othetas, ophis)
 
     d,l = tree.query(oxyzs, k=k, distance_upper_bound=distance_upper_bound)
 
@@ -175,4 +179,48 @@ def groupby_healpix(df, equal_area_points, return_point_indices=True):
         return grouped_points, point_indices
     else:
         return grouped_points
+
+
+def plot_groups(equal_area_points, bin_values, fig=None, filename=None, 
+                color_range=None, cmap='hot', reverse=True, pen='0.1p,gray50', **kwargs):
+
+    points = pygplates.MultiPointOnSphere(zip(equal_area_points.latitude,equal_area_points.longitude)).to_xyz_array() 
+
+    radius = 1
+    center = np.array([0, 0, 0])
+    sv = spatial.SphericalVoronoi(points, radius, center)
+    sv.sort_vertices_of_regions()
+
+    polygon_features = []
+    for region,zval in zip(sv.regions,bin_values):
+        polygon = np.vstack((sv.vertices[region],sv.vertices[region][0,:]))
+        polygon_feature = pygplates.Feature()
+        polygon_feature.set_geometry(pygplates.PolygonOnSphere(polygon))
+        polygon_feature.set_shapefile_attribute('zval', zval)
+        polygon_features.append(polygon_feature)
+
+    if filename:
+        return_file = True
+        pygplates.FeatureCollection(polygon_features).write(filename)
+
+    else:
+        return_file = False
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.gmt')
+        plot_file.close()
+        filename = plot_file.name
+        pygplates.FeatureCollection(polygon_features).write(filename)
+
+    if fig:
+        pygmt.config(COLOR_FOREGROUND='white', COLOR_BACKGROUND='black')
+        if not color_range:
+            color_range = (np.nanmin(bin_values), np.nanmax(bin_values))
+            reverse = True
+        pygmt.makecpt(cmap=cmap, series='{:f}/{:f}'.format(color_range[0],color_range[1]), reverse=reverse)
+
+        fig.plot(data=filename, pen=pen, color='+z', cmap=True, a='Z=zval', close=True, **kwargs)
+
+
+    if not return_file:
+        os.unlink(plot_file.name)
+
 
