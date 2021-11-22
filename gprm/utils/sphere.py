@@ -4,6 +4,7 @@ from scipy import spatial
 import os
 import tempfile
 import pygmt
+import xarray as xr
 
 import pandas as pd
 
@@ -181,8 +182,8 @@ def groupby_healpix(df, equal_area_points, return_point_indices=True):
         return grouped_points
 
 
-def plot_groups(equal_area_points, bin_values, fig=None, filename=None, 
-                color_range=None, cmap='hot', reverse=True, pen='0.1p,gray50', **kwargs):
+def plot_groups(equal_area_points, bin_values, fig=None, filename=None, grid_resolution=0.2,
+                color_range=None, cmap='hot', reverse=True, pen='0.1p,gray50', transparency=0, **kwargs):
 
     points = pygplates.MultiPointOnSphere(zip(equal_area_points.latitude,equal_area_points.longitude)).to_xyz_array() 
 
@@ -211,13 +212,32 @@ def plot_groups(equal_area_points, bin_values, fig=None, filename=None,
         pygplates.FeatureCollection(polygon_features).write(filename)
 
     if fig:
+        grid_lon, grid_lat = np.meshgrid(np.arange(-180.,180.,grid_resolution),np.arange(-90.,90.,grid_resolution))
+    
+        d,l = sampleOnSphere(np.radians(equal_area_points.longitude),
+                            np.radians(equal_area_points.latitude),
+                            np.array(bin_values),
+                            np.radians(grid_lon).ravel(),
+                            np.radians(grid_lat).ravel(),
+                            k=1)
+        grid_z = np.array(bin_values)[l].reshape(grid_lon.shape)
+        
+        #spherical_triangulation = stripy.sTriangulation(lons=np.radians(equal_area_points.longitude), lats=np.radians(equal_area_points.latitude))
+        #grid_z,_ = spherical_triangulation.interpolate_nearest(np.radians(grid_lon).ravel(), np.radians(grid_lat).ravel(), np.array(bin_values))
+
+        ds = xr.DataArray(grid_z.reshape(grid_lon.shape), coords=[('lat',grid_lat[:,0]), ('lon',grid_lon[0,:])], name='z')
+
         pygmt.config(COLOR_FOREGROUND='white', COLOR_BACKGROUND='black')
         if not color_range:
             color_range = (np.nanmin(bin_values), np.nanmax(bin_values))
             reverse = True
         pygmt.makecpt(cmap=cmap, series='{:f}/{:f}'.format(color_range[0],color_range[1]), reverse=reverse)
 
-        fig.plot(data=filename, pen=pen, color='+z', cmap=True, a='Z=zval', close=True, **kwargs)
+        # This line would allow the polygons to be plotted directly with a colormap, but tends to crash when 
+        # healpix of N=32 or greater is input
+        #fig.plot(data=filename, pen=pen, color='+z', cmap=True, a='Z=zval', close=True, **kwargs)
+        fig.grdimage(ds, transparency=transparency, cmap=True)
+        fig.plot(data=filename, pen=pen, transparency=transparency, close=True, **kwargs)
 
 
     if not return_file:
