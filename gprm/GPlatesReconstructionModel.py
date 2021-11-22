@@ -445,7 +445,7 @@ class ReconstructionModel(object):
                 raise NotImplementedError()
 
             if platform.system() == 'Windows':
-                raise NotImplementedError()
+                open_gplates_command.append('C:\Program Files\GPlates\GPlates 2.3.0\gplates.exe')
         else:
             open_gplates_command.append(path_to_gplates)
 
@@ -454,6 +454,11 @@ class ReconstructionModel(object):
         open_gplates_command.extend(self.continent_polygons_files)
         open_gplates_command.extend(self.coastlines_files)
         open_gplates_command.extend(self.dynamic_polygon_files)
+        
+        if feature_collections:
+            for feature_collection in feature_collections:
+                # Do something here to parse and assign_plate_ids
+                open_gplates_command.append(feature_collection)
 
         subprocess.Popen(open_gplates_command)
 
