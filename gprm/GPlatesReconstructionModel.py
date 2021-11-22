@@ -102,21 +102,25 @@ class ReconstructionModel(object):
         self.continent_polygons_files = []
 
     def info(self, show_full_paths=False):
+        print(self.__repr__(show_full_paths))
 
-        print('Name: {:s}'.format(self.name))
+    def __repr__(self, show_full_paths=False):
+
+        str = ['Name: {:s}\n'.format(self.name)]
 
         for item in [('Rotation', self.rotation_files),
                      ('Static Polygon', self.static_polygon_files), 
                      ('Coastlines', self.coastlines_files),
                      ('Continent Polygon', self.continent_polygons_files), 
                      ('Dynamic Polygon', self.dynamic_polygon_files)]:
-            print('{:s} Files:'.format(item[0]))
+            str.append('{:s} Files:\n'.format(item[0]))
             for f in item[1]:
                 if show_full_paths:
-                    print('   - {:s}'.format(f))
+                    str.append('   - {:s}\n'.format(f))
                 else:
-                    print('   - {:s}'.format(os.path.split(f)[1]))
+                    str.append('   - {:s}\n'.format(os.path.split(f)[1]))
 
+        return ''.join(str)
 
     def add_rotation_model(self, rotation_file, replace=False):
         """
