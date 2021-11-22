@@ -427,6 +427,33 @@ class ReconstructionModel(object):
             return features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
 
 
+    def to_GPlates(self, feature_collections=None, path_to_gplates=None):
+
+        import platform, subprocess
+
+        open_gplates_command = []
+
+        if not path_to_gplates:
+            if platform.system() == 'Darwin':
+                open_gplates_command.append('/Applications/GPlates_2.3.0/gplates.app/Contents/MacOS/gplates')
+
+            if platform.system() == 'Linux':
+                raise NotImplementedError()
+
+            if platform.system() == 'Windows':
+                raise NotImplementedError()
+        else:
+            open_gplates_command.append(path_to_gplates)
+
+        open_gplates_command.extend(self.rotation_files)
+        open_gplates_command.extend(self.static_polygon_files)
+        open_gplates_command.extend(self.continent_polygons_files)
+        open_gplates_command.extend(self.coastlines_files)
+        open_gplates_command.extend(self.dynamic_polygon_files)
+
+        subprocess.Popen(open_gplates_command)
+
+
 
 
 
@@ -1591,7 +1618,7 @@ class GPlatesRaster(object):
         if show:
             plt.show()
 
-    def sample(self, point_lons, point_lats, order=0):
+    def sample(self, point_lons, point_lats, order=0, method='scipy'):
         """
         sample the raster at specififed lon,lat points and return the z values
         """
