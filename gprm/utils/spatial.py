@@ -3,6 +3,7 @@ from ptt.utils import points_in_polygons
 from ptt.utils import points_spatial_tree
 from ptt.utils.proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
+from .create_gpml import gpml2gdf
 import numpy as np
 
 
@@ -221,17 +222,75 @@ def get_merged_cob_terrane_polygons(COBterrane_file, rotation_model, reconstruct
 # This cell uses COB Terranes to make a masking polygon
 # (which is called 'seive_polygons')
 def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstruction_time,
-                                  sampling):
+                                  sampling, method='pygplates'):
 
-    polygon_features = pygplates.FeatureCollection(COBterrane_file)
+    if method == 'pygplates':
+        polygon_features = pygplates.FeatureCollection(COBterrane_file)
 
-    cobter = force_polygon_geometries(polygon_features)
+        cobter = force_polygon_geometries(polygon_features)
 
-    mask = merge_polygons(cobter, rotation_model, reconstruction_time=reconstruction_time,
-                             sampling=sampling, return_raster=True)
+        mask = merge_polygons(cobter, rotation_model, reconstruction_time=reconstruction_time,
+                                sampling=sampling, return_raster=True)
+
+    elif method=='rasterio':
+        import tempfile
+        import geopandas as gpd
+        from rasterio.features import rasterize, Affine
+
+        polygon_features = pygplates.FeatureCollection(COBterrane_file)
+
+        polygon_features = force_polygon_geometries(polygon_features)
+
+        '''
+        reconstructed_features = []
+        pygplates.reconstruct(polygon_features, rotation_model, reconstructed_features, reconstruction_time)
+
+        central_meridian = 0
+        tesselation_degrees = 0.1
+
+        date_line_wrapper = pygplates.DateLineWrapper(central_meridian=central_meridian)
+
+        wrapped_features = []
+        for reconstructed_feature in reconstructed_features:
+            geometry = reconstructed_feature.get_reconstructed_geometry()
+            if geometry is not None:
+                split_geometries = date_line_wrapper.wrap(geometry, tesselation_degrees)
+                for split_geometry in split_geometries:
+                    f = pygplates.Feature()
+                    if isinstance(split_geometry, date_line_wrapper.LatLonPolyline):
+                        f.set_geometry(pygplates.PolylineOnSphere(
+                            (wrapped_point.get_latitude(), wrapped_point.get_longitude()) for wrapped_point in split_geometry.get_points())
+                                    )
+                    elif isinstance(split_geometry, date_line_wrapper.LatLonPolygon):   
+                        f.set_geometry(pygplates.PolygonOnSphere(
+                            (wrapped_point.get_latitude(), wrapped_point.get_longitude()) for wrapped_point in split_geometry.get_exterior_points())
+                                    )
+                    wrapped_features.append(f)
+        
+        gdf = gpml2gdf(wrapped_features)
+        '''
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            pygplates.reconstruct(polygon_features, rotation_model, '{:s}/masking_temp.shp'.format(temporary_directory), reconstruction_time)
+
+            gdf = gpd.read_file('{:s}/masking_temp.shp'.format(temporary_directory))
+            #temporary_directory.cleanup()
+
+        dims = (int(180./sampling)+1, int(360./sampling)+1)
+        transform = Affine(sampling, 0.0, -180., 0.0, sampling, -90.)
     
-    return mask
+        geometry_zval_tuples = [(x.geometry, 1) for i, x in gdf.iterrows()]
+        
+        #with rasterio.open(raster_file) as src:
+            # iterate over features to get (geometry, id value) pairs
+        mask = rasterize(
+            geometry_zval_tuples,
+            transform=transform,
+            out_shape=dims)
 
+        # the first and last columns should match, but may not due to the imposed dateline
+        mask[:,-1] = mask[:,0]
+
+    return mask
 
 
 # Topology functions
