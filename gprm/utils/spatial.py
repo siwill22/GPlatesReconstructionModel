@@ -276,7 +276,7 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
             #temporary_directory.cleanup()
 
         dims = (int(180./sampling)+1, int(360./sampling)+1)
-        transform = Affine(sampling, 0.0, -180., 0.0, sampling, -90.)
+        transform = Affine(sampling, 0.0, -180.-sampling/2., 0.0, sampling, -90.-sampling/2.)
     
         geometry_zval_tuples = [(x.geometry, 1) for i, x in gdf.iterrows()]
         
@@ -288,7 +288,7 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
             out_shape=dims)
 
         # the first and last columns should match, but may not due to the imposed dateline
-        mask[:,-1] = mask[:,0]
+        mask[:,0] = mask[:,-1]
 
     return mask
 
