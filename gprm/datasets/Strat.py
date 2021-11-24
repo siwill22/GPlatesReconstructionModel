@@ -176,3 +176,12 @@ def pbdb_elevation_mapping(pbdb):
         'terrestrial indet.': (0, 1000), 
         'wet floodplain': (0, 1000), 
     }
+
+    marine_env_dict.update(terrestrial_env_dict)
+
+    elevation_ranges = _pd.DataFrame(df['environment'].map(marine_env_dict).to_list(), 
+                                     index=df.index, 
+                                     columns=['elevation_min', 'elevation_max'])
+
+    return pbdb.join(elevation_ranges)
+
