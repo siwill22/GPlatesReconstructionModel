@@ -179,8 +179,8 @@ def pbdb_elevation_mapping(pbdb):
 
     marine_env_dict.update(terrestrial_env_dict)
 
-    elevation_ranges = _pd.DataFrame(df['environment'].map(marine_env_dict).to_list(), 
-                                     index=df.index, 
+    elevation_ranges = _pd.DataFrame(pbdb['environment'].map(marine_env_dict).to_list(), 
+                                     index=pbdb.index, 
                                      columns=['elevation_min', 'elevation_max'])
 
     return pbdb.join(elevation_ranges)
