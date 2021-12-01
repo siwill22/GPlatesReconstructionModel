@@ -1,7 +1,7 @@
 '''
 MIT License
 
-Copyright (c) 2017-2020 Simon Williams
+Copyright (c) 2017-2021 Simon Williams
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -387,7 +387,7 @@ class ReconstructionModel(object):
 
 
 
-    def assign_plate_ids(self, features, polygons='static', copy_valid_times=False):
+    def assign_plate_ids(self, features, polygons='static', copy_valid_times=False, keep_unpartitioned_features=True):
         """
         assign plate ids to a data set using polygons from the ReconstructionModel 
         """
