@@ -1,3 +1,4 @@
+from pandas.core.indexing import is_nested_tuple
 import pygplates
 import numpy as np
 import pandas as _pd
@@ -106,7 +107,9 @@ def assign_plate_ids(vgps, reconstruction_model):
 
         return vgps
 
-    elif isinstance(vgps, pygplates.FeatureCollection):
+    elif isinstance(vgps, (pygplates.FeatureCollection, list)):
+        if isinstance(vgps, list):
+            vgps = pygplates.FeatureCollection(vgps)
         partitioned_vgps = []
         for vgp in vgps:
             partition_polygon = plate_partitioner.partition_point(vgp.get(pygplates.PropertyName.gpml_average_sample_site_position).get_value().get_geometry())
@@ -116,7 +119,7 @@ def assign_plate_ids(vgps, reconstruction_model):
         return pygplates.FeatureCollection(partitioned_vgps)
 
     else:
-        raise TypeError('Unexpected type {:s} for vgp input'.format(type(vgps)))
+        raise TypeError('Unexpected type {:} for vgp input'.format(type(vgps)))
 
 
 def rotate_to_common_reference(vgps, reconstruction_model, reference_plate_id=701):
@@ -207,18 +210,25 @@ def write_vgp_feature(vgp, mapping, half_time_range = 10.):
     Create a vgp feature from one row of a dataframe
     TODO handle cases where some fields (e.g. description) are not present
     '''
-    
+    other_properties = [(pygplates.PropertyName.create_gpml('poleA95'), pygplates.XsDouble(vgp[mapping['PoleA95']])),
+                        (pygplates.PropertyName.create_gpml('averageAge'), pygplates.XsDouble(vgp[mapping['AverageAge']]))]
+    if 'geometry' in vgp:
+        other_properties.append(
+            (pygplates.PropertyName.create_gpml('averageSampleSitePosition'),
+            pygplates.GmlPoint(pygplates.PointOnSphere([float(float(vgp.geometry.y)), 
+                                                        float(float(vgp.geometry.x))])))
+        )
+
     vgpFeature = pygplates.Feature.create_reconstructable_feature(
                  pygplates.FeatureType.create_gpml('VirtualGeomagneticPole'),
                  pygplates.PointOnSphere([vgp[mapping['PoleLatitude']], vgp[mapping['PoleLongitude']]]),
                  name = str(vgp[mapping['Name']]),
                  description = str(vgp[mapping['Description']]),
                  valid_time=(float(vgp[mapping['AverageAge']])+half_time_range, float(vgp[mapping['AverageAge']])-half_time_range),
-                 other_properties = [(pygplates.PropertyName.create_gpml('poleA95'), pygplates.XsDouble(vgp[mapping['PoleA95']])),
-                                     (pygplates.PropertyName.create_gpml('averageAge'), pygplates.XsDouble(vgp[mapping['AverageAge']])),
-                                     (pygplates.PropertyName.create_gpml('averageSampleSitePosition'),
-                                      pygplates.GmlPoint(pygplates.PointOnSphere([float(float(vgp.geometry.y)), 
-                                                                                  float(float(vgp.geometry.x))])))])
+                 other_properties = other_properties)
+
+    if 'ReconstructionPlateID' in mapping:
+        vgpFeature.set_reconstruction_plate_id(int(vgp[mapping['ReconstructionPlateID']]))
 
     return vgpFeature
 
