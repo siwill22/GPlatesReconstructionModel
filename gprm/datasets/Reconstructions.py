@@ -338,7 +338,7 @@ def fetch_Seton2012(load=True):
     doi:10.1016/j.earscirev.2012.03.002
     '''
     fnames = _retrieve(
-        url="https://www.earthbyte.org/webdav/ftp_data/Data_Collections/Seton_etal_2012_ESR.zip",
+        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Seton_etal_2012_ESR.zip",
         known_hash="sha256:b117354f93296dc1035d6709c7d475bf9ad517dc3f882b1621ef68db712c603e",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
