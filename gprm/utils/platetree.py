@@ -210,7 +210,8 @@ def get_plate_chains(uniq_plates_from_static_polygons, reconstruction_tree):
     return chains
 
 
-def create_hierarchy_features(chains,reconstructed_polygons,tree_features=None,valid_time=None):
+def create_hierarchy_features(chains,reconstructed_polygons,tree_features=None,valid_time=None,
+                              tesselation_degrees=None):
     #take plate chains and static polygons, and create a set of line features that
     # join up the centroid points of polygons based on their linkage in the rotation
     # hierarchy.
@@ -232,7 +233,10 @@ def create_hierarchy_features(chains,reconstructed_polygons,tree_features=None,v
 
         feature = pygplates.Feature()
         simple_line = pygplates.PolylineOnSphere([p0,p1])
-        feature.set_geometry(simple_line.to_tessellated(np.radians(1)))
+        if tesselation_degrees:
+            feature.set_geometry(simple_line.to_tessellated(np.radians(1)))
+        else:
+            feature.set_geometry(simple_line)
         feature.set_name(str(chain))
         if valid_time is not None:
             feature.set_valid_time(valid_time[0],valid_time[1])
