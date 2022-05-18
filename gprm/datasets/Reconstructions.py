@@ -366,7 +366,7 @@ def fetch_TorsvikCocks2017(load=True):
     '''
     fnames = _retrieve(
         url="http://www.earthdynamics.org/earthhistory/bookdata/CEED6.zip",
-        known_hash="sha256:9b6d6f8a9a6299a269fd16f07aeb48dc0b4d591743d6691b86fde7b550d1ce7b",  
+        known_hash="sha256:c2964d3ed791ae4b05690b16ff917309ae9dde60256be7e892df2463c2587eb1",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
         processor=_Unzip(extract_dir='TorsvikCocks2017'),
