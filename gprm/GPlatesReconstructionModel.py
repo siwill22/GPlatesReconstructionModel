@@ -32,6 +32,8 @@ import geopandas as gpd
 # related to (probably) conflicting gdal versions
 import pygplates
 
+import pygmt
+
 import matplotlib.pyplot as plt
 import os
 from io import StringIO
@@ -329,6 +331,7 @@ class ReconstructionModel(object):
                 # convert geometries to gpml (features?)
                 # reconstruct
                 # somehow map reconstructed features back to original attribute table
+                # TODO add check for valid plateid field
 
                 if pygplates.Version.get_imported_version() < pygplates.Version(32):
                     warnings.warn('Using version of pygplates that relies on OGR_GMT files for interoperability with geodataframes, \
@@ -1113,6 +1116,7 @@ class PlateTree(object):
                                             polygon_type='static', root_feature_filename=nodes_file.name)
 
         fig.plot(data=links_file.name, pen='0.6p,red')
+        fig.plot(data=links_file.name, style='d0.2c', pen='0.6p,black', color='gray')
         fig.plot(data=nodes_file.name, style='a0.4c', pen='0.6p,blue', color='gold')
 
         os.unlink(links_file.name)
@@ -1177,7 +1181,8 @@ class VelocityField(object):
         return np.sqrt(np.mean(np.square(np.asarray(self.velocity_magnitude)[index])))
 
 
-    def plot(self, fig, scaling=500., style="V0.1c+e", pen="0.1p,black", color="black", **kwargs):
+    def plot(self, fig, scaling=500., style="V0.1c+e", pen="0.1p,black", color="black", 
+             color_by_magnitude=False, **kwargs):
         """
         Plot velocity vectors to a pygmt figure
         """
@@ -1186,7 +1191,30 @@ class VelocityField(object):
                         np.degrees(self.velocity_azimuth),
                         np.array(self.velocity_magnitude)/scaling)).T
 
-        fig.plot(data=tmp, style=style, pen=pen, color=color, **kwargs)
+        if color_by_magnitude:
+            zvalue=self.velocity_magnitude
+            cmap=True
+        else:
+            zvalue=None
+            cmap=None
+        fig.plot(data=tmp, style=style, pen=pen, zvalue=zvalue, 
+                 cmap=cmap, **kwargs)
+
+    def to_grid(self, region='d', spacing='1d'):
+        """
+        create a regular grid of velocity magnitude by interpolation from domain points
+        """
+        # TODO make this use xyz2grd for domain points already at regular long/lat sampling
+
+        velgrd = pygmt.sphinterpolate(np.vstack((self.longitude,
+                                                 self.latitude,
+                                                 self.velocity_magnitude)).T,
+                                      region='d', 
+                                      spacing=spacing)
+
+        return velgrd
+
+
 
 
 
