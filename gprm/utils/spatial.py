@@ -3,8 +3,12 @@ from ptt.utils import points_in_polygons
 from ptt.utils import points_spatial_tree
 from ptt.utils.proximity_query import *
 from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_mesh
-from .create_gpml import gpml2gdf
+from .create_gpml import gpml2gdf, gdf2gpml
 import numpy as np
+
+import geopandas as gpd
+from shapely.geometry import Polygon
+from shapely.validation import make_valid
 
 
 def merge_polygons(polygons,rotation_model,
@@ -372,3 +376,36 @@ def get_subduction_polarity(shared_subsegment,topology_index,cross_section_segme
 
     return cross_section_dips_left_to_right
     
+
+def polygon_zonal_areas(gdf, binsize=10):
+    '''
+    Given a geodataframe containing polygoms, divides the polygons into
+    latitude bands of a user-defined width and returns the area of the polygon
+    within each band 
+    '''
+
+    bin_areas = []
+    
+    for bin_edge in np.arange(-90.,90.,binsize):
+        
+        polygon = Polygon([(-180, bin_edge), (-180, bin_edge+binsize), (180, bin_edge+binsize), (180, bin_edge), (-180, bin_edge)])
+        poly_gdf = gpd.GeoDataFrame([1], geometry=[polygon], crs=4326)
+        
+        # Fix geometries that are invalid (e.g. near the poles)
+        # https://gis.stackexchange.com/questions/430384/using-shapely-methods-explain-validity-and-make-valid-on-shapefile
+        gdf.geometry = gdf.apply(lambda row: make_valid(row.geometry) if not row.geometry.is_valid else row.geometry, axis=1)
+
+        poly_clip = gpd.clip(gdf, poly_gdf)
+        
+        if poly_clip.empty:
+            bin_area = 0
+        else:
+            bin_area = 0
+            tmp = gdf2gpml(poly_clip)
+            for f in tmp:
+                if f.get_geometry():
+                    bin_area += f.get_geometry().get_area()
+                    
+        bin_areas.append(bin_area * pygplates.Earth.mean_radius_in_kms**2)
+        
+    return bin_areas
