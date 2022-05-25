@@ -1271,7 +1271,11 @@ class SubductionConvergence(object):
             # append dataframe
             df_AllTimes = df_AllTimes.append(df)
 
-        # convert list array to dataframe
+        #https://stackoverflow.com/questions/45979508/assign-data-type-for-each-column-in-pandas-dataframe-python
+        dtypes = {k: float for k in df_AllTimes.columns}
+        dtypes.update({'subducting_plate': int, 'overriding_plate': int})
+        df_AllTimes = df_AllTimes.astype(dtypes)
+
         self.df = df_AllTimes
         self.reconstruction_model = reconstruction_model
 
