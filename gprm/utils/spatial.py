@@ -407,5 +407,5 @@ def polygon_zonal_areas(gdf, binsize=10):
                     bin_area += f.get_geometry().get_area()
                     
         bin_areas.append(bin_area * pygplates.Earth.mean_radius_in_kms**2)
-        
+    
     return bin_areas

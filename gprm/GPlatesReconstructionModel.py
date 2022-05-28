@@ -1248,7 +1248,7 @@ class SubductionConvergence(object):
         # Create an empty dataframe to concatenate results to
         df_AllTimes = pd.DataFrame(columns=DataFrameTemplate)
 
-        if isinstance(reconstruction_times, (float,int)):
+        if isinstance(reconstruction_times, (float,np.floating,int,np.integer)):
             reconstruction_times = [reconstruction_times]
 
         for reconstruction_time in reconstruction_times:
@@ -1269,7 +1269,7 @@ class SubductionConvergence(object):
             df = pd.DataFrame(subduction_data, columns = DataFrameTemplate)
 
             # append dataframe
-            df_AllTimes = df_AllTimes.append(df)
+            df_AllTimes = pd.concat([df_AllTimes, df], axis=0, join='outer')
 
         #https://stackoverflow.com/questions/45979508/assign-data-type-for-each-column-in-pandas-dataframe-python
         dtypes = {k: float for k in df_AllTimes.columns}
