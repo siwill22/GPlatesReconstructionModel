@@ -377,35 +377,72 @@ def get_subduction_polarity(shared_subsegment,topology_index,cross_section_segme
     return cross_section_dips_left_to_right
     
 
-def polygon_zonal_areas(gdf, binsize=10):
+def polygon_zonal_areas(gdf, binsize=10, method='polygon', raster_sampling=1):
     '''
     Given a geodataframe containing polygoms, divides the polygons into
     latitude bands of a user-defined width and returns the area of the polygon
     within each band 
     '''
+    if method=='polygon':
+        bin_areas = []
+        
+        for bin_edge in np.arange(-90.,90.,binsize):
+            
+            polygon = Polygon([(-180, bin_edge), (-180, bin_edge+binsize), (180, bin_edge+binsize), (180, bin_edge), (-180, bin_edge)])
+            poly_gdf = gpd.GeoDataFrame([1], geometry=[polygon], crs=4326)
+            
+            # Fix geometries that are invalid (e.g. near the poles)
+            # https://gis.stackexchange.com/questions/430384/using-shapely-methods-explain-validity-and-make-valid-on-shapefile
+            gdf.geometry = gdf.apply(lambda row: make_valid(row.geometry) if not row.geometry.is_valid else row.geometry, axis=1)
 
-    bin_areas = []
-    
-    for bin_edge in np.arange(-90.,90.,binsize):
+            poly_clip = gpd.clip(gdf, poly_gdf)
+            
+            if poly_clip.empty:
+                bin_area = 0
+            else:
+                bin_area = 0
+                tmp = gdf2gpml(poly_clip)
+                for f in tmp:
+                    if f.get_geometry():
+                        bin_area += f.get_geometry().get_area()
+                        
+            bin_areas.append(bin_area * pygplates.Earth.mean_radius_in_kms**2)
         
-        polygon = Polygon([(-180, bin_edge), (-180, bin_edge+binsize), (180, bin_edge+binsize), (180, bin_edge), (-180, bin_edge)])
-        poly_gdf = gpd.GeoDataFrame([1], geometry=[polygon], crs=4326)
-        
-        # Fix geometries that are invalid (e.g. near the poles)
-        # https://gis.stackexchange.com/questions/430384/using-shapely-methods-explain-validity-and-make-valid-on-shapefile
-        gdf.geometry = gdf.apply(lambda row: make_valid(row.geometry) if not row.geometry.is_valid else row.geometry, axis=1)
+        return bin_areas
 
-        poly_clip = gpd.clip(gdf, poly_gdf)
-        
-        if poly_clip.empty:
-            bin_area = 0
-        else:
-            bin_area = 0
-            tmp = gdf2gpml(poly_clip)
-            for f in tmp:
-                if f.get_geometry():
-                    bin_area += f.get_geometry().get_area()
-                    
-        bin_areas.append(bin_area * pygplates.Earth.mean_radius_in_kms**2)
+    elif method=='rasterize':
+        import xarray as xr
+        from rasterio.features import rasterize, Affine
+
+        #TODO change the raster definition to be pixel-registered
+        dims = (int(180./raster_sampling)+1, int(360./raster_sampling)+1)
+        transform = Affine(raster_sampling, 0.0, -180.-raster_sampling/2., 0.0, raster_sampling, -90.-raster_sampling/2.)
+
+        geometry_zval_tuples = [(x.geometry, 1) for i, x in gdf.iterrows()]
+
+        #with rasterio.open(raster_file) as src:
+            # iterate over features to get (geometry, id value) pairs
+        mask = rasterize(
+            geometry_zval_tuples,
+            transform=transform,
+            out_shape=dims)
+
+        # the first and last columns should match, but may not due to the imposed dateline
+        mask[:,0] = mask[:,-1]
+
+        lats = np.arange(-90,90+raster_sampling,raster_sampling)
+
+        area_weights = pygplates.Earth.mean_radius_in_kms**2 * np.sin(np.radians(90-lats)) * np.radians(raster_sampling)**2
+
+        weighted_areas = mask.sum(axis=1) * area_weights
+
+        bin_areas = []
+        for bin_edge in np.arange(-90.,90.,binsize):
+            ind = np.logical_and(lats>=bin_edge, lats<bin_edge+binsize)
+            bin_areas.append(np.sum(weighted_areas[ind]))
+
+        return bin_areas
     
-    return bin_areas
+    else:
+        raise ValueError('Unknown value {} for method parameter')
+
