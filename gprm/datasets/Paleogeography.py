@@ -34,6 +34,8 @@ import collections
 def fetch_Paleomap(resolution='01d'):
     """
     PaleoDEM rasters from Scotese and Wright (2018)
+    
+    resolution can be '01d' (default) or '06m'
     """
 
     if resolution=='01d':
