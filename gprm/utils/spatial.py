@@ -432,17 +432,28 @@ def polygon_zonal_areas(gdf, binsize=10, method='polygon', raster_sampling=1):
 
         lats = np.arange(-90,90+raster_sampling,raster_sampling)
 
-        area_weights = pygplates.Earth.mean_radius_in_kms**2 * np.sin(np.radians(90-lats)) * np.radians(raster_sampling)**2
-
-        weighted_areas = mask.sum(axis=1) * area_weights
-
-        bin_areas = []
-        for bin_edge in np.arange(-90.,90.,binsize):
-            ind = np.logical_and(lats>=bin_edge, lats<bin_edge+binsize)
-            bin_areas.append(np.sum(weighted_areas[ind]))
+        bin_areas = raster_zonal_areas(mask, lats, binsize)
 
         return bin_areas
     
     else:
         raise ValueError('Unknown value {} for method parameter')
+
+
+def raster_zonal_areas(grd, lats, binsize):
+
+    # assumes that the sample spacing is uniform
+    raster_sampling = np.abs(lats[1]-lats[0])
+
+    area_weights = pygplates.Earth.mean_radius_in_kms**2 * np.sin(np.radians(90-lats)) * np.radians(raster_sampling)**2
+
+    weighted_areas = grd.sum(axis=1) * area_weights
+
+    bin_areas = []
+    for bin_edge in np.arange(-90.,90.,binsize):
+        ind = np.logical_and(lats>=bin_edge, lats<bin_edge+binsize)
+        bin_areas.append(np.sum(weighted_areas[ind]))
+
+    return bin_areas
+
 
