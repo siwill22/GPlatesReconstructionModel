@@ -303,7 +303,7 @@ class ReconstructionModel(object):
                 default_resolve_topology_parameters=default_resolve_topology_parameters)
 
 
-    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False):
+    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False, wrap_to_dateline=False):
         """
         Reconstruct feature collection or a geopandas dataframe using the reconstruction model
 
@@ -429,7 +429,7 @@ class ReconstructionModel(object):
                 features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], inplace=True, errors='ignore')
             else:
                 polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
-                features.drop(columns=['PLATEID1'], inplace=True, errors='ignore')
+                features = features.drop(columns=['PLATEID1'], errors='ignore')
 
             return features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
 
