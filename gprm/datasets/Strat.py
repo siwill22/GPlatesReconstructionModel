@@ -28,6 +28,7 @@ from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 import pandas as _pd
 import geopandas as _gpd
+import numpy as _np
 import os as _os
 
 
@@ -201,7 +202,13 @@ def pbdb_elevation_mapping(pbdb):
         'wet floodplain': (0, 1000), 
     }
 
+    nan_dict = {_np.nan: (_np.nan, _np.nan)}
+
     marine_env_dict.update(terrestrial_env_dict)
+    marine_env_dict.update(nan_dict)
+
+    # TODO change this so that the eleva
+    #pbdb = pbdb.dropna(subset=['environment']).reset_index(drop=True)
 
     elevation_ranges = _pd.DataFrame(pbdb['environment'].map(marine_env_dict).to_list(), 
                                      index=pbdb.index, 
