@@ -134,6 +134,9 @@ def gpml2gdf(features):
         elif isinstance(features[0], pygplates.ReconstructedFeatureGeometry):
             features = _reconstructed_features_to_features(features)
             features = pygplates.FeatureCollection(features)
+        elif isinstance(features[0], pygplates.ResolvedTopologicalBoundary):
+            features = [resolved_topology.get_resolved_feature() for resolved_topology in features]
+            features = pygplates.FeatureCollection(features)
         else:
             raise TypeError('Unexpected list item of type {:s} for gpml2gdf input'.format(type(features[0])))
     else:
