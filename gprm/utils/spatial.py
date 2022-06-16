@@ -297,6 +297,40 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
     return mask
 
 
+def get_dynamic_polygon_raster(dynamic_polygons, rotation_model, reconstruction_time,
+                               sampling):
+
+    import tempfile
+    import geopandas as gpd
+    from rasterio.features import rasterize, Affine
+
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        pygplates.resolve_topologies(dynamic_polygons, 
+                                     rotation_model, 
+                                     '{:s}/masking_temp.shp'.format(temporary_directory), 
+                                     reconstruction_time)
+
+        gdf = gpd.read_file('{:s}/masking_temp.shp'.format(temporary_directory))
+
+    dims = (int(180./sampling)+1, int(360./sampling)+1)
+    transform = Affine(sampling, 0.0, -180.-sampling/2., 0.0, sampling, -90.-sampling/2.)
+
+    geometry_zval_tuples = [(x.geometry, x.PLATEID1) for i, x in gdf.iterrows()]
+    
+    #with rasterio.open(raster_file) as src:
+        # iterate over features to get (geometry, id value) pairs
+    mask = rasterize(
+        geometry_zval_tuples,
+        transform=transform,
+        out_shape=dims)
+
+    # the first and last columns should match, but may not due to the imposed dateline
+    mask[:,0] = mask[:,-1]
+
+    return mask
+
+
+
 # Topology functions
 def plate_boundary_intersections(cross_section_geometry,shared_boundary_sections,ProfileX_kms):
 
