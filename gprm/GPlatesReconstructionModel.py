@@ -366,7 +366,7 @@ class ReconstructionModel(object):
 
 
                 # The reconstructed file will have various extra columns, of which the name
-                # of the temporary file is definitelt not useful so we delete it
+                # of the temporary file is definitely not useful so we delete it
                 # (checking for the unlikely event of the column 'FILE1' already existing)
                 if not 'FILE1' in features.columns:
                     reconstructed_gdf.drop(columns=['FILE1'], inplace=True)
@@ -409,11 +409,20 @@ class ReconstructionModel(object):
                                       pygplates.PartitionProperty.valid_time_period]
             else:
                 properties_to_copy = [pygplates.PartitionProperty.reconstruction_plate_id]
-            return pygplates.FeatureCollection(
-                pygplates.partition_into_plates(partitioning_polygon_features,
-                                                   self.rotation_model,
-                                                   features,
-                                                   properties_to_copy=properties_to_copy))
+            if keep_unpartitioned_features:
+                return pygplates.FeatureCollection(
+                    pygplates.partition_into_plates(partitioning_polygon_features,
+                                                    self.rotation_model,
+                                                    features,
+                                                    properties_to_copy=properties_to_copy))
+            else:
+                return pygplates.FeatureCollection(
+                    pygplates.partition_into_plates(partitioning_polygon_features,
+                                                    self.rotation_model,
+                                                    features,
+                                                    properties_to_copy=properties_to_copy,
+                                                    partition_return = pygplates.PartitionReturn.separate_partitioned_and_unpartitioned)[0])
+
 
         elif isinstance(features, gpd.GeoDataFrame):
 
@@ -426,15 +435,24 @@ class ReconstructionModel(object):
                 # To ensure the column names are the 'standard' ones (and overwrite any existing values),
                 # we must remove columns with these names
                 # Note the "errors='ignore'" is needed to handle cases that the columns may not exist
-                features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], inplace=True, errors='ignore')
+                features = features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], errors='ignore')
             else:
                 polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
                 features = features.drop(columns=['PLATEID1'], errors='ignore')
 
-            return features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
+            features = features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
+
+            if not keep_unpartitioned_features:
+                features = features[features['PLATEID1'] != 0]
+
+            return features
 
 
     def to_GPlates(self, feature_collections=None, path_to_gplates=None):
+        '''
+        Experimental Function to take a list of feature collections and launch
+        GPlates desktop app with all the features loaded automatically
+        '''
 
         import platform, subprocess
 
@@ -809,6 +827,16 @@ class PlateSnapshot(object):
         fig.plot(data = plot_file.name, pen=pen, **kwargs)
 
         os.unlink(plot_file.name)
+
+
+    def plot_boundaries(self, fig, **kwargs):
+        '''
+        A convenience function to plot all boundaries in one line of code
+        '''
+        self.plot_subduction_zones(fig, **kwargs)
+        self.plot_mid_ocean_ridges(fig, **kwargs)
+        self.plot_other_boundaries(fig, **kwargs)
+
 
     #TODO plot polygons
     def plot_deformation_zones(self, fig, pen='0.5p,gray10', color='p14+b+r300', **kwargs):
