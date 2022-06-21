@@ -84,6 +84,9 @@ def get_igneous_samples(df_SampleDetails,df_Data):
     df = _pd.merge(df_IgneousSamples,df_Data,on='Sample Key')
     IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
+    IgneousZircons['Sample_ID_x'] = IgneousZircons['Sample_ID_x'].astype("string")
+    IgneousZircons['Sample_ID_y'] = IgneousZircons['Sample_ID_y'].astype("string")
+
     return IgneousZircons
 
 
