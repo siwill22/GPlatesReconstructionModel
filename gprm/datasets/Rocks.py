@@ -116,3 +116,19 @@ def Kimberlites():
     return gdf
 
 
+def Metamorphism():
+    '''
+    Load the Metamorphims compilation from Brown and Johnson, as reported in the SM of Liu et al (2022)
+    '''
+    fname = _retrieve(
+        url="https://gsapubs.figshare.com/ndownloader/files/33947312",
+        known_hash="fa815bc1f07c347834dc4e9724285bfff12176bd42d5330cbc0cabeab1757fc4",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+    )
+
+    df = _pd.read_excel(fname, skiprows=1)
+    df = df.rename(columns={'LONGITUDE (˚E)':'Longitude', 'LATITUDE (˚N)':'Latitude'})
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+    return gdf
