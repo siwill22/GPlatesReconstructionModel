@@ -271,14 +271,22 @@ def raster_topological_reconstruction(grid, topological_model, reconstruction_ti
     of the output raster (Which would work for global grids).
     Optionally, a different region and sampling for the output grid can be specified.
     """
-    
+    coord_keys = [key for key in grid.coords.keys()]
+
+    if 'lon' in coord_keys[0].lower():
+        latitude_key=1; longitude_key=0
+    elif 'x' in coord_keys[0].lower():
+        latitude_key=1; longitude_key=0
+    else:
+        latitude_key=0; longitude_key=1
+
     if region:
         coords = [('lat',np.arange(region[2],region[3]+spacing, spacing)), ('lon',np.arange(region[0],region[1]+spacing, spacing))]
         XX,YY = np.meshgrid(np.arange(region[0],region[1]+spacing, spacing),
                             np.arange(region[2],region[3]+spacing, spacing))
     else:
-        coords = [('lat',grid.lat.data), ('lon',grid.lon.data)]
-        XX,YY = np.meshgrid(grid.lon.data, grid.lat.data)
+        coords = [('lat',grid.coords[coord_keys[latitude_key]].data), ('lon',grid.coords[coord_keys[longitude_key]].data)]
+        XX,YY = np.meshgrid(grid.coords[coord_keys[longitude_key]].data, grid.coords[coord_keys[latitude_key]].data)
 
     geometry_points = [(lat,lon) for lat,lon in zip(YY.flatten(),XX.flatten())]
 
