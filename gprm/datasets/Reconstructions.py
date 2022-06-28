@@ -352,7 +352,7 @@ def fetch_Seton2012(load=True):
     reconstruction_model = _ReconstructionModel('Seton++2012')
     reconstruction_model.add_rotation_model('{:s}/Seton_etal_2012_ESR/Rotations/Seton_etal_ESR2012_2012.1.rot'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/Seton_etal_2012_ESR/Coastlines/Seton_etal_ESR2012_Coastline_2012.1.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/Seton_etal_2012_ESR/Coastlines/Seton_etal_ESR2012_Coastline_2012.1.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Seton_etal_2012_ESR/Plate_polygons/Seton_etal_ESR2012_PP_2012.1.gpml'.format(dirname))
 
     return reconstruction_model
 
