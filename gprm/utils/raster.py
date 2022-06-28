@@ -202,8 +202,8 @@ def run_grid_pnp(recon_time, points, spatial_tree_of_uniform_recon_points, polyg
 ###########################################################
 
 
-def reconstruct_raster(raster_class, static_polygons, rotation_model, time_from, time_to,
-                       grid_sampling=1., anchor_plate_id=0, sampling_method='scipy'):
+def reconstruct_raster(raster, static_polygons, rotation_model, time_from, time_to,
+                       grid_sampling=1., anchor_plate_id=0, sampling_method='gmt', return_type='xarray'):
 
     grid_longitudes, grid_latitudes = np.meshgrid(np.arange(-180.,180.0001,grid_sampling), np.arange(-90.,90.0001,grid_sampling))
     grid_longitudes = grid_longitudes.flatten()
@@ -224,14 +224,26 @@ def reconstruct_raster(raster_class, static_polygons, rotation_model, time_from,
                                                       spatial_tree_of_uniform_recon_points,
                                                       anchor_plate_id)
 
-    if sampling_method=='scipy':
-        point_raster_values = raster_class.sample(time_from_point_lons, time_from_point_lats)
-    elif sampling_method=='gmt':
-        point_raster_values = raster_class.sample_using_gmt(time_from_point_lons, time_from_point_lats)
-    elif sampling_method=='stripy':
-        point_raster_values = raster_class.sample_using_stripy(time_from_point_lons, time_from_point_lats)
+    if isinstance(raster, xr.core.dataarray.DataArray):
+        point_raster_values = pygmt.grdtrack(grid=raster, 
+                                            points=pd.DataFrame(data={'x':time_from_point_lons,
+                                                                    'y':time_from_point_lats}), 
+                                            newcolname='z')['z']
 
-    return time_to_point_lons, time_to_point_lats, point_raster_values
+    # retained for backward compatibility
+    else:
+        if sampling_method=='scipy':
+            point_raster_values = raster.sample(time_from_point_lons, time_from_point_lats)
+        elif sampling_method=='gmt':
+            point_raster_values = raster.sample_using_gmt(time_from_point_lons, time_from_point_lats)
+        elif sampling_method=='stripy':
+            point_raster_values = raster.sample_using_stripy(time_from_point_lons, time_from_point_lats)
+    
+    if return_type=='ndarray':
+        return xyz2grd(time_to_point_lons,time_to_point_lats,point_raster_values,
+                       grid_longitudes,grid_latitudes)
+    else:
+        return time_to_point_lons, time_to_point_lats, point_raster_values
 
 
 def xyz2grd(point_lons,point_lats,point_zvals,grid_lons,grid_lats):
@@ -309,7 +321,7 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
     point_raster_values = pygmt.grdtrack(grid=grid, 
                                          points=pd.DataFrame(data={'x':multipoint_at_from_time.to_lat_lon_array()[:,1],
                                                                    'y':multipoint_at_from_time.to_lat_lon_array()[:,0]}), 
-                                        newcolname='z')
+                                         newcolname='z')
 
     ds = xr.DataArray(np.array(point_raster_values['z']).reshape(XX.shape),
                       coords=coords,
