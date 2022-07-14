@@ -26,6 +26,7 @@ from pooch import os_cache as _os_cache
 from pooch import retrieve as _retrieve
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
+import numpy as _np
 import pandas as _pd
 import geopandas as _gpd
 import os as _os
@@ -90,8 +91,11 @@ def BaseMetalDeposits(deposit_type, keep_unknown_age_samples=False):
 
     df = _pd.read_excel(fname, sheet_name=deposit_type)
     df.rename(columns={'Lon.':'Longitude', 'Lat.':'Latitude',
-                       'Lon':'Longitude', 'Lat':'Latitude'}, inplace=True)
+                        'Lon':'Longitude', 'Lat':'Latitude'}, inplace=True)
+    df['Age (Ga)'] = df['Age (Ga)'].replace({'ND': _np.nan})
     gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+    gdf['Age'] = gdf['Age (Ga)']*1000.
 
     if not keep_unknown_age_samples:
         return gdf[gdf['Age (Ga)'] != 'ND']
@@ -129,6 +133,7 @@ def Metamorphism():
 
     df = _pd.read_excel(fname, skiprows=1)
     df = df.rename(columns={'LONGITUDE (˚E)':'Longitude', 'LATITUDE (˚N)':'Latitude'})
+    df['Age'] = df['AGE(Ga)']*1000.
     gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
     return gdf
