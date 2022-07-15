@@ -1140,7 +1140,8 @@ class PlateTree(object):
                                       show=show)
 
 
-    def plot_gmt(self, fig, reconstruction_time, polygons='static'):
+    def plot_gmt(self, fig, reconstruction_time, polygons='static', 
+                 link_pen='0.6p,red', node_pen='0.6p,black', node_style='d0.2c', node_color='gray'):
         """
         plot geographic representation of plate hierarchy at a specified reconstruction time
         into a pygmt figure 
@@ -1168,9 +1169,9 @@ class PlateTree(object):
                                             links_file.name, [reconstruction_time,reconstruction_time],
                                             polygon_type=polygon_type, root_feature_filename=nodes_file.name)
 
-        fig.plot(data=links_file.name, pen='0.6p,red')
-        fig.plot(data=links_file.name, style='d0.2c', pen='0.6p,black', color='gray')
-        fig.plot(data=nodes_file.name, style='a0.4c', pen='0.6p,blue', color='gold')
+        fig.plot(data=links_file.name, pen=link_pen)
+        fig.plot(data=links_file.name, style=node_style, pen=node_pen, color=node_color)
+        #fig.plot(data=nodes_file.name, style=node_style, pen=node_pen, color=node_color)
 
         os.unlink(links_file.name)
         os.unlink(nodes_file.name)
