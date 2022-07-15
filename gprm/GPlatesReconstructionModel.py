@@ -239,6 +239,7 @@ class ReconstructionModel(object):
                                      reconstruction_time,
                                      resolved_topological_sections,
                                      anchor_plate_id=anchor_plate_id)
+                                     #resolve_topology_types = pygplates.ResolveTopologyType.line | pygplates.ResolveTopologyType.boundary | pygplates.ResolveTopologyType.network)
 
         return PlateSnapshot(resolved_topologies,
                              resolved_topological_sections,
@@ -287,6 +288,16 @@ class ReconstructionModel(object):
         rotation_features = utils.rotation.generate_rotation_feature(self.rotation_files)
 
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
+
+
+    def platetree(self):
+        """
+        Return a plate tree hierarchy object associated with the reconstruction model
+
+        This can be interrogated to get spatial representations of the hierarchy at individual time snapshots
+        """
+        return PlateTree(self)
+        
 
 
     if pygplates.Version.get_imported_version() >= pygplates.Version(32):
@@ -1111,12 +1122,18 @@ class PlateTree(object):
     def __init__(self, reconstruction_model):
         self.reconstruction_model = reconstruction_model
 
-    def plot_snapshot(self, reconstruction_time, figsize=(14,9), show=True):
+    def plot_snapshot(self, reconstruction_time, figsize=(14,9), polygons='static', show=True):
         """
         simple snapshot of a platetree snapshot at a specified reconstruction time, rendered in matplotlib
         """
+        if polygons=='static':
+            polygons = self.reconstruction_model.static_polygons
+        elif polygons=='dynamic':
+            polygons = self.reconstruction_model.dynamic_polygons
+        # TODO else check that the polygons are some other set of polygon features that 
+        # can be passed to plot_snapshot, else raise error
 
-        utils.platetree.plot_snapshot(self.reconstruction_model.static_polygons,
+        utils.platetree.plot_snapshot(polygons,
                                       self.reconstruction_model.rotation_model,
                                       reconstruction_time, 
                                       figsize=figsize,
@@ -1132,16 +1149,24 @@ class PlateTree(object):
         
 
         """
+        if polygons=='static':
+            polygon_type = 'static'
+            polygons = self.reconstruction_model.static_polygons
+        elif polygons=='dynamic':
+            polygon_type = 'dynamic'
+            polygons = self.reconstruction_model.dynamic_polygons
+        # TODO else check that the polygons are some other set of polygon features that 
+        # can be passed to plot_snapshot, else raise error
 
         links_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
         links_file.close()
         nodes_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
         nodes_file.close()
 
-        utils.platetree.write_trees_to_file(self.reconstruction_model.static_polygons, 
+        utils.platetree.write_trees_to_file(polygons, 
                                             self.reconstruction_model.rotation_model, 
                                             links_file.name, [reconstruction_time,reconstruction_time],
-                                            polygon_type='static', root_feature_filename=nodes_file.name)
+                                            polygon_type=polygon_type, root_feature_filename=nodes_file.name)
 
         fig.plot(data=links_file.name, pen='0.6p,red')
         fig.plot(data=links_file.name, style='d0.2c', pen='0.6p,black', color='gray')
