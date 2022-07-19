@@ -120,6 +120,23 @@ def Kimberlites():
     return gdf
 
 
+def Carbonatites():
+    '''
+    Load Carbonatite data from Humphreys-Williams and Zahirovic (2021)
+    '''
+    fname = _retrieve(
+        url="https://zenodo.org/record/5968095/files/1_CarbonatitesShapefile_WithAgeConstraints.zip?download=1",
+        known_hash="md5:7f219044c7a1ea9d81fc3410b64b2876",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(extract_dir='Carbonatites')
+    )
+
+    gdf = _gpd.read_file('{:s}/Carbonatites/1_CarbonatitesShapefile_WithAgeConstraints/carbonatites_gplates.shp'.format(str(_os_cache('gprm'))))
+
+    return gdf
+
+
 def Metamorphism():
     '''
     Load the Metamorphims compilation from Brown and Johnson, as reported in the SM of Liu et al (2022)
