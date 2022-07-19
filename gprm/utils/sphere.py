@@ -181,7 +181,7 @@ def healpix_mesh(nSide):
 
 
 ## Some functions for data binning
-def groupby_healpix(df, equal_area_points, return_point_indices=True):
+def groupby_healpix(gdf, equal_area_points, return_point_indices=True):
     """
     Given a (geo)dataframe with irregularly distributed point in lat,long, 
     and equal area point distribution, this functions will bin the dataframe point
@@ -191,13 +191,13 @@ def groupby_healpix(df, equal_area_points, return_point_indices=True):
     """
     # TODO force input to be dataframe??
     bin_counts, bin_indices = equal_area_points.point_feature_heatmap(
-        [pygplates.PointOnSphere(point) for point in zip(df['Latitude'],
-                                                         df['Longitude'])], return_indices=True)
+        [pygplates.PointOnSphere(point) for point in zip(gdf.geometry.y,
+                                                         gdf.geometry.x)], return_indices=True)
 
     point_indices = np.unique(bin_indices)
-    df['bin_id'] = bin_indices
+    gdf['bin_id'] = bin_indices
 
-    grouped_points = df.groupby(by=['bin_id'])
+    grouped_points = gdf.groupby(by=['bin_id'])
 
     #binned_df = pd.DataFrame(columns=df.columns)
     #for i,group in enumerate(grouped_points.groups):
