@@ -175,6 +175,42 @@ def fetch_Merdith2021(load=True):
     return reconstruction_model
 
 
+def fetch_Muller2022(NNR=False, load=True):
+    '''
+    Load Billion-year reconstruction from Muller et al (2022) Solid Earth
+    with optimised reference frame generated for Merdith et al (2021) model
+    doi:
+    '''
+    fnames = _retrieve(
+        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2022_SE/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel.zip",
+        known_hash="sha256:a1e37f0a201a827ffe1150a808984786c6a2982923362580e28718fe7bc716e7",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(extract_dir='Muller2022'),
+    )
+
+    dirname = '{:s}/Muller2022/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel/'.format(str(_os_cache('gprm')))
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('Muller++2022')
+    if NNR:
+        reconstruction_model.add_rotation_model('{:s}/optimisation/no_net_rotation_model.rot'.format(dirname))
+    else:
+        reconstruction_model.add_rotation_model('{:s}/optimisation/1000_0_rotfile_Merdith_et_al_optimised.rot'.format(dirname))
+    #reconstruction_model.add_static_polygons('{:s}/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
+    #reconstruction_model.add_coastlines('{:s}/'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/shapes_continents_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/410-250_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/250-0_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/TopologyBuildingBlocks_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Transforms_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Convergence_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Divergence_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Topologies_Merdith_et_al.gpml'.format(dirname))
+
+    return reconstruction_model
+
+
 def fetch_Muller2016(load=True):
     '''
     Load Pangea breakup reconstruction from Muller et al (2016) Ann Rev Earth & Plan Sci
