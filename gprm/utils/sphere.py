@@ -261,16 +261,17 @@ def plot_groups(equal_area_points, bin_values, fig=None, filename=None, grid_res
 
         ds = xr.DataArray(grid_z.reshape(grid_lon.shape), coords=[('lat',grid_lat[:,0]), ('lon',grid_lon[0,:])], name='z')
 
-        pygmt.config(COLOR_FOREGROUND='white', COLOR_BACKGROUND='black')
+        #pygmt.config(COLOR_FOREGROUND='white', COLOR_BACKGROUND='black')
         if not color_range:
             color_range = (np.nanmin(bin_values), np.nanmax(bin_values))
             reverse = True
-        pygmt.makecpt(cmap=cmap, series='{:f}/{:f}'.format(color_range[0],color_range[1]), reverse=reverse)
+        pygmt.makecpt(cmap=cmap, series='{:f}/{:f}'.format(color_range[0],color_range[1]), 
+                      reverse=reverse, background='o')
 
         # This line would allow the polygons to be plotted directly with a colormap, but tends to crash when 
         # healpix of N=32 or greater is input
         #fig.plot(data=filename, pen=pen, color='+z', cmap=True, a='Z=zval', close=True, **kwargs)
-        fig.grdimage(ds, transparency=transparency, cmap=True)
+        fig.grdimage(ds, transparency=transparency, cmap=True, nan_transparent=True)
         fig.plot(data=filename, pen=pen, transparency=transparency, close=True, **kwargs)
 
 
