@@ -870,6 +870,26 @@ class PlateSnapshot(object):
         os.unlink(plot_file.name)
 
 
+    def plot_polygons(self, fig, **kwargs):
+
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.gmt')
+        plot_file.close()
+
+        features = []
+        for topology in self.resolved_topologies:
+            if not isinstance(topology, pygplates.ResolvedTopologicalNetwork):
+                features.append(topology.get_resolved_feature())
+
+        if not features:
+            print('No deformation zones to plot')
+            return
+
+        pygplates.FeatureCollection(features).write(plot_file.name)
+        fig.plot(data = plot_file.name, **kwargs)
+
+        os.unlink(plot_file.name)
+
+
 class MotionPathFeature:
     """
     Class to define a motion path feature.
