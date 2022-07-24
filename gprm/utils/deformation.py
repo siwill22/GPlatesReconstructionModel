@@ -78,6 +78,7 @@ def create_circles(centre_points, circle_radius_degrees=0.5, polygon=None):
     # optionally, limit the points to those which lie within a provided polygon geometry
     # requires pyshtools
     import pyshtools as pysh
+    # TODO add a a pygplates version to avoid shtools dependency
 
     if polygon:
         pts_in_polygon = []
