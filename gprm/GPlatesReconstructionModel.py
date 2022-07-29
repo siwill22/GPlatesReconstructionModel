@@ -1142,7 +1142,7 @@ class PlateTree(object):
     def __init__(self, reconstruction_model):
         self.reconstruction_model = reconstruction_model
 
-    def plot_snapshot(self, reconstruction_time, figsize=(14,9), polygons='static', show=True):
+    def plot_snapshot(self, reconstruction_time, anchor_plate_id=0, figsize=(14,9), polygons='static', show=True):
         """
         simple snapshot of a platetree snapshot at a specified reconstruction time, rendered in matplotlib
         """
@@ -1156,11 +1156,13 @@ class PlateTree(object):
         utils.platetree.plot_snapshot(polygons,
                                       self.reconstruction_model.rotation_model,
                                       reconstruction_time, 
+                                      anchor_plate_id=anchor_plate_id,
                                       figsize=figsize,
                                       show=show)
 
 
     def plot_gmt(self, fig, reconstruction_time, polygons='static', 
+                 anchor_plate_id=0, 
                  link_pen='0.6p,red', 
                  node_pen='0.6p,black', node_style='d0.2c', node_color='gray',
                  root_node_style='a0.4c', root_node_pen='0.6p,black', root_node_color='red'):
@@ -1189,6 +1191,7 @@ class PlateTree(object):
         utils.platetree.write_trees_to_file(polygons, 
                                             self.reconstruction_model.rotation_model, 
                                             links_file.name, [reconstruction_time,reconstruction_time],
+                                            anchor_plate_id=anchor_plate_id,
                                             polygon_type=polygon_type, root_feature_filename=nodes_file.name)
 
         fig.plot(data=links_file.name, pen=link_pen)
@@ -1199,7 +1202,7 @@ class PlateTree(object):
         os.unlink(nodes_file.name)
 
 
-    def to_gpml(self, reconstruction_times, filename):
+    def to_gpml(self, reconstruction_times, filename, anchor_plate_id=0):
         """
         Save a platetree object to a vector file with a GPlates-compatible file type
         """
@@ -1214,7 +1217,8 @@ class PlateTree(object):
              reconstruction_tree,
              reconstructed_polygons) = utils.platetree.tree_snapshot(self.reconstruction_model.static_polygons,
                                                                      self.reconstruction_model.rotation_model,
-                                                                     reconstruction_time)
+                                                                     reconstruction_time,
+                                                                     anchor_plate_id=anchor_plate_id)
 
             # for now, the valid time is set to be plus/minus 0.5 Myr
             tree_features = utils.platetree.create_hierarchy_features(chains,reconstructed_polygons,tree_features,
