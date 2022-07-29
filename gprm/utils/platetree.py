@@ -246,10 +246,11 @@ def create_hierarchy_features(chains,reconstructed_polygons,tree_features=None,v
     return tree_features
 
 
-def tree_snapshot(polygons, rotation_model, recon_time):
+def tree_snapshot(polygons, rotation_model, recon_time, anchor_plate_id=0):
 
     reconstructed_polygons = []
-    pygplates.reconstruct(polygons,rotation_model,reconstructed_polygons,recon_time)
+    pygplates.reconstruct(polygons,rotation_model,reconstructed_polygons,recon_time,
+                          anchor_plate_id=anchor_plate_id)
 
     uniq_plates_from_polygons = get_unique_plate_ids_from_reconstructed_features(reconstructed_polygons)
 
@@ -260,14 +261,15 @@ def tree_snapshot(polygons, rotation_model, recon_time):
     return uniq_plates_from_polygons, chains, reconstruction_tree, reconstructed_polygons
 
 
-def plot_snapshot(polygons, rotation_model, recon_time, figsize=(14,9), show=True):
+def plot_snapshot(polygons, rotation_model, recon_time, anchor_plate_id=0, figsize=(14,9), show=True):
 
     (uniq_plates_from_polygons,
      chains,
      reconstruction_tree,
      reconstructed_polygons) = tree_snapshot(polygons,
                                              rotation_model,
-                                             recon_time)
+                                             recon_time,
+                                             anchor_plate_id=anchor_plate_id)
 
     polygon_centroids = get_polygon_centroids(reconstructed_polygons)
 
@@ -301,7 +303,7 @@ def plot_snapshot(polygons, rotation_model, recon_time, figsize=(14,9), show=Tru
 
 
 def write_trees_to_file(input_features, rotation_model, filename,
-                        reconstruction_time_range, time_step=1,
+                        reconstruction_time_range, anchor_plate_id=0, time_step=1,
                         polygon_type='static', root_feature_filename=None):
 
     reconstruction_times = np.arange(reconstruction_time_range[0], reconstruction_time_range[1]+time_step, time_step)
@@ -315,10 +317,12 @@ def write_trees_to_file(input_features, rotation_model, filename,
 
         reconstructed_polygons = []
         if polygon_type in ['topological','dynamic']:  # so this should be fixed, no need for duplicate terminology
-            pygplates.resolve_topologies(input_features, rotation_model, reconstructed_polygons, reconstruction_time)
+            pygplates.resolve_topologies(input_features, rotation_model, reconstructed_polygons, reconstruction_time,
+                                         anchor_plate_id=anchor_plate_id)
 
         else:
-            pygplates.reconstruct(input_features, rotation_model, reconstructed_polygons, reconstruction_time)
+            pygplates.reconstruct(input_features, rotation_model, reconstructed_polygons, reconstruction_time,
+                                  anchor_plate_id=anchor_plate_id)
 
         uniq_plates_from_polygons = get_unique_plate_ids_from_reconstructed_features(reconstructed_polygons)
 
