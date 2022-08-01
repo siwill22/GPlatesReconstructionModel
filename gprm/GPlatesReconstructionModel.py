@@ -400,6 +400,36 @@ class ReconstructionModel(object):
         return
 
 
+    def reconstruct_to_time_of_appearance(self, features, ReconstructTime='BirthTime', anchor_plate_id=0):
+        """
+        Reconstruct points to time of appearance corresponding to each point feature
+        """
+        if isinstance(features, pygplates.FeatureCollection):
+
+            reconstructed_features = []
+            for feature in features:
+                if ReconstructTime == 'MidTime':
+                    reconstruction_time = (feature.get_valid_time()[0]+feature.get_valid_time()[1])/2.
+                else:
+                    reconstruction_time = feature.get_valid_time()[0]
+                if feature.get_geometry():
+                    reconstructed_feature = pygplates.Feature()
+                    reconstructed_feature.set_reconstruction_plate_id(feature.get_reconstruction_plate_id())
+                    reconstructed_feature.set_valid_time(feature.get_valid_time()[0], feature.get_valid_time()[1])
+                    reconstructed_feature.set_name(feature.get_name())
+                    rotation = self.rotation_model.get_rotation(reconstruction_time,
+                                                                feature.get_reconstruction_plate_id(),
+                                                                anchor_plate_id=anchor_plate_id)
+                    reconstructed_feature.set_geometry(rotation * feature.get_geometry())
+                    reconstructed_features.append(reconstructed_feature)
+
+            return reconstructed_features
+
+        elif isinstance(features, gpd.GeoDataFrame):
+
+            return  # TODO need to avoid code duplication, preserve all properties
+
+
 
     def assign_plate_ids(self, features, polygons='static', copy_valid_times=False, keep_unpartitioned_features=True):
         """
