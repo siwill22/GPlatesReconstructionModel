@@ -109,6 +109,38 @@ def fetch_Li2008(load=True):
     return reconstruction_model
 
 
+def fetch_DomeierTorsvik2014(load=True):
+    '''
+    Load 250-410 Ma reconstruction from Domeier and Torsvik (2014) 
+    doi:
+
+    '''
+    fnames = _retrieve(
+        url="http://www.earthdynamics.org/data/Domeier2014_data.zip",
+        known_hash="sha256:e2bd29afc9bf9cfdbcaba286787526dc71f4e0b5e05415b01e11a953d8abfe61",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(extract_dir='DomeierTorsvik2014'),
+    )
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+
+    dirname = '{:s}/DomeierTorsvik2014/'.format(str(_os_cache('gprm')))
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('DomeierTorsvik2014')
+    reconstruction_model.add_rotation_model('{:s}/Domeier2014_data/LP_TPW.rot'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/Domeier2014_data/LP_Land.shp'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/Domeier2014_data/LP_Land.shp'.format(dirname))
+    reconstruction_model.add_coastlines('{:s}/Domeier2014_data/LP_Land.shp'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Domeier2014_data/LP_topos.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Domeier2014_data/LP_transform.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Domeier2014_data/LP_subduction.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Domeier2014_data/LP_ridge.gpml'.format(dirname))
+    
+    return reconstruction_model
+
+
 def fetch_Matthews2016(load=True):
     '''
     Load 0-410 Ma reconstruction from Matthews et al, doi:
