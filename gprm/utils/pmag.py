@@ -186,11 +186,11 @@ def generate_running_mean_path(vgps,time_list,time_window=20,right=True):
                                 & (vgps_df['AverageAge']<mean_pole_age+time_window/2.)]
         
         if vgps_window.empty:
-            running_mean_path.append((mean_pole_age,np.nan,np.nan,np.nan))
+            running_mean_path.append((mean_pole_age,np.nan,np.nan,np.nan,0))
 
         elif len(vgps_window)==1:
             running_mean_path.append((mean_pole_age, np.array(vgps_window['PoleLongitude'])[0], 
-                                      np.array(vgps_window['PoleLatitude'])[0], np.array(vgps_window['PoleA95'])[0]))
+                                      np.array(vgps_window['PoleLatitude'])[0], np.array(vgps_window['PoleA95'])[0], 1))
 
         else:
             #print(vgps_window)
@@ -199,10 +199,10 @@ def generate_running_mean_path(vgps,time_list,time_window=20,right=True):
             #print(mean_pole)
 
             running_mean_path.append((mean_pole_age, mean_pole['dec'],
-                                      mean_pole['inc'],mean_pole['alpha95']))
+                                      mean_pole['inc'],mean_pole['alpha95'],len(vgps_window)))
         
 
-    return _pd.DataFrame(running_mean_path, columns=['Age','PoleLongitude','PoleLatitude','PoleA95'])
+    return _pd.DataFrame(running_mean_path, columns=['Age','PoleLongitude','PoleLatitude','PoleA95','N'])
 
 
 def write_vgp_feature(vgp, mapping, half_time_range = 10.):
