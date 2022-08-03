@@ -468,6 +468,13 @@ class ReconstructionModel(object):
         elif isinstance(features, gpd.GeoDataFrame):
 
             # TODO handle cases where static polygons are spread across multiple feature collections
+            if len(partitioning_polygon_features)>1:
+                partitioning_polygon_feature_merge = []
+                for item in partitioning_polygon_features:
+                    for feature in item:
+                        partitioning_polygon_feature_merge.append(feature)
+                partitioning_polygon_features = [partitioning_polygon_feature_merge]
+
             polygon_gdf = utils.create_gpml.gpml2gdf(pygplates.FeatureCollection(partitioning_polygon_features[0]))
             # TODO handle the FROMAGE and TOAGE
             # TODO handle case where the field names already exist and we want to overwrite them
@@ -487,6 +494,9 @@ class ReconstructionModel(object):
                 features = features[features['PLATEID1'] != 0]
 
             return features
+
+        else:
+            raise ValueError('Error encountered in plate partitioning')
 
 
     def to_GPlates(self, feature_collections=None, path_to_gplates=None):
