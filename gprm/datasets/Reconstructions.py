@@ -452,7 +452,7 @@ def fetch_TorsvikCocks2017(load=True):
     reconstruction_model.add_rotation_model('{:s}/Torsvik_Cocks_HybridRotationFile.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/CEED6_LAND.gpml'.format(dirname))
-    reconstruction_model.add_continent_polygons(('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname)))
+    reconstruction_model.add_continent_polygons(('{:s}/CEED6_LAND.gpml'.format(dirname)))
     reconstruction_model.add_continent_polygons('{:s}/CEED6_TERRANES.shp'.format(dirname))
     reconstruction_model.add_continent_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/CEED6_LAND.gpml'.format(dirname))
