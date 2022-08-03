@@ -431,6 +431,10 @@ def fetch_TorsvikCocks2017(load=True):
     by Torvsik and Cocks (2017)
     doi: https://doi.org/10.1017/9781316225523
 
+    NOTE: Terranes which only exist in the Paleozoic are included in the continents layer, 
+    which could cause a problem if this layer is used for plate_id assignment of present-day
+    data. Use the static polygon layer instead.
+
     '''
     fnames = _retrieve(
         url="http://www.earthdynamics.org/earthhistory/bookdata/CEED6.zip",
@@ -446,9 +450,11 @@ def fetch_TorsvikCocks2017(load=True):
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Torsvik+Cocks2017')
     reconstruction_model.add_rotation_model('{:s}/Torsvik_Cocks_HybridRotationFile.rot'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/CEED6_TERRANES.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/CEED6_LAND.gpml'.format(dirname))
+    reconstruction_model.add_continent_polygons(('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname)))
+    reconstruction_model.add_continent_polygons('{:s}/CEED6_TERRANES.shp'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/CEED6_LAND.gpml'.format(dirname))
     
     return reconstruction_model
