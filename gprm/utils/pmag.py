@@ -30,7 +30,7 @@ def vgp_to_dataframe(vgp_feature_collection, as_geodataframe=True, return_featur
 
     DataFrameTemplate = ['AverageSampleSiteLongitude','AverageSampleSiteLatitude',
                          'Name','Description','PoleLongitude','PoleLatitude','PoleA95',
-                         'AverageAge','MaximumAge','MinimumAge','PlateID']
+                         'AverageAge','MaximumAge','MinimumAge','PLATEID1']
     if return_feature_id:
         DataFrameTemplate.append('Feature_ID')
     
@@ -103,7 +103,7 @@ def assign_plate_ids(vgps, reconstruction_model):
                                                                                           row.geometry.x))
             partition_plate_ids.append(partition_polygon.get_feature().get_reconstruction_plate_id())
 
-        vgps['PlateID'] = partition_plate_ids
+        vgps['PLATEID1'] = partition_plate_ids
 
         return vgps
 
@@ -132,7 +132,7 @@ def rotate_to_common_reference(vgps, reconstruction_model, reference_plate_id=70
         for i,row in vgps.iterrows():
             vgp_geometry = pygplates.PointOnSphere(row.PoleLatitude,row.PoleLongitude)
             feature_rotation = reconstruction_model.rotation_model.get_rotation(row.AverageAge, 
-                                                                                row.PlateID, 
+                                                                                row.PLATEID1, 
                                                                                 anchor_plate_id=reference_plate_id)
 
             reconstructed_geometry = feature_rotation * vgp_geometry
