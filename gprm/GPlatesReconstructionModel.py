@@ -916,12 +916,16 @@ class PlateSnapshot(object):
         plot_file.close()
 
         features = []
+        color_int = 0
         for topology in self.resolved_topologies:
             if not isinstance(topology, pygplates.ResolvedTopologicalNetwork):
-                features.append(topology.get_resolved_feature())
+                feature = topology.get_resolved_feature().clone()
+                feature.set_reconstruction_plate_id(color_int)
+                features.append(feature)
+                color_int+=1
 
         if not features:
-            print('No deformation zones to plot')
+            print('No polygons to plot')
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
