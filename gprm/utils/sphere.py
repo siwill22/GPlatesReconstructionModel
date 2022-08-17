@@ -79,8 +79,14 @@ def golden_spiral(N=10000):
 
 
 def points_on_sphere(N, distribution_type='marsaglia'):
-# function to call one of several methods and return Long/
-# Lat arrays of points distributed on sphere
+    '''
+    Function to call one of several methods and return Long/
+    Lat arrays of points distributed on sphere
+    N controls number of points
+    distribution_type can be: 'marsaglia' (or 'random')
+                              'fibonacci'
+                              'spiral'
+    '''
 
     if distribution_type in ['marsaglia','random']:
         points = marsaglias_method(N)
