@@ -890,7 +890,16 @@ class PlateSnapshot(object):
 
 
     #TODO plot polygons
-    def plot_deformation_zones(self, fig, pen='0.5p,gray10', color='p14+b+r300', **kwargs):
+    def plot_deformation_zones(self, fig, pen='0.5p,gray10', color='p14+b+r300+fgray', **kwargs):
+        '''
+        plot deforming regions to a gmt figure
+        note that the default fill is a hatch specified in the GMT pattern fill format,
+        where:
+        - p14 is the pattern number, 
+        - b is the background color (None by default)
+        - f is the color of the hatch linework (default is gray)
+        - 300 is a number that controls the size of the hatch
+        '''
 
         plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
         plot_file.close()
@@ -1239,8 +1248,8 @@ class PlateTree(object):
                                             polygon_type=polygon_type, root_feature_filename=nodes_file.name)
 
         fig.plot(data=links_file.name, pen=link_pen)
-        fig.plot(data=links_file.name, style=node_style, pen=node_pen, color=node_color)
-        fig.plot(data=nodes_file.name, style=root_node_style, pen=root_node_pen, color=root_node_color)
+        fig.plot(data=links_file.name, style=node_style, pen=node_pen, color=node_color, label='Child Nodes')
+        fig.plot(data=nodes_file.name, style=root_node_style, pen=root_node_pen, color=root_node_color, label='Root Nodes')
 
         os.unlink(links_file.name)
         os.unlink(nodes_file.name)
