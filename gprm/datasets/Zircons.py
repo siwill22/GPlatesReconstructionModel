@@ -115,31 +115,31 @@ def loadDB(version=2021):
 
         xls = _pd.ExcelFile(fname)
         df = _pd.read_excel(xls, sheet_name='UPb_Data',
-                            dtype={'Database': 'string'
-                                   'Ref-Sample Key': 'string'
-                                   'Sample&Grain': 'string'
-                                   'Concord Class        (1 to 5)': _np.int64
-                                   'Base Concord delineator': _np.float64
-                                   'Minimum Segmented Disc. (myr)': _np.float64
-                                   'Probability 207Pb/206Pb age is correct': _np.float64
-                                   'Non-iter          age                     (Ma)': _np.float64
-                                   '6x6    Seq. Index': _np.int64
-                                   '6x6 Grid Wt.': _np.float64
-                                   '12x12    Seq. Index': _np.int64
-                                   '12x12 Grid Wt.': _np.float64
-                                   'Country Wts.': _np.float64
-                                   'Region Wts.': _np.float64
-                                   'Country/Area': 'string'
-                                   'Major Region': 'string'
-                                   'Continent': 'string'
-                                   'Major Geographic-Geologic Description': 'string'
-                                   'Minor Geologic-Geographic Unit': 'string'
-                                   'Locality': 'string'
-                                   'Latitude': _np.float64
-                                   'Longitude': _np.float64
-                                   'Max. Depos. Age': _np.int64
-                                   'Est. Depos. Age': _np.float64
-                                   'Min. Depos. Age': _np.float64
+                            dtype={'Database': 'string',
+                                   'Ref-Sample Key': 'string',
+                                   'Sample&Grain': 'string',
+                                   'Concord Class        (1 to 5)': _np.int64,
+                                   'Base Concord delineator': _np.float64,
+                                   'Minimum Segmented Disc. (myr)': _np.float64,
+                                   'Probability 207Pb/206Pb age is correct': _np.float64,
+                                   'Non-iter          age                     (Ma)': _np.float64,
+                                   '6x6    Seq. Index': _np.int64,
+                                   '6x6 Grid Wt.': _np.float64,
+                                   '12x12    Seq. Index': _np.int64,
+                                   '12x12 Grid Wt.': _np.float64,
+                                   'Country Wts.': _np.float64,
+                                   'Region Wts.': _np.float64,
+                                   'Country/Area': 'string',
+                                   'Major Region': 'string',
+                                   'Continent': 'string',
+                                   'Major Geographic-Geologic Description': 'string',
+                                   'Minor Geologic-Geographic Unit': 'string',
+                                   'Locality': 'string',
+                                   'Latitude': _np.float64,
+                                   'Longitude': _np.float64,
+                                   'Max. Depos. Age': _np.int64,
+                                   'Est. Depos. Age': _np.float64,
+                                   'Min. Depos. Age': _np.float64,
                                    'Rock Type':'string'})
 
         df = df.rename(columns = {'Est. Depos. Age': 'Est_Depos_Age_Ma',
@@ -195,7 +195,28 @@ def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018):
         )
 
         xls = _pd.ExcelFile(fname)
-        df = _pd.read_excel(xls, sheet_name='U_Pb_Igneous_Zircon')
+        df = _pd.read_excel(xls, sheet_name='U_Pb_Igneous_Zircon',
+                            dtype={'Sample-Ref ID': 'string',
+                                   'Country': 'string',
+                                   'Region': 'string',
+                                   'Continent': 'string',
+                                   'GPS Latitude': _np.float64,
+                                   'GPS Longitude': _np.float64,
+                                   'Minor Geologic-Geographic Unit': 'string',
+                                   'Rock-type 3': 'string',
+                                   'Mafic or Felsic ?': 'string',
+                                   'Spectrometer': 'string',
+                                   'Best Age (Ma)': _np.float64,
+                                   'Uncertainty (2σ precision)': _np.float64,
+                                   '235U Abs. Disc. (myr)': _np.float64,
+                                   'Sample & Grain': 'string',
+                                   'Core/Rim': 'string',
+                                   '206Pb/238U Age (Ma)': _np.float64,
+                                   'Uncert. (2σ)': _np.float64,
+                                   '207Pb/235U Age (Ma)': _np.float64,
+                                   'Uncert. (2σ).1': _np.float64,
+                                   '207Pb/206Pb Age (Ma)': _np.float64,
+                                   'Uncert. (2σ).2': _np.float64})
 
         df = df.rename(columns = {'GPS Longitude': 'Longitude',
                                   'GPS Latitude': 'Latitude'})
@@ -214,6 +235,10 @@ def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018):
 
 
 def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
+    '''
+    For the 2018 database, the loading could be faster if you supply df_SampleDetails and df_Data
+    This is only really an advantage if the aim is to load the 2018 Sedimentary and Igneous Zircons together 
+    '''
     
     if version==2018:
         if df_SampleDetails is None:
