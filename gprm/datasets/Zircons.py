@@ -5,6 +5,7 @@ from pooch import Unzip as _Unzip
 import pandas as _pd
 import geopandas as _gpd
 import os as _os
+import numpy as _np
 
 
 def loadDB(version=2021):
@@ -26,8 +27,40 @@ def loadDB(version=2021):
         xls = _pd.ExcelFile(fname)
             
         # Get dataframes for the sheets with information per site and per sample
-        df_Data = _pd.read_excel(xls, sheet_name='Data')
-        df_SampleDetails = _pd.read_excel(xls, sheet_name='Sample_Details')
+        df_Data = _pd.read_excel(xls, sheet_name='Data',
+                                          dtype={'Sample Key': _np.int64,
+                                                  'Sample_ID': 'string',
+                                                  'Sample & Grain': 'string',
+                                                  u'206Pb /\n238U\nAge\n(Ma)': _np.float64,
+                                                  u'206Pb /\n238U\n2σ\nPrecis': _np.float64,
+                                                  u'207Pb /\n235U\nAge\n(Ma)': _np.float64,
+                                                  u'207Pb /\n235U\n2σ\nPrecis': 'string',
+                                                  u'207Pb /\n206Pb\nAge\n(Ma)': 'string',
+                                                  u'207Pb /\n206Pb\n2σ\nPrecis': _np.float64})
+        df_Data[u'207Pb /\n235U\n2σ\nPrecis']=df_Data[u'207Pb /\n235U\n2σ\nPrecis'].replace(',','.',regex=True).astype(float)
+        df_Data[u'207Pb /\n206Pb\nAge\n(Ma)']=df_Data[u'207Pb /\n206Pb\nAge\n(Ma)'].replace(',','.',regex=True).astype(float)
+
+        df_SampleDetails = _pd.read_excel(xls, sheet_name='Sample_Details', 
+                                          dtype={'Sample Key': _np.int64,
+                                                'Reference Key': _np.int64,
+                                                'Sample_ID': 'string',
+                                                'Continent': 'string',
+                                                'Country': 'string',
+                                                'Region': 'string',
+                                                'Major Geographic-Geologic Description': 'string',
+                                                'Minor Geologic-Geographic Unit': 'string',
+                                                'Locality': 'string',
+                                                'Latitude': _np.float64,
+                                                'Longitude': _np.float64, 
+                                                'Est. Depos. Age (Ma)': _np.float64,
+                                                'Max. Depos. Age (Ma)': _np.float64,
+                                                'Table': 'string',
+                                                'Mineral Tested': 'string',
+                                                'Mass Spectrometer': 'string',
+                                                'Class-1 Rock Type': 'string',
+                                                'Class-2 Rock Type': 'string',
+                                                'Class-3 Rock Type': 'string',
+                                                'Sample Count': _np.int64})
         
         # rename some fields for neatness
         df_Data.rename(columns = {u'206Pb /\n238U\nAge\n(Ma)': '206Pb_238U_Age_Ma',
@@ -38,12 +71,40 @@ def loadDB(version=2021):
                                 u'207Pb /\n206Pb\n2σ\nPrecis': '207Pb_206Pb_Precis'},
                     inplace = True)
         
-        df_SampleDetails.rename(columns = {'Est. Depos. Age (Ma)': 'Est_Depos_Age_Ma'}, inplace = True)
+        df_SampleDetails = df_SampleDetails.rename(columns = {'Est. Depos. Age (Ma)': 'Est_Depos_Age_Ma',
+                                                              'Max. Depos. Age (Ma)': 'Max_Depos_Age_Ma'})
         df_SampleDetails = df_SampleDetails.dropna(subset=['Sample Key'])
 
         return df_SampleDetails, df_Data
 
+
+    elif version==2019:
+        '''
+        Files from Puetz and Condie (2019) Geoscience Frontiers
+        https://www.sciencedirect.com/science/article/pii/S1674987119300751#appsec1
+        '''
+
+        fname = _retrieve(
+            url="https://ars.els-cdn.com/content/image/1-s2.0-S1674987119300751-mmc4.xlsx",
+            known_hash="sha256:17128e11dfc340f932ae322e88ea09977dbc9abed103a6f6effb7cd5541376c9",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+
+        xls = _pd.ExcelFile(fname)
+        df = _pd.read_excel(xls, sheet_name='U_Pb_Detrital_Zircon')
+
+        df = df.rename(columns = {'GPS Longitude': 'Longitude',
+                                  'GPS Latitude': 'Latitude'})
+
+        gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+        return gdf
+
+
     elif version==2021:
+        # Supplementary table 4 from Puetz et al, 2021, ESR
+        # https://www.sciencedirect.com/science/article/pii/S0012825221002464#s0050
 
         fname = _retrieve(
             url="https://ars.els-cdn.com/content/image/1-s2.0-S0012825221002464-mmc4.xlsx",
@@ -53,7 +114,38 @@ def loadDB(version=2021):
         )
 
         xls = _pd.ExcelFile(fname)
-        df = _pd.read_excel(xls, sheet_name='UPb_Data')
+        df = _pd.read_excel(xls, sheet_name='UPb_Data',
+                            dtype={'Database': 'string'
+                                   'Ref-Sample Key': 'string'
+                                   'Sample&Grain': 'string'
+                                   'Concord Class        (1 to 5)': _np.int64
+                                   'Base Concord delineator': _np.float64
+                                   'Minimum Segmented Disc. (myr)': _np.float64
+                                   'Probability 207Pb/206Pb age is correct': _np.float64
+                                   'Non-iter          age                     (Ma)': _np.float64
+                                   '6x6    Seq. Index': _np.int64
+                                   '6x6 Grid Wt.': _np.float64
+                                   '12x12    Seq. Index': _np.int64
+                                   '12x12 Grid Wt.': _np.float64
+                                   'Country Wts.': _np.float64
+                                   'Region Wts.': _np.float64
+                                   'Country/Area': 'string'
+                                   'Major Region': 'string'
+                                   'Continent': 'string'
+                                   'Major Geographic-Geologic Description': 'string'
+                                   'Minor Geologic-Geographic Unit': 'string'
+                                   'Locality': 'string'
+                                   'Latitude': _np.float64
+                                   'Longitude': _np.float64
+                                   'Max. Depos. Age': _np.int64
+                                   'Est. Depos. Age': _np.float64
+                                   'Min. Depos. Age': _np.float64
+                                   'Rock Type':'string'})
+
+        df = df.rename(columns = {'Est. Depos. Age': 'Est_Depos_Age_Ma',
+                                  'Max. Depos. Age': 'Max_Depos_Age_Ma',
+                                  'Min. Depos. Age': 'Min_Depos_Age_Ma',
+                                  'Non-iter          age                     (Ma)': 'Non_Iter_Age_Ma'})
 
         gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
@@ -61,6 +153,8 @@ def loadDB(version=2021):
 
 
 def load_Hf():
+    # Supplementary table 5 from Puetz et al, 2021, ESR
+    # https://www.sciencedirect.com/science/article/pii/S0012825221002464#s0050
 
     fname = _retrieve(
         url="https://ars.els-cdn.com/content/image/1-s2.0-S0012825221002464-mmc5.xlsx",
@@ -78,23 +172,65 @@ def load_Hf():
 
 
 # These functions are specifically for the 2018 version, to match sample coordinates against age distributions
-def get_igneous_samples(df_SampleDetails,df_Data):       
-    # igneous samples
-    df_IgneousSamples = df_SampleDetails[df_SampleDetails['Class-1 Rock Type'].str.contains('igneous')]
-    df = _pd.merge(df_IgneousSamples,df_Data,on='Sample Key')
-    IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018):
+    
+    if version==2018:
+        if df_SampleDetails is None:
+            df_SampleDetails, df_Data = loadDB(version=2018)
 
-    IgneousZircons['Sample_ID_x'] = IgneousZircons['Sample_ID_x'].astype("string")
-    IgneousZircons['Sample_ID_y'] = IgneousZircons['Sample_ID_y'].astype("string")
+        # igneous samples
+        df_IgneousSamples = df_SampleDetails[df_SampleDetails['Class-1 Rock Type'].str.contains('igneous')]
+        df = _pd.merge(df_IgneousSamples,df_Data,on='Sample Key')
+        IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+        IgneousZircons['Sample_ID_x'] = IgneousZircons['Sample_ID_x'].astype("string")
+        IgneousZircons['Sample_ID_y'] = IgneousZircons['Sample_ID_y'].astype("string")
+
+    elif version==2019:
+        fname = _retrieve(
+            url="https://ars.els-cdn.com/content/image/1-s2.0-S1674987119300751-mmc5.xlsx",
+            known_hash="sha256:10329fcb555d6d4cc7adbe8bd55f5306646e7f4edad167cb45285aee2a630219",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+
+        xls = _pd.ExcelFile(fname)
+        df = _pd.read_excel(xls, sheet_name='U_Pb_Igneous_Zircon')
+
+        df = df.rename(columns = {'GPS Longitude': 'Longitude',
+                                  'GPS Latitude': 'Latitude'})
+
+        # rename some fields for neatness
+        df = df.rename(columns = {u'206Pb/238U Age (Ma)': '206Pb_238U_Age_Ma',
+                                u'Uncert. (2σ)': '206Pb_238U_Precis',
+                                u'207Pb/235U Age (Ma)': '207Pb_235U_Age_Ma',
+                                u'Uncert. (2σ).1': '207Pb_235U_Precis',
+                                u'207Pb/206Pb Age (Ma)': '207Pb_206Pb_Age_Ma',
+                                u'Uncert. (2σ).2': '207Pb_206Pb_Precis'})
+
+        IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
     return IgneousZircons
 
 
-def get_sedimentary_samples(df_SampleDetails,df_Data):
-    # sedimentary samples
-    df_SamplesWithDepositionalAge = df_SampleDetails.dropna(subset=['Est_Depos_Age_Ma'])
-    df = _pd.merge(df_SamplesWithDepositionalAge,df_Data,on='Sample Key')
-    SedimentaryZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
+    
+    if version==2018:
+        if df_SampleDetails is None:
+            df_SampleDetails, df_Data = loadDB(version=2018)
+
+        df_SamplesWithDepositionalAge = df_SampleDetails.dropna(subset=['Est_Depos_Age_Ma'])
+        df = _pd.merge(df_SamplesWithDepositionalAge,df_Data,on='Sample Key')
+        SedimentaryZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+    elif version==2019:
+
+        SedimentaryZircons = loadDB(version=2019)
+
+    elif version==2021:
+
+        SedimentaryZircons = loadDB(version=2021)
+
 
     return SedimentaryZircons
 
