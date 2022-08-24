@@ -92,7 +92,7 @@ def PaleoCurrents():
     return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
 
-def pbdb(path_to_pbdb_data=None):
+def pbdb(path_to_pbdb_data=None, usecols=None):
     """
     Load data from pbdb downloaded file (not retrieved by pooch)
 
@@ -103,7 +103,10 @@ def pbdb(path_to_pbdb_data=None):
     if not path_to_pbdb_data:
         path_to_pbdb_data = '{:s}/pbdb/pbdb_data.csv'.format(str(_os_cache('gprm')))
 
-    df = _pd.read_csv(path_to_pbdb_data, delimiter=',', skiprows=14)
+    if usecols is None:
+        df = _pd.read_csv(path_to_pbdb_data, delimiter=',', skiprows=14)
+    else:
+        df = _pd.read_csv(path_to_pbdb_data, delimiter=',', skiprows=14, usecols=usecols)
 
     df.rename(columns={'lng':'Longitude', 'lat':'Latitude'}, inplace=True)
 
