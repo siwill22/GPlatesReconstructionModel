@@ -321,7 +321,8 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
     point_raster_values = pygmt.grdtrack(grid=grid, 
                                          points=pd.DataFrame(data={'x':multipoint_at_from_time.to_lat_lon_array()[:,1],
                                                                    'y':multipoint_at_from_time.to_lat_lon_array()[:,0]}), 
-                                         newcolname='z')
+                                         newcolname='z',
+                                         no_skip=True)
 
     ds = xr.DataArray(np.array(point_raster_values['z']).reshape(XX.shape),
                       coords=coords,
