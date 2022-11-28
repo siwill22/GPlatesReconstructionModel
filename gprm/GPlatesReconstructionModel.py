@@ -573,13 +573,14 @@ class ReconstructedPolygonSnapshot(object):
             return
 
         # plotting is generally faster if saved to temporary file
-        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
+        plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.gmt')
         plot_file.close()
 
         features = []
         for feature in self.reconstructed_polygons:
             f = pygplates.Feature()
             f.set_geometry(feature.get_reconstructed_geometry())
+            f.set_reconstruction_plate_id(feature.get_feature().get_reconstruction_plate_id())
             features.append(f)
 
         pygplates.FeatureCollection(features).write(plot_file.name)
@@ -919,19 +920,22 @@ class PlateSnapshot(object):
         os.unlink(plot_file.name)
 
 
-    def plot_polygons(self, fig, **kwargs):
+    def plot_polygons(self, fig, reduce_plate_ids=False, **kwargs):
 
         plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.gmt')
         plot_file.close()
 
-        features = []
-        color_int = 0
-        for topology in self.resolved_topologies:
-            if not isinstance(topology, pygplates.ResolvedTopologicalNetwork):
-                feature = topology.get_resolved_feature().clone()
-                feature.set_reconstruction_plate_id(color_int)
-                features.append(feature)
-                color_int+=1
+        if reduce_plate_ids:
+            features = []
+            color_int = 0
+            for topology in self.resolved_topologies:
+                if not isinstance(topology, pygplates.ResolvedTopologicalNetwork):
+                    feature = topology.get_resolved_feature().clone()
+                    feature.set_reconstruction_plate_id(color_int)
+                    features.append(feature)
+                    color_int+=1
+        else:
+            features = [topology.get_resolved_feature() for topology in self.resolved_topologies]
 
         if not features:
             print('No polygons to plot')
