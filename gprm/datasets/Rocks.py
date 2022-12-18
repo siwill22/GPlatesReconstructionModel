@@ -98,7 +98,7 @@ def BaseMetalDeposits(deposit_type, keep_unknown_age_samples=False):
     gdf['Age'] = gdf['Age (Ga)']*1000.
 
     if not keep_unknown_age_samples:
-        return gdf[gdf['Age (Ga)'] != 'ND']
+        return gdf.dropna(subset=['Age'])
     else:
         return gdf
 
