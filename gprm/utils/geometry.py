@@ -1,9 +1,9 @@
 import pygplates
 
-def nearest_feature(point,features):
+def nearest_feature(point, features, return_nearest_feature=False):
     # The minimum distance to all features and the nearest feature.
     min_distance_to_all_features = None
-    nearest_feature = None
+    nearest_feature_ = None
 
     for feature in features:
         for geometry in feature.get_geometries():
@@ -18,9 +18,13 @@ def nearest_feature(point,features):
             # its associated feature is the nearest feature so far.
             if min_distance_to_feature is not None:
                 min_distance_to_all_features = min_distance_to_feature
-                #nearest_feature = feature
+                nearest_feature_ = feature
 
-    return min_distance_to_all_features
+    if return_nearest_feature:
+        return min_distance_to_all_features, nearest_feature_
+    else:
+        return min_distance_to_all_features
+
 
 def distance_between_reconstructed_points_and_features(reconstructed_point_features,features):
     reconstructed_lat = []
