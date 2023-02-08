@@ -129,11 +129,11 @@ def fetch_Li2023(load=True, model_case='East'):
     reconstruction_model = _ReconstructionModel('Li++2023')
     reconstruction_model.add_continent_polygons('{:s}/Continental_outlines.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Continental_outlines.shp'.format(dirname))
-    if version=='East':
+    if model_case=='East':
         reconstruction_model.add_rotation_model('{:s}/EDRG_90E_2000-540Ma.rot'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_boundary_90E_2000-540Ma.gpml'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_topology_90E_2000-540Ma.gpml'.format(dirname))
-    elif version=='West':
+    elif model_case=='West':
         reconstruction_model.add_rotation_model('{:s}/EDRG_90W_2000-540Ma.rot'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_boundary_90W_2000-540Ma.gpml'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_topology_90W_2000-540Ma.gpml'.format(dirname))
