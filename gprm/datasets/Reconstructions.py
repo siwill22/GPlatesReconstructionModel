@@ -109,6 +109,38 @@ def fetch_Li2008(load=True):
     return reconstruction_model
 
 
+def fetch_Li2023(load=True, version='East'):
+    '''
+    Load the 2000-540 Ma reconstruction from Li et al (2023)
+    doi:10.1016/j.earscirev.2023.104336
+    '''    
+
+    fnames = _retrieve(
+            url="https://ars.els-cdn.com/content/image/1-s2.0-S0012825223000259-mmc10.zip",
+            known_hash="sha256:1e205c867feaed1b796b098bff4d65ecc18d0d6e1f37291ca3161a32957373a9",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(extract_dir='Li2023'),
+        )
+
+    dirname = _os.path.split(fnames[0])[0]
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('Li++2023')
+    reconstruction_model.add_continent_polygons('{:s}/Continental_outlines.shp'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/Continental_outlines.shp'.format(dirname))
+    if version=='East':
+        reconstruction_model.add_rotation_model('{:s}/EDRG_90E_2000-540Ma.rot'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/EDRG_boundary_90E_2000-540Ma.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/EDRG_topology_90E_2000-540Ma.gpml'.format(dirname))
+    elif version=='West':
+        reconstruction_model.add_rotation_model('{:s}/EDRG_90W_2000-540Ma.rot'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/EDRG_boundary_90W_2000-540Ma.gpml'.format(dirname))
+        reconstruction_model.add_dynamic_polygons('{:s}/EDRG_topology_90W_2000-540Ma.gpml'.format(dirname))
+    
+    return reconstruction_model
+
+
 def fetch_DomeierTorsvik2014(load=True):
     '''
     Load 250-410 Ma reconstruction from Domeier and Torsvik (2014) 
