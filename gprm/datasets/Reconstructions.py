@@ -109,7 +109,7 @@ def fetch_Li2008(load=True):
     return reconstruction_model
 
 
-def fetch_Li2023(load=True, version='East'):
+def fetch_Li2023(load=True, model_case='East'):
     '''
     Load the 2000-540 Ma reconstruction from Li et al (2023)
     doi:10.1016/j.earscirev.2023.104336
