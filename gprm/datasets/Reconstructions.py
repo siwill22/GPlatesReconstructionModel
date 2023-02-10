@@ -457,7 +457,7 @@ def fetch_Seton2012(load=True):
     return reconstruction_model
 
 
-def fetch_TorsvikCocks2017(load=True):
+def fetch_TorsvikCocks2017(load=True, wrap_static_polygons=True):
     '''
     Load Phanerozoic reconstruction from the book 'Earth History and Paleogeography'
     by Torvsik and Cocks (2017)
@@ -479,15 +479,28 @@ def fetch_TorsvikCocks2017(load=True):
     #dirname = _os.path.split(fnames[0])[0]
     dirname = '{:s}/TorsvikCocks2017/'.format(fnames[0].split('TorsvikCocks2017')[0])
 
+
+    
+
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Torsvik+Cocks2017')
     reconstruction_model.add_rotation_model('{:s}/Torsvik_Cocks_HybridRotationFile.rot'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/CEED6_LAND.gpml'.format(dirname))
+    
     reconstruction_model.add_continent_polygons(('{:s}/CEED6_LAND.gpml'.format(dirname)))
     reconstruction_model.add_continent_polygons('{:s}/CEED6_TERRANES.shp'.format(dirname))
     reconstruction_model.add_continent_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/CEED6_LAND.gpml'.format(dirname))
+    if wrap_static_polygons:
+        import pygplates as _pygplates
+        _pygplates.reconstruct(['{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname),
+                                '{:s}/CEED6_LAND.gpml'.format(dirname)],
+                                [],
+                                '{:s}/CEED6_Static_polygons.shp'.format(dirname),
+                                0, export_wrap_to_dateline=True)
+        reconstruction_model.add_static_polygons('{:s}/CEED6_Static_polygons.shp'.format(dirname))                        
+    else:
+        reconstruction_model.add_static_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
+        reconstruction_model.add_static_polygons('{:s}/CEED6_LAND.gpml'.format(dirname))
     
     return reconstruction_model
 
