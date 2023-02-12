@@ -27,7 +27,7 @@ from pooch import retrieve as _retrieve
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 import pandas as _pd
-#import geopandas as _gpd
+import geopandas as _gpd
 import os as _os
 #from gprm import ReconstructionModel as _ReconstructionModel
 
@@ -113,6 +113,10 @@ def fetch_Li2023(load=True, model_case='East'):
     '''
     Load the 2000-540 Ma reconstruction from Li et al (2023)
     doi:10.1016/j.earscirev.2023.104336
+
+    NOTE 
+    This rotation model does not contain zero-time rotations, and as such
+    can give strange results when extracting rotations that specify the 'from_time' as 0
     '''    
 
     fnames = _retrieve(
@@ -128,7 +132,7 @@ def fetch_Li2023(load=True, model_case='East'):
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Li++2023')
     reconstruction_model.add_continent_polygons('{:s}/Continental_outlines.shp'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/Continental_outlines.shp'.format(dirname))
+    #reconstruction_model.add_static_polygons('{:s}/Continental_outlines.shp'.format(dirname))
     if model_case=='East':
         reconstruction_model.add_rotation_model('{:s}/EDRG_90E_2000-540Ma.rot'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_boundary_90E_2000-540Ma.gpml'.format(dirname))
@@ -138,6 +142,18 @@ def fetch_Li2023(load=True, model_case='East'):
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_boundary_90W_2000-540Ma.gpml'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/EDRG_topology_90W_2000-540Ma.gpml'.format(dirname))
     
+    # The continent polygons contain many polygons that could be problematic for plate id assignment:
+    # - the valid time does not span any of the time range covered by the reconstruction, 
+    # - the valid time does not extend to 0 Ma
+    # we remove these and create a new file for plate id assignment
+    sp = _gpd.read_file('{:s}/Continental_outlines.shp'.format(dirname))
+    sp = sp.query('FROMAGE>601')
+    banned_list = 'Great India|Australia before Paterson-Petermann orogeny|Australia_outline|Pure Australia|South China'
+    sp = sp[~sp.NAME.str.contains(banned_list, na=False)]
+    sp['TOAGE']=-999
+    sp.to_file('{:s}/Static_polygon_outlines.shp'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/Static_polygon_outlines.shp'.format(dirname))
+
     return reconstruction_model
 
 
