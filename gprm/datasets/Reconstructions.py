@@ -1,7 +1,7 @@
 '''
 MIT License
 
-Copyright (c) 2017-2021 Simon Williams
+Copyright (c) 2017-2023 Simon Williams
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -150,7 +150,7 @@ def fetch_Li2023(load=True, model_case='East'):
     sp = sp.query('FROMAGE>601')
     banned_list = 'Great India|Australia before Paterson-Petermann orogeny|Australia_outline|Pure Australia|South China'
     sp = sp[~sp.NAME.str.contains(banned_list, na=False)]
-    sp['TOAGE']=-999
+    #sp['TOAGE']=-999
     sp.to_file('{:s}/Static_polygon_outlines.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Static_polygon_outlines.shp'.format(dirname))
 
