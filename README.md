@@ -3,7 +3,9 @@
 *Prototyping for GPlates plate reconstructions as a python class*
 
 - To use, clone the repo and add the main directory to the pythonpath
-
+- Or, try typing the following in the command line:
+> pip install --no-cache-dir --upgrade git+https://github.com/siwill22/GPlatesReconstructionModel
+- pygplates will need to be installed separately
 - Usage examples are available in the test_notebooks directory
 
 ## Python Dependencies
