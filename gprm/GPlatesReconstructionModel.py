@@ -1,7 +1,7 @@
 '''
 MIT License
 
-Copyright (c) 2017-2021 Simon Williams
+Copyright (c) 2017-2023 Simon Williams
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
