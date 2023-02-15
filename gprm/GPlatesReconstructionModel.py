@@ -45,7 +45,7 @@ import xarray as xr
 import gprm.utils as utils
 
 from ptt.utils.proximity_query import find_closest_geometries_to_points
-from gprm.utils.geometry import distance_between_reconstructed_points_and_features
+from gprm.utils.geometry import distance_between_reconstructed_points_and_features, apply_reconstruction
 
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
@@ -400,7 +400,7 @@ class ReconstructionModel(object):
         return
 
 
-    def reconstruct_to_time_of_appearance(self, features, ReconstructTime='BirthTime', anchor_plate_id=0):
+    def reconstruct_to_time_of_appearance(self, features, ReconstructTime=None, anchor_plate_id=0):
         """
         Reconstruct points to time of appearance corresponding to each point feature
         """
@@ -408,10 +408,15 @@ class ReconstructionModel(object):
 
             reconstructed_features = []
             for feature in features:
-                if ReconstructTime == 'MidTime':
-                    reconstruction_time = (feature.get_valid_time()[0]+feature.get_valid_time()[1])/2.
-                else:
+                if ReconstructTime is None:
                     reconstruction_time = feature.get_valid_time()[0]
+                elif ReconstructTime == 'MidTime':
+                    reconstruction_time = (feature.get_valid_time()[0]+feature.get_valid_time()[1])/2.
+                elif ReconstructTime in feature.get_shapefile_attributes().keys():
+                    reconstruction_time = feature.get_shapefile_attribute(ReconstructTime)
+                else:
+                    raise ValueError('unrecognised value {:} for parameter ReconstructTime'.format(ReconstructTime))
+
                 if feature.get_geometry():
                     reconstructed_feature = pygplates.Feature()
                     reconstructed_feature.set_reconstruction_plate_id(feature.get_reconstruction_plate_id())
@@ -427,7 +432,22 @@ class ReconstructionModel(object):
 
         elif isinstance(features, gpd.GeoDataFrame):
 
-            return  # TODO need to avoid code duplication, preserve all properties
+            if ReconstructTime is None:
+                reconstruction_time = 'FROMAGE'
+            elif ReconstructTime == 'MidTime':
+                features['reconstruction_time'] = (features['FROMAGE']+features['TOAGE'])/2.
+                ReconstructTime = 'reconstruction_time'
+            elif ReconstructTime not in features.columns:
+                raise ValueError('Field name {:} for parameter ReconstructTime not found in input geodataframe'.format(ReconstructTime))
+            
+            # TODO enable geometry types other than point
+            rgeometry = features.apply(lambda x: apply_reconstruction(x, 
+                                       self.rotation_model, reconstruction_time_field=ReconstructTime), 
+                                       axis=1)
+
+            # TODO allow for geometry to be returned as an extra field
+            features['geometry'] = rgeometry
+            return features
 
 
 
