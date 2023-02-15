@@ -1,4 +1,23 @@
 import pygplates
+from shapely.geometry import Point
+
+def apply_reconstruction(point, rotation_model, 
+                         reconstruction_time_field='reconstruction_time',
+                         reconstruction_plate_id_field='PLATEID1'):
+    '''
+    function that can be used within the 'apply' method of
+    a geodataframe to return a reconstructed geometry 
+    '''
+
+    rotation_pole = rotation_model.get_rotation(
+                        point[reconstruction_time_field],
+                        point[reconstruction_plate_id_field])
+    
+    # TODO implement geometry types other than point 
+    rp = rotation_pole * pygplates.PointOnSphere(point.geometry.y, point.geometry.x)
+
+    return Point(rp.to_lat_lon()[::-1])
+
 
 def nearest_feature(point, features, return_nearest_feature=False):
     # The minimum distance to all features and the nearest feature.
