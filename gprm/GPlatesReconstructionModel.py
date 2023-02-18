@@ -315,7 +315,7 @@ class ReconstructionModel(object):
 
 
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False, 
-                    wrap_to_dateline=False, use_tempfile=True):
+                    wrap_to_dateline=False, use_tempfile=False):
         """
         Reconstruct feature collection or a geopandas dataframe using the reconstruction model
 
@@ -324,8 +324,9 @@ class ReconstructionModel(object):
         Return type matches the input (either feature collection or geodataframe)
         """
 
+        if wrap_to_dateline:
+            warnings.warn('wrap to dateline not yet implemented')
             
-
 
         if not topological:
             if isinstance(features, pygplates.FeatureCollection):
@@ -397,7 +398,7 @@ class ReconstructionModel(object):
                     if all([x in features.columns for x in ['FROMAGE', 'TOAGE']]):
                         reconstructed_gdf = features.query(
                             'FROMAGE>=@reconstruction_time and TOAGE<=@reconstruction_time'
-                            ).explode().reset_index(drop=True)
+                            ).explode(index_parts=False).reset_index(drop=True)
                     else:
                         reconstructed_gdf = features.explode().reset_index(drop=True)
 
