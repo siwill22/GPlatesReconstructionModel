@@ -1,7 +1,7 @@
 import pygplates
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString, Polygon
 
-def apply_reconstruction(point, rotation_model, 
+def apply_reconstruction(feature, rotation_model, 
                          reconstruction_time_field='reconstruction_time',
                          reconstruction_plate_id_field='PLATEID1'):
     '''
@@ -10,13 +10,24 @@ def apply_reconstruction(point, rotation_model,
     '''
 
     rotation_pole = rotation_model.get_rotation(
-                        point[reconstruction_time_field],
-                        point[reconstruction_plate_id_field])
+                        feature[reconstruction_time_field],
+                        feature[reconstruction_plate_id_field])
     
     # TODO implement geometry types other than point 
-    rp = rotation_pole * pygplates.PointOnSphere(point.geometry.y, point.geometry.x)
 
-    return Point(rp.to_lat_lon()[::-1])
+    if feature.geometry.geom_type=='Point':
+        rp = rotation_pole * pygplates.PointOnSphere(feature.geometry.y, feature.geometry.x)
+        return Point(rp.to_lat_lon()[::-1])
+
+    elif feature.geometry.geom_type in ['LineString']:
+        rp = rotation_pole * pygplates.PolylineOnSphere([(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
+                                                                                      feature.geometry.xy[0])])
+        return LineString([tuple(point.to_lat_lon()[::-1]) for point in rp.get_points()])
+    elif feature.geometry.geom_type in ['Polygon']:
+        rp = rotation_pole * pygplates.PolygonOnSphere([(lat,lon) for lat,lon in zip(feature.geometry.exterior.coords.xy[1], 
+                                                                                     feature.geometry.exterior.coords.xy[0])])
+        return Polygon([tuple(point.to_lat_lon()[::-1]) for point in rp.get_points()])
+
 
 
 def nearest_feature(point, features, return_nearest_feature=False):
