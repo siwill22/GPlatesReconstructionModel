@@ -314,7 +314,8 @@ class ReconstructionModel(object):
                 default_resolve_topology_parameters=default_resolve_topology_parameters)
 
 
-    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False, wrap_to_dateline=False):
+    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False, 
+                    wrap_to_dateline=False, use_tempfile=True):
         """
         Reconstruct feature collection or a geopandas dataframe using the reconstruction model
 
@@ -338,53 +339,80 @@ class ReconstructionModel(object):
 
             elif isinstance(features, gpd.GeoDataFrame):
 
-                # select only the features that are valid at reconstruction time?
-                # convert geometries to gpml (features?)
-                # reconstruct
-                # somehow map reconstructed features back to original attribute table
-                # TODO add check for valid plateid field
+                if use_tempfile:
 
-                if pygplates.Version.get_imported_version() < pygplates.Version(32):
-                    warnings.warn('Using version of pygplates that relies on OGR_GMT files for interoperability with geodataframes, \
-                                which will likely result in garbled column names')
-                    temp_file_suffix = '.gmt'
-                    driver = 'OGR_GMT'
+                    # select only the features that are valid at reconstruction time?
+                    # convert geometries to gpml (features?)
+                    # reconstruct
+                    # somehow map reconstructed features back to original attribute table
+                    # TODO add check for valid plateid field
+
+                    if pygplates.Version.get_imported_version() < pygplates.Version(32):
+                        warnings.warn('Using version of pygplates that relies on OGR_GMT files for interoperability with geodataframes, \
+                                    which will likely result in garbled column names')
+                        temp_file_suffix = '.gmt'
+                        driver = 'OGR_GMT'
+                    else:
+                        temp_file_suffix = '.geojson'
+                        driver = 'GeoJSON'
+
+                    temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix=temp_file_suffix)
+                    temporary_file.close()
+
+                    temporary_file_r = tempfile.NamedTemporaryFile(delete=True, suffix=temp_file_suffix)
+                    temporary_file_r.close()
+
+                    # Note: trying the OGR_GMT driver here resulted in some unusual column
+                    # names being mangled in the output, so going with geojson now that pygplates 
+                    # supports it
+
+                    features.to_file(temporary_file.name, driver=driver)
+
+                    pygplates.reconstruct(temporary_file.name, self.rotation_model, 
+                                        temporary_file_r.name, reconstruction_time,
+                                        anchor_plate_id=anchor_plate_id)
+
+                    # TODO handle case where there are no reconstructed features, hence file doesn't get created
+                    try:
+                        reconstructed_gdf = gpd.read_file(temporary_file_r.name)
+                    except:
+                        return print('No reconstructed features returned')
+
+
+                    # The reconstructed file will have various extra columns, of which the name
+                    # of the temporary file is definitely not useful so we delete it
+                    # (checking for the unlikely event of the column 'FILE1' already existing)
+                    if not 'FILE1' in features.columns:
+                        reconstructed_gdf.drop(columns=['FILE1'], inplace=True)
+
+                    os.unlink(temporary_file.name)
+
+                    return reconstructed_gdf
+
                 else:
-                    temp_file_suffix = '.geojson'
-                    driver = 'GeoJSON'
+                    # Testing......
+                    # multipart features will cause problems, so split them up with 'explode'
+                    # if the default names for valid_time fields are present, we use them
+                    # otherwise, assume the correct data already selected
+                    if all([x in features.columns for x in ['FROMAGE', 'TOAGE']]):
+                        reconstructed_gdf = features.query(
+                            'FROMAGE>=@reconstruction_time and TOAGE<=@reconstruction_time'
+                            ).explode().reset_index(drop=True)
+                    else:
+                        reconstructed_gdf = features.explode().reset_index(drop=True)
 
-                temporary_file = tempfile.NamedTemporaryFile(delete=True, suffix=temp_file_suffix)
-                temporary_file.close()
+                    if len(reconstructed_gdf)==0:
+                        return None
+                    else:
+                        reconstructed_gdf['reconstruction_time'] = reconstruction_time
+                        rgeometry = reconstructed_gdf.apply(lambda x: apply_reconstruction(x, 
+                                        self.rotation_model, reconstruction_time_field='reconstruction_time'), 
+                                        axis=1)
 
-                temporary_file_r = tempfile.NamedTemporaryFile(delete=True, suffix=temp_file_suffix)
-                temporary_file_r.close()
+                        # TODO allow for geometry to be returned as an extra field
+                        reconstructed_gdf['geometry'] = rgeometry
 
-                # Note: trying the OGR_GMT driver here resulted in some unusual column
-                # names being mangled in the output, so going with geojson now that pygplates 
-                # supports it
-
-                features.to_file(temporary_file.name, driver=driver)
-
-                pygplates.reconstruct(temporary_file.name, self.rotation_model, 
-                                      temporary_file_r.name, reconstruction_time,
-                                      anchor_plate_id=anchor_plate_id)
-
-                # TODO handle case where there are no reconstructed features, hence file doesn't get created
-                try:
-                    reconstructed_gdf = gpd.read_file(temporary_file_r.name)
-                except:
-                    return print('No reconstructed features returned')
-
-
-                # The reconstructed file will have various extra columns, of which the name
-                # of the temporary file is definitely not useful so we delete it
-                # (checking for the unlikely event of the column 'FILE1' already existing)
-                if not 'FILE1' in features.columns:
-                    reconstructed_gdf.drop(columns=['FILE1'], inplace=True)
-
-                os.unlink(temporary_file.name)
-
-                return reconstructed_gdf
+                        return reconstructed_gdf
 
 
         else:
