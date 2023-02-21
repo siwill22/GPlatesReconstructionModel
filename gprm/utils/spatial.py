@@ -411,9 +411,43 @@ def get_subduction_polarity(shared_subsegment,topology_index,cross_section_segme
     return cross_section_dips_left_to_right
     
 
+def polyline_zonal_lengths(gdf, binsize=10):
+    '''
+    Given a geodataframe containing polylines, divides the lines into
+    latitude bands of a user-defined width and returns the length of the lines
+    within each band 
+    '''
+
+    bin_lengths = []
+    
+    for bin_edge in np.arange(-90.,90.,binsize):
+        
+        polygon = Polygon([(-180, bin_edge), (-180, bin_edge+binsize), (180, bin_edge+binsize), (180, bin_edge), (-180, bin_edge)])
+        poly_gdf = gpd.GeoDataFrame([1], geometry=[polygon], crs=4326)
+        
+        # Fix geometries that are invalid (e.g. near the poles)
+        # https://gis.stackexchange.com/questions/430384/using-shapely-methods-explain-validity-and-make-valid-on-shapefile
+        gdf.geometry = gdf.apply(lambda row: make_valid(row.geometry) if not row.geometry.is_valid else row.geometry, axis=1)
+
+        poly_clip = gpd.clip(gdf, poly_gdf)
+        
+        if poly_clip.empty:
+            bin_length = 0
+        else:
+            bin_length = 0
+            for i,feature in poly_clip.explode().iterrows():
+                bin_length += pygplates.PolylineOnSphere(
+                    [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
+                                                  feature.geometry.xy[0])]).get_arc_length()
+                    
+        bin_lengths.append(bin_length * pygplates.Earth.mean_radius_in_kms)
+        
+    return bin_lengths
+
+
 def polygon_zonal_areas(gdf, binsize=10, method='polygon', raster_sampling=1):
     '''
-    Given a geodataframe containing polygoms, divides the polygons into
+    Given a geodataframe containing polygons, divides the polygons into
     latitude bands of a user-defined width and returns the area of the polygon
     within each band 
     '''
