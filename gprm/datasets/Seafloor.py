@@ -109,24 +109,46 @@ def SeafloorFabric(feature_type='FZ', load=True):
                 return fname
 
 
-def PacificSeamountAges(load=True):
+def PacificSeamountAges(catalogue='2021', load=True):
     '''
     Pacific Seamount Age compilation from GMT website
-
+    The options for 'catalogue' are:
+    2021 [default] - data from Chase and Wessel (2021)
+    2013 - data from GMT website, data from Clouard and Bonneville (2005) with updates by Wessel up to 2013
     '''
-    fname = _retrieve(
-        url="https://www.earthbyte.org/webdav/gmt_mirror/gmt/data/cache/Pacific_Ages.txt",
-        known_hash="sha256:8c5e57b478c2c2f5581527c7aea5ef282e976c36c5e00452210885a92e635021",  
-        downloader=_HTTPDownloader(progressbar=True),
-        path=_os_cache('gprm'),
-    )
-    
-    if load:
-        df = _pd.read_csv(fname, comment='#', delim_whitespace=True,
-                          names=['Long', 'Lat', 'Average_Age_Ma', 'Average_Age_Error_Ma', 'Tag', 'SeamountName', 'SeamountChain'])
-        return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
-    else:
-        return fname
+    if catalogue=='2013':
+        fname = _retrieve(
+            url="https://www.earthbyte.org/webdav/gmt_mirror/gmt/data/cache/Pacific_Ages.txt",
+            known_hash="sha256:8c5e57b478c2c2f5581527c7aea5ef282e976c36c5e00452210885a92e635021",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+        
+        if load:
+            df = _pd.read_csv(fname, comment='#', delim_whitespace=True,
+                            names=['Long', 'Lat', 'Average_Age_Ma', 'Average_Age_Error_Ma', 'Tag', 'SeamountName', 'SeamountChain'])
+            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+        else:
+            return fname
+        
+    elif catalogue=='2021':
+        fname = _retrieve(
+            url="https://zenodo.org/record/6558676/files/Pacific_Hotspot_Trails_Datasets.zip?download=1",
+            known_hash="md5:97bec4ebde94694698077eb527bc1ef4",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(extract_dir='PHT2021')
+        )
+        dirname = '{:s}/PHT2021/'.format(str(_os_cache('gprm')))
+        print(dirname)
+
+        if load:
+            df = _pd.read_csv('{:}/PHT2021/PHT2021_raw_data/PHT2021_pacific_ages.txt'.format(dirname), 
+                              comment='#', delim_whitespace=True,
+                              names=['Long', 'Lat', 'Average_Age_Ma', 'Average_Age_Error_Ma', 'Type', 'Ref', 'SampleName', 'Tag', 'SeamountChain'])
+            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+        else:
+            return fname
 
 
 def Seamounts(catalogue='KimWessel', load=True):
@@ -148,6 +170,8 @@ def Seamounts(catalogue='KimWessel', load=True):
             return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
         else:
             return fname
+        
+    #if catalogue in SIO
 
     elif catalogue in ['HillierWatts', 'HW']:
         fname = _retrieve(
