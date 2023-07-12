@@ -30,6 +30,7 @@ from pooch import Unzip as _Unzip
 #import geopandas as _gpd
 import os as _os
 import collections
+import xarray as _xr
 
 def fetch_Paleomap(resolution='01d'):
     """
@@ -94,4 +95,39 @@ def fetch_Paleomap(resolution='01d'):
 
     else:
         ValueError('Spacing for source grids must be either 01d (for 1 degree version) or 06m (for 6 minute version)')
+
+
+def fetch_Pohl2022(return_xarray=False, value=None):
+    """
+    valid value names are:
+    'area' [grid point area]
+    'evp' [evaporation]
+    'koppen' [Koppen-Geiger climatic zones]
+    'PmE' [precipitation minus evaporation balance]
+    'precip' [precipitation]
+    'rnf' [runoff]
+    'topo' [topography]
+    'tssub1' [top soil layer temp]
+    """
+
+    fnames = _retrieve(
+            url="https://zenodo.org/record/6620748/files/All_NC_files.zip?download=1",
+            known_hash="md5:b0b8bf04647f3f084d282d106fa52a20",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(extract_dir='Pohl2022'),
+        )
+
+    dirname = '{:s}/Pohl2022/All_NC_files'.format(fnames[0].split('Pohl2022')[0])
+
+    raster_dict = {}
+    for file in _os.listdir(dirname):
+        if file.endswith(".nc"):
+            raster_dict[float(file.split('Ma')[0])] = '{:s}/{:s}'.format(dirname,file)
+
+    ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
+
+    return ordered_raster_dict
+
+    #return xr.DataArray()
 
