@@ -171,7 +171,25 @@ def Seamounts(catalogue='KimWessel', load=True):
         else:
             return fname
         
-    #if catalogue in SIO
+    if catalogue in ['SIO_all', 'SIO_good', 'SIO_shallow', 'SIO_short', 'SIO_tall']:
+        fname = _retrieve(
+            url="https://zenodo.org/record/7718512/files/SIO_Seamounts.zip?download=1",
+            known_hash="md5:efe6f739d34391f68b568a17eac7fee7",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(extract_dir='seamounts')
+        )
+        
+        dirname = '{:s}/seamounts/'.format(str(_os_cache('gprm')))
+        print(dirname)
+
+        if load:
+            df = _pd.read_csv('{:}/SIO_Seamounts/Seamounts_Modeled/{:s}.xyhrdnc'.format(dirname, catalogue[4:]), 
+                              delim_whitespace=True, skiprows=17, comment='>', 
+                    names=['Long', 'Lat', 'Height', 'Radius', 'Base_Depth', 'Name', 'Charted'])
+            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+        else:
+            return fname
 
     elif catalogue in ['HillierWatts', 'HW']:
         fname = _retrieve(
