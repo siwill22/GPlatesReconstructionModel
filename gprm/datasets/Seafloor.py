@@ -140,7 +140,6 @@ def PacificSeamountAges(catalogue='2021', load=True):
             processor=_Unzip(extract_dir='PHT2021')
         )
         dirname = '{:s}/PHT2021/'.format(str(_os_cache('gprm')))
-        print(dirname)
 
         if load:
             df = _pd.read_csv('{:}/PHT2021/PHT2021_raw_data/PHT2021_pacific_ages.txt'.format(dirname), 
@@ -181,7 +180,6 @@ def Seamounts(catalogue='KimWessel', load=True):
         )
         
         dirname = '{:s}/seamounts/'.format(str(_os_cache('gprm')))
-        print(dirname)
 
         if load:
             df = _pd.read_csv('{:}/SIO_Seamounts/Seamounts_Modeled/{:s}.xyhrdnc'.format(dirname, catalogue[4:]), 
