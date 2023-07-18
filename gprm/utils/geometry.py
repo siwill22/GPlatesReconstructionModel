@@ -3,7 +3,8 @@ from shapely.geometry import Point, LineString, Polygon
 
 def apply_reconstruction(feature, rotation_model, 
                          reconstruction_time_field='reconstruction_time',
-                         reconstruction_plate_id_field='PLATEID1'):
+                         reconstruction_plate_id_field='PLATEID1',
+                         anchor_plate_id=0):
     '''
     function that can be used within the 'apply' method of
     a geodataframe to return a reconstructed geometry 
@@ -11,7 +12,8 @@ def apply_reconstruction(feature, rotation_model,
 
     rotation_pole = rotation_model.get_rotation(
                         feature[reconstruction_time_field],
-                        feature[reconstruction_plate_id_field])
+                        feature[reconstruction_plate_id_field],
+                        anchor_plate_id=anchor_plate_id)
     
     # TODO implement geometry types other than point 
 
