@@ -314,7 +314,8 @@ class ReconstructionModel(object):
                 default_resolve_topology_parameters=default_resolve_topology_parameters)
 
 
-    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, topological=False, 
+    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, 
+                    topological=False, 
                     wrap_to_dateline=False, use_tempfile=False):
         """
         Reconstruct feature collection or a geopandas dataframe using the reconstruction model
@@ -400,15 +401,18 @@ class ReconstructionModel(object):
                             'FROMAGE>=@reconstruction_time and TOAGE<=@reconstruction_time'
                             ).explode(index_parts=False).reset_index(drop=True)
                     else:
-                        reconstructed_gdf = features.explode().reset_index(drop=True)
+                        reconstructed_gdf = features.explode(index_parts=True).reset_index(drop=True)
 
                     if len(reconstructed_gdf)==0:
                         return None
                     else:
                         reconstructed_gdf['reconstruction_time'] = reconstruction_time
                         rgeometry = reconstructed_gdf.apply(lambda x: apply_reconstruction(x, 
-                                        self.rotation_model, reconstruction_time_field='reconstruction_time'), 
-                                        axis=1)
+                                                                self.rotation_model, 
+                                                                reconstruction_time_field='reconstruction_time',
+                                                                reconstruction_plate_id_field='PLATEID1',
+                                                                anchor_plate_id=anchor_plate_id), 
+                                                            axis=1)
 
                         # TODO allow for geometry to be returned as an extra field
                         reconstructed_gdf['geometry'] = rgeometry
