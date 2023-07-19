@@ -40,6 +40,8 @@ def fetch_GlobalTectonicMap():
 
     # NB This is a specific commit from the Github repo from around the time the files were commited to zenodo
     # BUT avoids downloading ~1GB of data not needed here 
+    
+    '''
     fnames = _retrieve(
         url="https://github.com/dhasterok/global_tectonics/archive/ac1b9af78122d6f673f53f2eb4eeb2783b887f05.zip",
         known_hash="sha256:50ffc7f999a630dc8b8923d45dd9f1b493280528f999a4deeb2546edf96a5ed8", # Not sure why SHA of filename doesn't work? 
@@ -50,5 +52,20 @@ def fetch_GlobalTectonicMap():
 
     dirname = '{:s}/GlobalTectonics/global_tectonics-ac1b9af78122d6f673f53f2eb4eeb2783b887f05/plates&provinces/shp/'.format(str(_os_cache('gprm')))
 
-    return _gpd.read_file('{:s}/global_gprv.shp'.format(dirname))
+    return _gpd.read_file('{:s}/global_gprv.shp'.format(dirname)).set_crs('EPSG:4326')
+    '''
 
+    # Slightly older version, but includes the shapefile containing ages
+    fnames = _retrieve(
+        url="https://github.com/dhasterok/global_tectonics/archive/766e485af4b63c34c88a555621541f64fd7e68d2.zip",
+        known_hash="sha256:bcf565c9eba08c7e684de5e88f77a4dd496e3b960a0e45cbf2b7dafde10612d0", # Not sure why SHA of filename doesn't work? 
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(extract_dir='GlobalTectonics'),
+    )
+
+    dirname = '{:s}/GlobalTectonics/global_tectonics-766e485af4b63c34c88a555621541f64fd7e68d2/plates&provinces/'.format(str(_os_cache('gprm')))
+
+    return _gpd.read_file('{:s}/global_gprv_wage.shp'.format(dirname)).set_crs('EPSG:4326')
+
+    
