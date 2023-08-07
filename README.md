@@ -20,10 +20,11 @@
 - PlateTectonicTools (https://github.com/EarthByte/PlateTectonicTools)
 - pooch
 - pygmt
+- rasterio
+- xrspatial
 
 ### Optional:
 - astropy_healpix (if astropy_healpix is not available, the some functions will fall back on precomputed point distributions in the 'data' folder)
-- rasterio
 - skimage
 - stripy
 - moviepy
