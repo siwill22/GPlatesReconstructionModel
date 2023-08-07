@@ -68,4 +68,18 @@ def fetch_GlobalTectonicMap():
 
     return _gpd.read_file('{:s}/global_gprv_wage.shp'.format(dirname)).set_crs('EPSG:4326')
 
+
+def fetch_SurfaceGeology():
+
+    fnames = _retrieve(
+        url="https://github.com/siwill22/global-geology/raw/d213c8696ad21bce851a2ce0a4d8351f62187503/global_geology_shapefile.zip",
+        known_hash="sha256:a366392c9f4116e1f55b8d2ff05ab70cfd299d46b6a8904b0f21eb3e009053a1", 
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(extract_dir='SurfaceGeology'),
+    )
+
+    dirname = '{:s}/SurfaceGeology/'.format(str(_os_cache('gprm')))
+
+    return _gpd.read_file('{:s}/nrcan_geology_with_ages.shp'.format(dirname))
     
