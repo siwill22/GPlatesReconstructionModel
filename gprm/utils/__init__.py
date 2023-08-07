@@ -11,3 +11,4 @@ from . import vector
 from . import fileio
 from . import spatial
 from . import rotation
+from . import proximity
