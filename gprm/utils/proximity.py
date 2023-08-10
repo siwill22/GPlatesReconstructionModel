@@ -2,7 +2,12 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 #import xrspatial as xrs
-from xrspatial import viewshed, proximity
+
+import warnings
+try:
+    from xrspatial import viewshed, proximity
+except:
+    warnings.warn('gprm.utils.proximity functions based on xrspatial not available')
 #import pygmt
 from rasterio.features import rasterize, Affine
 from .spatial import get_merged_cob_terrane_raster
