@@ -619,7 +619,11 @@ class ReconstructedPolygonSnapshot(object):
             fig.plot(x=data[:,1],y=data[:,0], 
                      pen=pen, color=color, **kwargs)
 
-    def plot(self, fig, pen='black', color='wheat', **kwargs):
+    def plot(self, fig, pen='black', fill='wheat', color=None, **kwargs):
+
+        if color is not None:
+            warnings.warn('color parameter now renamed to fill in pygmt')
+            fill=color
 
         if not self.reconstructed_polygons:
             print('No polygons to plot')
@@ -637,9 +641,11 @@ class ReconstructedPolygonSnapshot(object):
             features.append(f)
 
         pygplates.FeatureCollection(features).write(plot_file.name)
-        fig.plot(data = plot_file.name, pen=pen, color=color, **kwargs)
+        fig.plot(data = plot_file.name, pen=pen, fill=fill, **kwargs)
 
         os.unlink(plot_file.name)
+
+        return
 
     #TODO add a 'to_file' method? But that should be an option when creating the snapshot
 
@@ -844,7 +850,7 @@ class PlateSnapshot(object):
         return ax
 
     # pygmt functions
-    def plot_subduction_zones(self, fig, color='black', gap=10, size=4, **kwargs):
+    def plot_subduction_zones(self, fig, fill='black', gap=10, size=4, **kwargs):
         """
         plot subduction zones into a pygmt map figure
 
@@ -872,7 +878,7 @@ class PlateSnapshot(object):
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
-        fig.plot(data = plot_file.name, color=color, style='f{:f}p/{:f}p+r+t'.format(float(gap), float(size)), **kwargs)
+        fig.plot(data = plot_file.name, fill=fill, style='f{:f}p/{:f}p+r+t'.format(float(gap), float(size)), **kwargs)
 
         os.unlink(plot_file.name)
 
