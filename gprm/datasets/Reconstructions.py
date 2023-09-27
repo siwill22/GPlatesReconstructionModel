@@ -57,7 +57,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
     dirname = _os.path.split(fnames[0])[0]
 
     from gprm import ReconstructionModel as _ReconstructionModel
-    reconstruction_model = _ReconstructionModel()
+    reconstruction_model = _ReconstructionModel('CaoToyRodinia_'.format(model_case))
     reconstruction_model.add_rotation_model('{:s}/Global_EB_250-0Ma_GK07_2017_ASM.rot'.format(dirname))
     reconstruction_model.add_rotation_model('{:s}/triple_junction_superoceanic_plates.rot'.format(dirname))
     reconstruction_model.add_rotation_model('{:s}/410-250_toy_introversion_simplified.rot'.format(dirname))
@@ -130,7 +130,7 @@ def fetch_Li2023(load=True, model_case='East'):
     dirname = _os.path.split(fnames[0])[0]
 
     from gprm import ReconstructionModel as _ReconstructionModel
-    reconstruction_model = _ReconstructionModel('Li++2023')
+    reconstruction_model = _ReconstructionModel('Li++2023_{:s}'.format(model_case))
     reconstruction_model.add_continent_polygons('{:s}/Continental_outlines.shp'.format(dirname))
     #reconstruction_model.add_static_polygons('{:s}/Continental_outlines.shp'.format(dirname))
     if model_case=='East':
@@ -272,10 +272,11 @@ def fetch_Muller2022(NNR=False, load=True):
     dirname = '{:s}/Muller2022/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel/'.format(str(_os_cache('gprm')))
 
     from gprm import ReconstructionModel as _ReconstructionModel
-    reconstruction_model = _ReconstructionModel('Muller++2022')
     if NNR:
+        reconstruction_model = _ReconstructionModel('Muller++2022_NNR')
         reconstruction_model.add_rotation_model('{:s}/optimisation/no_net_rotation_model.rot'.format(dirname))
     else:
+        reconstruction_model = _ReconstructionModel('Muller++2022_Opt')
         reconstruction_model.add_rotation_model('{:s}/optimisation/1000_0_rotfile_Merdith_et_al_optimised.rot'.format(dirname))
     #reconstruction_model.add_static_polygons('{:s}/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
     #reconstruction_model.add_coastlines('{:s}/'.format(dirname))
