@@ -479,7 +479,9 @@ class ReconstructionModel(object):
                                        axis=1)
 
             # TODO allow for geometry to be returned as an extra field
-            features['geometry'] = rgeometry
+            with pd.option_context('mode.chained_assignment', None):
+                features['geometry'] = rgeometry
+
             return features
 
 
