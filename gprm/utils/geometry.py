@@ -31,6 +31,14 @@ def apply_reconstruction(feature, rotation_model,
         return Polygon([tuple(point.to_lat_lon()[::-1]) for point in rp.get_points()])
 
 
+def apply_nearest_feature(point, lookup_dict, age_field='age'):
+    # function to apply the nearest feature function assuming we have points in geodataframe
+    # that also contains an 'age' field, and an existing lookup
+    # dictionary of reconstructed features
+    
+    return nearest_feature(pygplates.PointOnSphere(point.geometry.y, point.geometry.x), 
+                           lookup_dict[point[age_field]])*pygplates.Earth.mean_radius_in_kms
+
 
 def nearest_feature(point, features, return_nearest_feature=False):
     # The minimum distance to all features and the nearest feature.
