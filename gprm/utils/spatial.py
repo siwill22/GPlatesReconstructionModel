@@ -525,3 +525,22 @@ def raster_zonal_areas(grd, lats, binsize):
     return bin_areas
 
 
+def topology_lookup(reconstruction_model, 
+                    reconstruction_times=np.arange(0,1001,10), 
+                    boundary_types=['subduction']):
+    # Given a reconstruction model with dynamic polygons, returns a lookup dictionary
+    # of the reconstructed boundaries. 
+    # The type of boundaries is specified by 'boundary_types 
+    # The series of times returned in the dictionary is specified by 'reconstruction_times'
+
+    lookup_dict = {}
+    for reconstruction_time in reconstruction_times:
+        snapshot = reconstruction_model.plate_snapshot(reconstruction_time=reconstruction_time)
+        lookup_dict[reconstruction_time] = snapshot.get_boundary_features(boundary_types=boundary_types)
+
+    return lookup_dict
+
+
+
+
+
