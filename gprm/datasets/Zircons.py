@@ -263,3 +263,48 @@ def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
 def get_record_spectrum(df,Sample_ID):
     return df[df.Sample_ID_x==Sample_ID].dropna(subset=['206Pb_238U_Age_Ma'])
 
+
+def tectonic_category(SedimentaryZircons, 
+                      sample_key='Ref-Sample Key',
+                      grain_age_key='Non_Iter_Age_Ma',
+                      depositional_age_key='Est_Depos_Age_Ma'):
+    ''' 
+    Given a set of zircon spectra, return categories according to the 
+    method of Cawood et al (2012). See also Jian et al (2022)
+    '''
+    cdf_markers = _np.arange(0,1.0001,0.01)
+
+    sample_groups = SedimentaryZircons.groupby(by=sample_key)
+
+    category_list = []
+
+    for sample_group in sample_groups:
+    
+        s = sample_group[1][grain_age_key]
+    
+        age_at_deposition = s - sample_group[1][depositional_age_key]
+
+        # define the cdf
+        dst = _np.sort(age_at_deposition)
+        xtmp = _np.linspace(0,1,len(dst))
+
+        # sample cdf at regular increment
+        cdf_vals = _np.interp(cdf_markers,xtmp,dst)
+        #cdf_vals_ma = _np.interp(cdf_markers_ma,dst,xtmp)
+
+        category = 'C'
+        if cdf_vals[1]<150.:
+            category = 'B'
+            if cdf_vals[6]<100.:
+                category = 'A'
+
+        category_list.append(category)
+
+    return _gpd.GeoDataFrame(
+        data={'Longitude': sample_groups.Longitude.median(),
+              'Latitude': sample_groups.Latitude.median(),
+              depositional_age_key: sample_groups[depositional_age_key].median(),
+              'TectonicClass': category_list},
+        geometry=_gpd.points_from_xy(sample_groups.Longitude.median(), 
+                                     sample_groups.Latitude.median()), crs=4326)
+
