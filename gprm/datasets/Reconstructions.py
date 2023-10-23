@@ -121,7 +121,8 @@ def fetch_Li2023(load=True, model_case='East'):
 
     fnames = _retrieve(
             url="https://ars.els-cdn.com/content/image/1-s2.0-S0012825223000259-mmc10.zip",
-            known_hash="sha256:1e205c867feaed1b796b098bff4d65ecc18d0d6e1f37291ca3161a32957373a9",  
+            #known_hash="sha256:1e205c867feaed1b796b098bff4d65ecc18d0d6e1f37291ca3161a32957373a9", 
+            known_hash="sha256:f49bcc6feb85684900035205e3d99be424eff80ef73caedec8f5d72c5dc620d8",
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
             processor=_Unzip(extract_dir='Li2023'),
