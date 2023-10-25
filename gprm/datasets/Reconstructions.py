@@ -596,14 +596,15 @@ def fetch_Scotese(load=True):
     )
 
     #print(fnames[0].split('.unzip'))
-    dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
+    #dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
     #dirname = '{:s}.unzip/SupplementaryMaterial_Cao_etal/'.format(fnames[0].split('.unzip')[0])
+    dirname = '{:s}/Cao2018_SM/SupplementaryMaterial_Cao_etal/'.format(str(_os_cache('gprm')))
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Scotese2008')
-    reconstruction_model.add_rotation_model('{:s}/SupplementaryMaterial_Cao_etal/Rotation_models/Scotese_2008_Rotation.rot'.format(dirname))
-    reconstruction_model.add_continent_polygons('{:s}/SupplementaryMaterial_Cao_etal/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/SupplementaryMaterial_Cao_etal/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
+    reconstruction_model.add_rotation_model('{:s}/Rotation_models/Scotese_2008_Rotation.rot'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
     
     return reconstruction_model
 
