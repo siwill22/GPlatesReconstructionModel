@@ -300,7 +300,8 @@ def fetch_Muller2016(load=True):
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2016_AREPS/Muller_etal_2016_AREPS_Supplement/Muller_etal_2016_AREPS_Supplement_v1.17.zip",
-        known_hash="sha256:a671d6f2318b329e6f633065771fe37d29b6932e805e619039c4405dcb0fb91a",  
+        #known_hash="sha256:a671d6f2318b329e6f633065771fe37d29b6932e805e619039c4405dcb0fb91a", 
+        known_hash="e8da46d3f13bd3c1260330f4b89d5af562a29953eb1009207059e5bc1570011a", 
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
         processor=_Unzip(extract_dir='Muller2016'),
@@ -328,7 +329,8 @@ def fetch_Muller2019(load=True):
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2019_Tectonics/Muller_etal_2019_PlateMotionModel/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics.zip",
-        known_hash="sha256:32c30c80cd165fe0d28b3fda44a8b7d42e660a2a95baf508bdf7d1666977be9d",  
+        #known_hash="sha256:32c30c80cd165fe0d28b3fda44a8b7d42e660a2a95baf508bdf7d1666977be9d", 
+        known_hash="sha256:91a11e6b810f78c5dcc11c555044546d11f975a6e6ad3db83936e3ab00da632e",
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
         processor=_Unzip(extract_dir='Muller2019'),
@@ -358,7 +360,7 @@ def fetch_Muller2019(load=True):
     reconstruction_model.add_rotation_model('{:s}/Southeast_Asia_Rotations_2019_v2.rot'.format(dirname))
 
     reconstruction_model.add_continent_polygons('{:s}/StaticGeometries/ContinentalPolygons/Global_EarthByte_GPlates_PresentDay_ContinentalPolygons_2019_v1.shp'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/StaticGeometries/StaticPolygons/Global_EarthByte_GPlates_PresentDay_StaticPlatePolygons_2019_v1.shp'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/StaticGeometries/StaticPolygons/Global_EarthByte_GPlates_PresentDay_StaticPlatePolygons_2019_v2.shp'.format(dirname))
     reconstruction_model.add_coastlines('{:s}/StaticGeometries/Coastlines/Global_coastlines_2019_v1_low_res.shp'.format(dirname))
     
     reconstruction_model.add_dynamic_polygons('{:s}/Alps_Deforming_Mesh_2019_v2.gpml'.format(dirname))
