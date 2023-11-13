@@ -264,7 +264,8 @@ def fetch_Muller2022(NNR=False, load=True):
     '''
     fnames = _retrieve(
         url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2022_SE/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel.zip",
-        known_hash="sha256:a1e37f0a201a827ffe1150a808984786c6a2982923362580e28718fe7bc716e7",  
+        #known_hash="sha256:a1e37f0a201a827ffe1150a808984786c6a2982923362580e28718fe7bc716e7", 
+        known_hash="sha256:dbee0e42afa3d4e483e357046df3415b489d546d458475a1a9ca76bd8e3d9108",
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
         processor=_Unzip(extract_dir='Muller2022'),
