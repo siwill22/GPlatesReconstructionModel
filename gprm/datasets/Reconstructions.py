@@ -220,38 +220,51 @@ def fetch_Matthews2016(load=True):
     return reconstruction_model
 
 
-def fetch_Merdith2021(load=True):
+def fetch_Merdith2021(load=True, version='1.0'):
     '''
     Load Billion-year reconstruction from Merdith et al (2021) Earth Science Reviews
     doi: https://doi.org/10.1016/j.earscirev.2020.103477
     '''
-    fnames = _retrieve(
-        url="https://zenodo.org/record/4320873/files/SM2-Merdith_et_al_1_Ga_reconstruction.zip?download=1",
-        known_hash="md5:1786d68e949c4242de1801388c68cb8c",  
-        downloader=_HTTPDownloader(progressbar=True),
-        path=_os_cache('gprm'),
-        processor=_Unzip(extract_dir='Merdith2021'),
-    )
 
-    dirname = '{:s}/Merdith2021/'.format(fnames[0].split('Merdith2021')[0])
-    #for fname in fnames:
-    #    if '__MACOSX' not in _os.path.split(fname)[0]:
-    #        dirname = _os.path.split(fname)[0]
-    #        break
+    if version=='1.1':
+        fnames = _retrieve(
+            url="https://github.com/siwill22/gpdata/blob/master/z/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1.zip?raw=true",
+            known_hash="sha256:b124a7618dc67789c74734d870a7321fe6cd680f2d935c4ac4bbf07316b46a78",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(extract_dir='Merdith2021'),
+        )
+        # remove unneccessary space in extracted folder name
+        if _os.path.exists('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1 2'.format(str(_os_cache('gprm')))):
+            _os.rename('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1 2'.format(str(_os_cache('gprm'))),
+                       '{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1'.format(str(_os_cache('gprm'))))
+        dirname = '{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1'.format(str(_os_cache('gprm')))
+
+    else:
+        fnames = _retrieve(
+            url="https://zenodo.org/record/4320873/files/SM2-Merdith_et_al_1_Ga_reconstruction.zip?download=1",
+            known_hash="md5:1786d68e949c4242de1801388c68cb8c",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+            processor=_Unzip(extract_dir='Merdith2021'),
+        )
+        dirname = '{:s}/Merdith2021/SM2/'.format(str(_os_cache('gprm')))
 
     from gprm import ReconstructionModel as _ReconstructionModel
-    reconstruction_model = _ReconstructionModel('Merdith++2021')
-    reconstruction_model.add_rotation_model('{:s}/SM2/1000_0_rotfile_Merdith_et_al.rot'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/SM2/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
-    #reconstruction_model.add_coastlines('{:s}/'.format(dirname))
-    reconstruction_model.add_continent_polygons('{:s}/SM2/shapes_continents_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/410-250_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/250-0_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/TopologyBuildingBlocks_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/1000-410-Transforms_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/1000-410-Convergence_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/1000-410-Divergence_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/SM2/1000-410-Topologies_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model = _ReconstructionModel('Merdith++2021_v{:s}'.format(version))
+    reconstruction_model.add_rotation_model('{:s}/1000_0_rotfile_Merdith_et_al.rot'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/shapes_continents_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/410-250_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/250-0_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/TopologyBuildingBlocks_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Transforms_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Convergence_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Divergence_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Topologies_Merdith_et_al.gpml'.format(dirname))
+
+    if version=='1.1':
+        reconstruction_model.add_coastlines('{:s}/shapes_coastlines_Merdith_et_al_v2.gpmlz'.format(dirname))
 
     return reconstruction_model
 
@@ -584,6 +597,7 @@ def fetch_Young2019(load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Young_etal_2018_GeoscienceFrontiers_GPlatesPlateMotionModel/TopologyBuildingBlocks_Young_et_al.gpml'.format(dirname))
 
     return reconstruction_model
+
 
 def fetch_Scotese(load=True):
     '''
