@@ -391,7 +391,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
         #pg.smooth_topography_grid('paleotopobathy.nc','paleotopobathy_smooth_%0.2fMa.nc' % reconstruction_time,400.)
         # TODO skip this step if grid_smoothing_wavelength_kms set to zero
         call_system_command(['gmt', 'grdfilter', paleotopobathy_nc_file.name, '-G%s' % paleotopobathy_smooth_nc_file.name, 
-                             '-Fg%0.2f' % grid_smoothing_wavelength_kms, '-fg', '-D4', '-Vl'])
+                             '-Fg%0.2f' % grid_smoothing_wavelength_kms, '-fg', '-D4', '-V'])
 
         if netcdf3_output:
             # finally, once again force GPlates-readable netCDF (ie netCDF v3) and put the 
