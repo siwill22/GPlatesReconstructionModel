@@ -640,6 +640,7 @@ class ReconstructedPolygonSnapshot(object):
             f = pygplates.Feature()
             f.set_geometry(feature.get_reconstructed_geometry())
             f.set_reconstruction_plate_id(feature.get_feature().get_reconstruction_plate_id())
+            f.set_valid_time(feature.get_feature().get_valid_time()[0], feature.get_feature().get_valid_time()[1])
             features.append(f)
 
         pygplates.FeatureCollection(features).write(plot_file.name)
@@ -870,11 +871,15 @@ class PlateSnapshot(object):
 
         features = []
         for resolved_boundary_segment in resolved_boundary_segments:
-            if resolved_boundary_segment.get_geometry() is not None:
-                if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
-                    resolved_boundary_segment.set_geometry(pygplates.PolylineOnSphere(resolved_boundary_segment.get_geometry().to_lat_lon_list()[::-1]))
-                features.append(resolved_boundary_segment)
-        
+            plot_feature = pygplates.Feature()
+            for geometry in resolved_boundary_segment.get_all_geometries():
+                if geometry is not None:
+                    if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
+                        plot_feature.set_geometry(pygplates.PolylineOnSphere(geometry.to_lat_lon_list()[::-1]))
+                    else:
+                        plot_feature.set_geometry(pygplates.PolylineOnSphere(geometry.to_lat_lon_list()))
+                    features.append(plot_feature)
+
         if not features:
             print('No subduction zones to plot')
             return
