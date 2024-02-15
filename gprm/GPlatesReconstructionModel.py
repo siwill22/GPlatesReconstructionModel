@@ -871,8 +871,8 @@ class PlateSnapshot(object):
 
         features = []
         for resolved_boundary_segment in resolved_boundary_segments:
-            plot_feature = pygplates.Feature()
             for geometry in resolved_boundary_segment.get_all_geometries():
+                plot_feature = pygplates.Feature()
                 if geometry is not None:
                     if resolved_boundary_segment.get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)=='Left':
                         plot_feature.set_geometry(pygplates.PolylineOnSphere(geometry.to_lat_lon_list()[::-1]))
