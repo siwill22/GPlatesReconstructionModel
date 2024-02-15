@@ -905,8 +905,11 @@ class PlateSnapshot(object):
 
         features = []
         for resolved_boundary_segment in resolved_boundary_segments:
-            if resolved_boundary_segment.get_geometry() is not None:
-                features.append(resolved_boundary_segment)
+            for geometry in resolved_boundary_segment.get_all_geometries():
+                if geometry is not None:
+                    plot_feature = pygplates.Feature()
+                    plot_feature.set_geometry(geometry)
+                    features.append(plot_feature)
 
         if not features:
             print('No mid-ocean ridges to plot')
@@ -934,8 +937,11 @@ class PlateSnapshot(object):
 
         features = []
         for resolved_boundary_segment in resolved_boundary_segments:
-            if resolved_boundary_segment.get_geometry() is not None:
-                features.append(resolved_boundary_segment)
+            for geometry in resolved_boundary_segment.get_all_geometries():
+                if geometry is not None:
+                    plot_feature = pygplates.Feature()
+                    plot_feature.set_geometry(geometry)
+                    features.append(plot_feature)
         
         if not features:
             print('No plate boundaries to plot')
