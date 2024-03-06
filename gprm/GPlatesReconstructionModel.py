@@ -466,7 +466,7 @@ class ReconstructionModel(object):
         elif isinstance(features, gpd.GeoDataFrame):
 
             if ReconstructTime is None:
-                reconstruction_time = 'FROMAGE'
+                ReconstructTime = 'FROMAGE'
             elif ReconstructTime == 'MidTime':
                 features['reconstruction_time'] = (features['FROMAGE']+features['TOAGE'])/2.
                 ReconstructTime = 'reconstruction_time'
