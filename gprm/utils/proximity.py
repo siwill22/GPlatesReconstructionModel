@@ -28,14 +28,17 @@ def mask_to_da(mask, sampling=1):
                         name='z')
 
 
-def rasterize_polygons(gdf, sampling=1):
+def rasterize_polygons(gdf, sampling=1, zval_field=None):
     # given a geodataframe with some polygons, returns a raterized version
     # TODO add region option
     
     dims = (int(180./sampling)+1, int(360./sampling)+1)
     transform = Affine(sampling, 0.0, -180.-sampling/2., 0.0, sampling, -90.-sampling/2.)
 
-    geometry_zval_tuples = [(x.geometry, 1) for i, x in gdf.iterrows()]
+    if zval_field is not None:
+        geometry_zval_tuples = [(x.geometry, x[zval_field]) for i, x in gdf.iterrows()]
+    else:
+        geometry_zval_tuples = [(x.geometry, 1) for i, x in gdf.iterrows()]
 
     #with rasterio.open(raster_file) as src:
         # iterate over features to get (geometry, id value) pairs
