@@ -1168,7 +1168,7 @@ class FlowlineFeature:
         self.flowline_feature = flowline_feature
         
         
-    def reconstruct_flowline(self, reconstruction_model, reconstruction_time=0, anchor_plate_id=0):
+    def reconstruct_flowline(self, reconstruction_model, reconstruction_time=0, anchor_plate_id=0, return_type='numpy'):
         """
         reconstruct the flowline and return a list of reconstructed flowline geometries
 
@@ -1190,8 +1190,13 @@ class FlowlineFeature:
         for reconstructed_flowline in reconstructed_flowlines:
             flowlines.append(reconstructed_flowline.get_left_flowline().to_lat_lon_array())
             flowlines.append(reconstructed_flowline.get_right_flowline().to_lat_lon_array())
-
-        return flowlines
+        
+        if return_type=='numpy':
+            return flowlines
+        elif return_type=='geodataframe':
+            from shapely.geometry import LineString
+            return gpd.GeoDataFrame(geometry=[LineString(flowline[:,::-1]) for flowline in flowlines])
+        
 
     def rate(self, reconstruction_model, reconstruction_time=0):
         """
@@ -1231,7 +1236,7 @@ class FlowlineFeature:
             
         return rates
             
-    def step_plot(self, reconstruction_model, reconstruction_time=0, show=False):
+    def step_plot(self, reconstruction_model, reconstruction_time=0, show=False, **plot_kwargs):
         """
         plot plate motions rates
         """
@@ -1251,7 +1256,7 @@ class FlowlineFeature:
 
         if show:
             fig = plt.figure(figsize=(10,4))
-            plt.plot(step_time,np.array(step_rates).T)
+            plt.plot(step_time,np.array(step_rates).T, **plot_kwargs)
             plt.xlabel('Reconstruction Time (Myr)')
             plt.ylabel('Full Spreading Rate (mm/yr)')   ## IS this 
             plt.gca().invert_xaxis()
