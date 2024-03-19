@@ -128,7 +128,25 @@ def fetch_Li2023(load=True, model_case='East'):
             processor=_Unzip(extract_dir='Li2023'),
         )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/Li2023/'.format(fnames[0].split('Li2023')[0])
+    print(dirname)
+
+    # The first time we load, we look for the directory with the long filename with 
+    # strange characters (which may appear differently on different OS?), 
+    # and change it to something easier to work with
+    for fname in fnames:
+        bad_dirname = _os.path.split(fname)[0]
+        if 'Supplementary Material 10' in bad_dirname:
+            if '__MACOSX' in bad_dirname:
+                continue
+            dirname = '{:s}/SM/'.format(dirname)
+            _os.rename(bad_dirname, dirname)
+            break
+
+    dirname = '{:s}/SM'.format(dirname)
+    #_os.rename(bad_dirname, dirname)
+    
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Li++2023_{:s}'.format(model_case))
