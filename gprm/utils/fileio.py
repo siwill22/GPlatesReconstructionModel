@@ -95,10 +95,10 @@ def gpml_to_dataframe(feature_collection, as_geodataframe=True):
     # TODO handle polylines and polygons
     '''
 
-    if os.path.isfile(feature_collection):
-        feature_collection = pygplates.FeatureCollection(feature_collection)
-    elif isinstance(feature_collection, pygplates.FeatureCollection):
+    if isinstance(feature_collection, pygplates.FeatureCollection):
         pass
+    elif os.path.isfile(feature_collection):
+        feature_collection = pygplates.FeatureCollection(feature_collection)
     else:
         raise ValueError('Unable to load {:s} as vgp input'.format(feature_collection))
 
@@ -108,8 +108,9 @@ def gpml_to_dataframe(feature_collection, as_geodataframe=True):
 
     # Get attribute (other than coordinate) names from first feature
     for feature in feature_collection: 
-        for attribute in feature.get_shapefile_attributes():
-            DataFrameTemplate.append(attribute) 
+        if feature.get_shapefile_attributes() is not None:
+            for attribute in feature.get_shapefile_attributes():
+                DataFrameTemplate.append(attribute) 
         break
 
     fs = []
@@ -129,8 +130,9 @@ def gpml_to_dataframe(feature_collection, as_geodataframe=True):
         f.append(str(feature.get_feature_type()))
         f.append(str(feature.get_feature_id()))
 
-        for attribute in feature.get_shapefile_attributes():
-            f.append(feature.get_shapefile_attribute(attribute))
+        if feature.get_shapefile_attributes() is not None:
+            for attribute in feature.get_shapefile_attributes():
+                f.append(feature.get_shapefile_attribute(attribute))
         fs.append(f)
 
     if as_geodataframe:
