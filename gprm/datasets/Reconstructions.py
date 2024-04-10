@@ -490,21 +490,23 @@ def fetch_Seton2012(load=True):
     doi:10.1016/j.earscirev.2012.03.002
     '''
     fnames = _retrieve(
-        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Seton_etal_2012_ESR.zip",
-        known_hash="sha256:b117354f93296dc1035d6709c7d475bf9ad517dc3f882b1621ef68db712c603e",  
+        #url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Seton_etal_2012_ESR.zip",
+        url="https://github.com/siwill22/gpdata/blob/master/z/SETON2012.zip?raw=true",
+        known_hash="sha256:b3d5770cb183871a14429f62e6cf1827b6861de3524739883a335e057adb632e",  
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(extract_dir='Seton2012'),
+        processor=_Unzip(extract_dir='Seton2012/'),
     )
 
     #dirname = _os.path.split(fnames[0])[0]
-    dirname = '{:s}/Seton2012/'.format(fnames[0].split('Seton2012')[0])
+    dirname = '{:s}/Seton2012/SETON2012/'.format(fnames[0].split('Seton2012')[0])
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Seton++2012')
-    reconstruction_model.add_rotation_model('{:s}/Seton_etal_2012_ESR/Rotations/Seton_etal_ESR2012_2012.1.rot'.format(dirname))
-    reconstruction_model.add_coastlines('{:s}/Seton_etal_2012_ESR/Coastlines/Seton_etal_ESR2012_Coastline_2012.1.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/Seton_etal_2012_ESR/Plate_polygons/Seton_etal_ESR2012_PP_2012.1.gpml'.format(dirname))
+    reconstruction_model.add_rotation_model('{:s}/Seton_etal_ESR2012_2012.1.rot'.format(dirname))
+    reconstruction_model.add_coastlines('{:s}/Seton_etal_ESR2012_Coastlines_2012.1_Polygon.gpmlz'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Seton_etal_ESR2012_PP_2012.1.gpmlz'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/Seton_etal_ESR2012_ContinentalPolygons_2012.1.gpmlz'.format(dirname))
 
     return reconstruction_model
 
