@@ -249,7 +249,8 @@ class ReconstructionModel(object):
 
     def polygon_snapshot(self, polygon_type, reconstruction_time, anchor_plate_id=0):
         """
-        Create a set of reconstructed polygons for a specific reconstruction time 
+        Create a set of reconstructed polygons for a specific reconstruction time
+        Options for polygon_type are: 'coastlines' | 'continents' | 'static_polygons'
         """
 
         if polygon_type == 'coastlines':
