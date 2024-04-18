@@ -46,6 +46,7 @@ import gprm.utils as utils
 
 from ptt.utils.proximity_query import find_closest_geometries_to_points
 from gprm.utils.geometry import distance_between_reconstructed_points_and_features, apply_reconstruction
+from gprm.utils.spatial import force_polygon_geometries
 
 import ptt.subduction_convergence as sc
 from ptt.utils.call_system_command import call_system_command
@@ -143,7 +144,8 @@ class ReconstructionModel(object):
         self.rotation_files.append(rotation_file)
         self.rotation_model = pygplates.RotationModel(self.rotation_files)
 
-    def add_static_polygons(self, static_polygons_file, replace=False):
+    def add_static_polygons(self, static_polygons_file, replace=False,
+                            force_polygons=False):
         """
         Add a set of static polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
@@ -155,8 +157,13 @@ class ReconstructionModel(object):
             self.static_polygons = []
             self.static_polygon_files = []
 
+        if force_polygons:
+            features = force_polygon_geometries(pygplates.FeatureCollection(static_polygons_file))
+        else:
+            features = pygplates.FeatureCollection(static_polygons_file)
+
         self.static_polygon_files.append(static_polygons_file)
-        self.static_polygons.append(pygplates.FeatureCollection(static_polygons_file))  # Should this be loaded into memory like dynamic polygons??
+        self.static_polygons.append(features)  # Should this be loaded into memory like dynamic polygons??
 
     def add_dynamic_polygons(self, dynamic_polygons_file, replace=False):
         """
@@ -178,7 +185,8 @@ class ReconstructionModel(object):
         self.dynamic_polygons.append(pygplates.FeatureCollection(dynamic_polygons_file))
         #self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
-    def add_coastlines(self, coastlines_file, replace=False):
+    def add_coastlines(self, coastlines_file, replace=False,
+                       force_polygons=False):
         """
         Add a set of coastline polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
@@ -190,10 +198,16 @@ class ReconstructionModel(object):
             self.coastlines = []
             self.coastlines_files = []
 
-        self.coastlines_files.append(coastlines_file)
-        self.coastlines.append(pygplates.FeatureCollection(coastlines_file))
+        if force_polygons:
+            features = force_polygon_geometries(pygplates.FeatureCollection(coastlines_file))
+        else:
+            features = pygplates.FeatureCollection(coastlines_file)
 
-    def add_continent_polygons(self, continent_polygons_file, replace=False):
+        self.coastlines_files.append(coastlines_file)
+        self.coastlines.append(features)
+
+    def add_continent_polygons(self, continent_polygons_file, replace=False, 
+                               force_polygons=False):
         """
         Add a set of continent polygons to the reconstruction model object by specifying
         path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
@@ -205,8 +219,14 @@ class ReconstructionModel(object):
             self.continent_polygons = []
             self.continent_polygons_files = []
 
+        if force_polygons:
+            features = force_polygon_geometries(pygplates.FeatureCollection(continent_polygons_file))
+        else:
+            features = pygplates.FeatureCollection(continent_polygons_file)
+
         self.continent_polygons_files.append(continent_polygons_file)
-        self.continent_polygons.append(pygplates.FeatureCollection(continent_polygons_file))
+        self.continent_polygons.append(features)
+
 
     def from_web_service(self, model='MULLER2016', url='https://gws.gplates.org'):
         """
