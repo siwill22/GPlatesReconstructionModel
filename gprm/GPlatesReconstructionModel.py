@@ -486,6 +486,8 @@ class ReconstructionModel(object):
 
         elif isinstance(features, gpd.GeoDataFrame):
 
+            features = features.copy()
+
             if ReconstructTime is None:
                 ReconstructTime = 'FROMAGE'
             elif ReconstructTime == 'MidTime':
