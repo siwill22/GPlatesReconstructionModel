@@ -336,7 +336,7 @@ class ReconstructionModel(object):
 
 
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, 
-                    topological=False, 
+                    topological=False, reverse=False,
                     wrap_to_dateline=False, use_tempfile=False):
         """
         Reconstruct feature collection or a geopandas dataframe using the reconstruction model
@@ -354,11 +354,18 @@ class ReconstructionModel(object):
             if isinstance(features, pygplates.FeatureCollection):
 
                 # TODO assign plate ids if not available already (or option selected)
-
-                reconstructed_features = []
-                pygplates.reconstruct(features, self.rotation_model, 
-                                      reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
-                return reconstructed_features
+                if reverse:
+                    unreconstructed_features = features.copy()
+                    pygplates.reverse_reconstruct(unreconstructed_features, self.rotation_model, 
+                                                  reconstruction_time, anchor_plate_id=anchor_plate_id)
+                    return unreconstructed_features
+                
+                
+                else:
+                    reconstructed_features = []
+                    pygplates.reconstruct(features, self.rotation_model, 
+                                          reconstructed_features, reconstruction_time, anchor_plate_id=anchor_plate_id)
+                    return reconstructed_features
 
             elif isinstance(features, gpd.GeoDataFrame):
 
@@ -391,24 +398,31 @@ class ReconstructionModel(object):
 
                     features.to_file(temporary_file.name, driver=driver)
 
-                    pygplates.reconstruct(temporary_file.name, self.rotation_model, 
-                                        temporary_file_r.name, reconstruction_time,
-                                        anchor_plate_id=anchor_plate_id)
+                    if reverse:
+                        pygplates.reverse_reconstruct(temporary_file.name, self.rotation_model, 
+                                                      reconstruction_time, anchor_plate_id=anchor_plate_id)
+                        reconstructed_gdf = gpd.read_file(temporary_file.name)
 
-                    # TODO handle case where there are no reconstructed features, hence file doesn't get created
-                    try:
-                        reconstructed_gdf = gpd.read_file(temporary_file_r.name)
-                    except:
-                        return print('No reconstructed features returned')
+                    else:
+                        pygplates.reconstruct(temporary_file.name, self.rotation_model, 
+                                            temporary_file_r.name, reconstruction_time,
+                                            anchor_plate_id=anchor_plate_id)
+
+                        # TODO handle case where there are no reconstructed features, hence file doesn't get created
+                        try:
+                            reconstructed_gdf = gpd.read_file(temporary_file_r.name)
+                        except:
+                            return print('No reconstructed features returned')
 
 
-                    # The reconstructed file will have various extra columns, of which the name
-                    # of the temporary file is definitely not useful so we delete it
-                    # (checking for the unlikely event of the column 'FILE1' already existing)
-                    if not 'FILE1' in features.columns:
-                        reconstructed_gdf.drop(columns=['FILE1'], inplace=True)
+                        # The reconstructed file will have various extra columns, of which the name
+                        # of the temporary file is definitely not useful so we delete it
+                        # (checking for the unlikely event of the column 'FILE1' already existing)
+                        if not 'FILE1' in features.columns:
+                            reconstructed_gdf.drop(columns=['FILE1'], inplace=True)
 
                     os.unlink(temporary_file.name)
+                    os.unlink(temporary_file_r.name)
 
                     return reconstructed_gdf
 
@@ -432,7 +446,8 @@ class ReconstructionModel(object):
                                                                 self.rotation_model, 
                                                                 reconstruction_time_field='reconstruction_time',
                                                                 reconstruction_plate_id_field='PLATEID1',
-                                                                anchor_plate_id=anchor_plate_id), 
+                                                                anchor_plate_id=anchor_plate_id,
+                                                                reverse=reverse), 
                                                             axis=1)
 
                         # TODO allow for geometry to be returned as an extra field
