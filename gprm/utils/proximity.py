@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 import xarray as xr
 #import xrspatial as xrs
 
@@ -174,9 +175,14 @@ def polyline_proximity(features, spacing=1, region=[-180, 180, -90, 90]):
     tesselation_spacing=spacing/5
 
     features_as_points = []
-    for i,feature in features.explode(index_parts=False).iterrows():
-        geometry = pygplates.PolylineOnSphere(zip(feature.geometry.coords.xy[1], feature.geometry.coords.xy[0]))
-        features_as_points.extend(geometry.to_tessellated(np.radians(tesselation_spacing)).to_lat_lon_list())
+    if isinstance(features, gpd.GeoDataFrame):
+        for i,feature in features.explode(index_parts=False).iterrows():
+            geometry = pygplates.PolylineOnSphere(zip(feature.geometry.coords.xy[1], feature.geometry.coords.xy[0]))
+            features_as_points.extend(geometry.to_tessellated(np.radians(tesselation_spacing)).to_lat_lon_list())
+    else:
+        for f in features:
+            if f.get_geometry():
+                features_as_points.extend(f.get_geometry().to_tessellated(np.radians(tesselation_spacing)).to_lat_lon_list())
 
     return points_proximity(x=[lon for lat,lon in features_as_points],
                             y=[lat for lat,lon in features_as_points],
