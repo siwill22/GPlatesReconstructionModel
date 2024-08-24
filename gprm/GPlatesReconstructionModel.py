@@ -1367,8 +1367,8 @@ class PlateTree(object):
                                             polygon_type=polygon_type, root_feature_filename=nodes_file.name)
 
         fig.plot(data=links_file.name, pen=link_pen)
-        fig.plot(data=links_file.name, style=node_style, pen=node_pen, color=node_color, label='Child Nodes')
-        fig.plot(data=nodes_file.name, style=root_node_style, pen=root_node_pen, color=root_node_color, label='Root Nodes')
+        fig.plot(data=links_file.name, style=node_style, pen=node_pen, fill=node_color, label='Child Nodes')
+        fig.plot(data=nodes_file.name, style=root_node_style, pen=root_node_pen, fill=root_node_color, label='Root Nodes')
 
         os.unlink(links_file.name)
         os.unlink(nodes_file.name)
