@@ -1,7 +1,7 @@
 '''
 MIT License
 
-Copyright (c) 2017-2023 Simon Williams
+Copyright (c) 2017-2025 Simon Williams
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,41 @@ import os as _os
 #from gprm import ReconstructionModel as _ReconstructionModel
 
 
-# TODO
-# Add: Domeier and Torsvik
-#      Shephard?? (or a version of Seton with Static Polygons)
 
+
+def fetch_Cao2024(load=True, model_case='NNR'):
+    '''
+    Load 1800 Ma to present reconstructions from Cao et al (2024), Geoscience Frontiers
+    https://doi.org/10.1016/j.gsf.2024.101922
+
+    '''
+    
+    fnames = _retrieve(
+        url="https://zenodo.org/records/13628813/files/1.8Ga_model_GSF.zip?download=1",
+        known_hash="md5:4a032d3ab46e6023d14add8a54b6a541",  
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+        processor=_Unzip(extract_dir='Cao2024'),
+    )
+
+    dirname = _os.path.split(fnames[0])[0]
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('Cao2024')
+    reconstruction_model.add_rotation_model('{:s}/1000_0_rotfile.rot'.format(dirname))
+    reconstruction_model.add_rotation_model('{:s}/1800_1000_rotfile.rot'.format(dirname))
+
+    reconstruction_model.add_continent_polygons('{:s}/shapes_continents.gpmlz'.format(dirname))
+    reconstruction_model.add_coastlines('{:s}/shapes_coasts.gpmlz'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/static_polygons.gpmlz'.format(dirname))
+    
+    reconstruction_model.add_dynamic_polygons('{:s}/250-0_plate_boundaries.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/410-250_plate_boundaries.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1000-410_plate_boundaries.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/1800-1000_plate_boundaries.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/TopologyBuildingBlocks.gpml'.format(dirname))
+
+    return reconstruction_model
 
 
 def fetch_CaoToyRodinia(load=True, model_case='NNR'):
