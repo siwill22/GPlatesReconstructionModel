@@ -150,6 +150,45 @@ def loadDB(version=2021):
         gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
         return gdf
+    
+    elif version=='2024':
+        # Supplementary tables 1-3 from Puetz et al, 2024, Scientific Data
+        # https://www.nature.com/articles/s41597-023-02902-9
+
+        fname1 = _retrieve(
+            url="https://static-content.springer.com/esm/art%3A10.1038%2Fs41597-023-02902-9/MediaObjects/41597_2023_2902_MOESM1_ESM.xlsx",
+            known_hash="sha256:37a882b39e2e17c58951f8d25e508ce5d99e39dbcc4e5e11c877eb6cac7501b6",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+        xls1 = _pd.ExcelFile(fname1)
+
+        fname2 = _retrieve(
+            url="https://static-content.springer.com/esm/art%3A10.1038%2Fs41597-023-02902-9/MediaObjects/41597_2023_2902_MOESM2_ESM.xlsx",
+            known_hash="sha256:a30bb122cd761fd5c28d9811fd54d633dc722bc61b351b9caafad7395a55edd4",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+        xls2 = _pd.ExcelFile(fname2)
+
+        fname3 = _retrieve(
+            url="https://static-content.springer.com/esm/art%3A10.1038%2Fs41597-023-02902-9/MediaObjects/41597_2023_2902_MOESM3_ESM.xlsx",
+            known_hash="sha256:52ada19c30f809852cbafc53b5e48e9f637cd0ebd66f37b9b5472e602cf4dac6",  
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+        xls3 = _pd.ExcelFile(fname3)
+
+        print('Concatenating databases, please be patient....')
+        df1_merge = _pd.merge(xls1.parse('Samples'),xls1.parse('UPb_Data'),on='Ref-Sample Key')
+        df2_merge = _pd.merge(xls2.parse('Samples'),xls2.parse('UPb_Data'),on='Ref-Sample Key')
+        df3_merge = _pd.merge(xls3.parse('Samples'),xls3.parse('UPb_Data'),on='Ref-Sample Key')
+        df_full = _pd.concat([df1_merge, df2_merge, df3_merge])
+
+        # TODO clean up columns and column names
+        gdf = _gpd.GeoDataFrame(df_full, geometry=_gpd.points_from_xy(df_full.Longitude, df_full.Latitude), crs=4326)
+
+        return gdf
 
 
 def load_Hf():
