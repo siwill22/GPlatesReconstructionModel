@@ -299,10 +299,14 @@ def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
     return SedimentaryZircons
 
 
+###########################
+# Some functions for data manipulation and classification
+
 def get_record_spectrum(df,Sample_ID):
     return df[df.Sample_ID_x==Sample_ID].dropna(subset=['206Pb_238U_Age_Ma'])
 
 
+# Tectonic classifications
 def tectonic_category(SedimentaryZircons, 
                       sample_key='Ref-Sample Key',
                       grain_age_key='Non_Iter_Age_Ma',
@@ -342,8 +346,68 @@ def tectonic_category(SedimentaryZircons,
     return _gpd.GeoDataFrame(
         data={'Longitude': sample_groups.Longitude.median(),
               'Latitude': sample_groups.Latitude.median(),
+              sample_key: list(sample_groups.groups.keys()),
               depositional_age_key: sample_groups[depositional_age_key].median(),
               'TectonicClass': category_list},
         geometry=_gpd.points_from_xy(sample_groups.Longitude.median(), 
                                      sample_groups.Latitude.median()), crs=4326)
+
+
+def tectonic_fingerprint(SedimentaryZircons, 
+                         sample_key='Ref-Sample Key',
+                         grain_age_key='Non_Iter_Age_Ma',
+                         depositional_age_key='Est_Depos_Age_Ma',
+                         chi_square_age_bins=None):
+    """
+    Given a set of zircon spectra, return values useful to fingerprint the tectonic
+    setting following the work of Barham et al (2022, EPSL)
+    """
+
+    sample_groups = SedimentaryZircons.groupby(by=sample_key)
+
+    chi_square_list = []
+    percentile_list = []
+
+    for sample_group in sample_groups:
+        grain_ages = sample_group[1][grain_age_key]
+        
+        # define the cdf
+        if not _np.any(_np.isfinite(grain_ages)):
+            chi_square_list.append(_np.nan)
+            percentile_list.append(_np.nan)
+        if len(grain_ages)<2:
+            chi_square_list.append(_np.nan)
+            percentile_list.append(_np.nan)
+        else:
+            dst = _np.sort(grain_ages)
+            xtmp = _np.linspace(0,1,len(dst))
+            
+            # sample cdf at 10% and 50%
+            cdf_vals = _np.interp([0.1,0.5],xtmp,dst)
+
+            if chi_square_age_bins is None:
+                chi_square_age_bins = len(dst)
+
+            chi_square_list.append(chi_square(dst, chi_square_age_bins))
+            percentile_list.append(cdf_vals[1]-cdf_vals[0])
+
+    return _gpd.GeoDataFrame(
+        data={'Longitude': sample_groups.Longitude.median(),
+              'Latitude': sample_groups.Latitude.median(),
+              sample_key: list(sample_groups.groups.keys()),
+              depositional_age_key: sample_groups[depositional_age_key].median(),
+              'chi_square': chi_square_list,
+              'percentile': percentile_list},
+        geometry=_gpd.points_from_xy(sample_groups.Longitude.median(), 
+                                     sample_groups.Latitude.median()), crs=4326)
+
+
+def chi_square(dst, num_age_bins=100):
+
+    actual_bin_counts = _np.histogram(dst, bins=_np.linspace(_np.min(dst),4501,num_age_bins))
+
+    expected_bin_counts = len(dst)/len(actual_bin_counts[0])
+    
+    # chi square test, scaled by division by number of bins
+    return _np.sum(((actual_bin_counts[0] - expected_bin_counts)**2) / expected_bin_counts) / len(actual_bin_counts[0])
 
