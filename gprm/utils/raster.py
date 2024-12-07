@@ -297,14 +297,21 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
         
     # Sort out the coordinates (move this to a generic function??)
     coord_keys = [key for key in grid.coords.keys()]
+    
+    if 'lon' in coord_keys[0].lower():
+        latitude_key=1; longitude_key=0
+    elif 'x' in coord_keys[0].lower():
+        latitude_key=1; longitude_key=0
+    else:
+        latitude_key=0; longitude_key=1
 
     if region:
         coords = [('lat',np.arange(region[2],region[3]+spacing, spacing)), ('lon',np.arange(region[0],region[1]+spacing, spacing))]
         XX,YY = np.meshgrid(np.arange(region[0],region[1]+spacing, spacing),
                             np.arange(region[2],region[3]+spacing, spacing))
     else:
-        coords = [('lat',grid.coords[coord_keys[0]].data), ('lon',grid.coords[coord_keys[1]].data)]
-        XX,YY = np.meshgrid(grid.coords[coord_keys[1]].data, grid.coords[coord_keys[0]].data)
+        coords = [('lat',grid.coords[coord_keys[latitude_key]].data), ('lon',grid.coords[coord_keys[longitude_key]].data)]
+        XX,YY = np.meshgrid(grid.coords[coord_keys[longitude_key]].data, grid.coords[coord_keys[latitude_key]].data)
 
     # us a multipoint as the basis for the raster coordinates. 
     # multipoints vertices are the coordinates of the adjusted grid - then we unrotate them
@@ -324,6 +331,7 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
                                          newcolname='z',
                                          no_skip=True)
 
+    #print(XX.shape, grid.data.shape, coords)
     ds = xr.DataArray(np.array(point_raster_values['z']).reshape(XX.shape),
                       coords=coords,
                       name='z')
