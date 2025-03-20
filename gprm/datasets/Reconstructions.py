@@ -538,7 +538,8 @@ def fetch_Seton2012(load=True):
     reconstruction_model.add_coastlines('{:s}/Seton_etal_ESR2012_Coastlines_2012.1_Polygon.gpmlz'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Seton_etal_ESR2012_PP_2012.1.gpmlz'.format(dirname))
     reconstruction_model.add_continent_polygons('{:s}/Seton_etal_ESR2012_ContinentalPolygons_2012.1.gpmlz'.format(dirname))
-
+    reconstruction_model.add_static_polygons('{:s}/Seton_etal_ESR2012_StaticPolygons_2012.1.gpmlz'.format(dirname))
+    
     return reconstruction_model
 
 
