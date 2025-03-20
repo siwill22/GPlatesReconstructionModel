@@ -1025,7 +1025,7 @@ class PlateSnapshot(object):
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
-        fig.plot(data = plot_file.name, pen=pen, color=color, **kwargs)
+        fig.plot(data = plot_file.name, pen=pen, fill=color, **kwargs)
 
         os.unlink(plot_file.name)
 
