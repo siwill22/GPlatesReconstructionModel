@@ -33,7 +33,7 @@ from ptt.utils.proximity_query import find_closest_geometries_to_points_using_po
 from .fileio import write_xyz_file
 
 import scipy.interpolate as spi
-from scipy.interpolate.interpnd import _ndim_coords_from_arrays
+#from scipy.interpolate.interpnd import _ndim_coords_from_arrays
 from scipy.spatial import cKDTree
 
 import pandas as pd
@@ -338,3 +338,27 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
 
     return ds
 
+
+# function copied from old scipy since the function no longer exists in recent versions
+def _ndim_coords_from_arrays(points, ndim=None):
+    """Convert a tuple of coordinate arrays to a (..., ndim)-shaped array."""
+    if isinstance(points, tuple) and len(points) == 1:
+        # handle argument tuple
+        points = points[0]
+    if isinstance(points, tuple):
+        p = np.broadcast_arrays(*points)
+        for j in range(1, len(p)):
+            if p[j].shape != p[0].shape:
+                raise ValueError("coordinate arrays do not have the same shape")
+        points = np.empty(p[0].shape + (len(points),), dtype=float)
+        for j, item in enumerate(p):
+            points[..., j] = item
+    else:
+        points = np.asanyarray(points)
+        # XXX Feed back to scipy.
+        if points.ndim <= 1:
+            if ndim is None:
+                points = points.reshape(-1, 1)
+            else:
+                points = points.reshape(-1, ndim)
+    return points
