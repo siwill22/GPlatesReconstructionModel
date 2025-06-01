@@ -329,15 +329,17 @@ def fetch_Muller2022(NNR=False, load=True):
     doi:
     '''
     fnames = _retrieve(
-        url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2022_SE/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel.zip",
-        #known_hash="sha256:a1e37f0a201a827ffe1150a808984786c6a2982923362580e28718fe7bc716e7", 
-        known_hash="sha256:dbee0e42afa3d4e483e357046df3415b489d546d458475a1a9ca76bd8e3d9108",
+        #url="https://www.earthbyte.org/webdav/ftp/Data_Collections/Muller_etal_2022_SE/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel.zip",
+        ##known_hash="sha256:a1e37f0a201a827ffe1150a808984786c6a2982923362580e28718fe7bc716e7", 
+        #known_hash="sha256:dbee0e42afa3d4e483e357046df3415b489d546d458475a1a9ca76bd8e3d9108",
+        url="https://zenodo.org/records/13636799/files/Muller_etal_2022_SE_v1.2.4.zip?download=1",
+        known_hash="md5:1f409e19e42128a8cf245ce54b75f1ae",
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
         processor=_Unzip(extract_dir='Muller2022'),
     )
 
-    dirname = '{:s}/Muller2022/Muller_etal_2022_SE_1Ga_Opt_PlateMotionModel/'.format(str(_os_cache('gprm')))
+    dirname = '{:s}/Muller2022/'.format(str(_os_cache('gprm')))
 
     from gprm import ReconstructionModel as _ReconstructionModel
     if NNR:
@@ -345,17 +347,17 @@ def fetch_Muller2022(NNR=False, load=True):
         reconstruction_model.add_rotation_model('{:s}/optimisation/no_net_rotation_model.rot'.format(dirname))
     else:
         reconstruction_model = _ReconstructionModel('Muller++2022_Opt')
-        reconstruction_model.add_rotation_model('{:s}/optimisation/1000_0_rotfile_Merdith_et_al_optimised.rot'.format(dirname))
+        reconstruction_model.add_rotation_model('{:s}/optimisation/1000_0_rotfile_MantleOpt.rot'.format(dirname))
     #reconstruction_model.add_static_polygons('{:s}/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
     #reconstruction_model.add_coastlines('{:s}/'.format(dirname))
-    reconstruction_model.add_continent_polygons('{:s}/shapes_continents_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/410-250_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/250-0_plate_boundaries_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/TopologyBuildingBlocks_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Transforms_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Convergence_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Divergence_Merdith_et_al.gpml'.format(dirname))
-    reconstruction_model.add_dynamic_polygons('{:s}/1000-410-Topologies_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_continent_polygons('{:s}/Continents/shapes_continents.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/410-250_plate_bounds.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/250-0_plate_bounds.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/TopologyBuildingBlocks.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Transforms.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Convergence.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Divergence.gpml'.format(dirname))
+    reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Topologies.gpml'.format(dirname))
 
     return reconstruction_model
 
