@@ -235,17 +235,21 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
             fname='{:s}/LargeIgneousProvinces_VolcanicProvinces/Johansson_etal_2018_VolcanicProvinces/SHP/Johansson_etal_2018_VolcanicProvinces_v2.shp'.format(dirname)
 
     elif catalogue=='UTIG':
+        import pygplates
         fname = _retrieve(
                 url="http://www-udc.ig.utexas.edu/external/plates/data/LIPS/Data/LIPS.2011.gmt",
                 known_hash="sha256:11cd037382c518ec0b54b93728fef5e476ec3d8d57e5c433a1ccf14420ee99dd",  
                 downloader=_HTTPDownloader(progressbar=True),
                 path=_os_cache('gprm'),
             )
+        pygplates.FeatureCollection(fname).write('{:s}/LIPS_2011.gmt'.format(str(_os_cache('gprm'))))
+        fname = '{:s}/LIPS_2011.gmt'.format(str(_os_cache('gprm')))
 
     else:
         raise ValueError('Unknown catalogue {:s}'.format(catalogue))
 
     if load:
+        print(fname)
         return _gpd.read_file(fname)
     else:
         return fname
