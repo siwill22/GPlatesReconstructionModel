@@ -151,7 +151,7 @@ def loadDB(version=2021):
 
         return gdf
     
-    elif version=='2024':
+    elif version==2024:
         # Supplementary tables 1-3 from Puetz et al, 2024, Scientific Data
         # https://www.nature.com/articles/s41597-023-02902-9
 
@@ -294,6 +294,10 @@ def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
     elif version==2021:
 
         SedimentaryZircons = loadDB(version=2021)
+
+    elif version==2024:
+
+        SedimentaryZircons = loadDB(version=2024)
 
 
     return SedimentaryZircons
