@@ -339,6 +339,9 @@ def tectonic_category(SedimentaryZircons,
         cdf_vals = _np.interp(cdf_markers,xtmp,dst)
         #cdf_vals_ma = _np.interp(cdf_markers_ma,dst,xtmp)
 
+        # classify according to Cawood et al (2012)
+        print(cdf_vals[1], cdf_vals[6])
+        print('This looks like it wrongly assumes a 0.05 spacing in the cdf markers')
         category = 'C'
         if cdf_vals[1]<150.:
             category = 'B'
