@@ -49,7 +49,8 @@ def fetch_Cao2024(load=True, model_case='NNR'):
         processor=_Unzip(extract_dir='Cao2024'),
     )
 
-    dirname = _os.path.split(fnames[0])[0]
+    #dirname = _os.path.split(fnames[0])[0]
+    dirname = '{:s}/Cao2024/1.8Ga_model_GSF/'.format(str(_os_cache('gprm')))
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Cao2024')
