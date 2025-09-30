@@ -396,7 +396,7 @@ def generate_distance_raster_sequence(target_features,
         try:
             if isinstance(target_features, dict):
                 if not target_features[reconstruction_time]:
-                    prox_grid = zeros_grid_like(sampling=sampling, region=region)
+                    prox_grid = zeros_grid_like(sampling=sampling, region=region) * np.nan
                     return reconstruction_time, prox_grid
                 elif isinstance(target_features[reconstruction_time][0], pygplates.Feature):
                     r_target_features = gpml2gdf(target_features[reconstruction_time])
@@ -439,17 +439,11 @@ def generate_distance_raster_sequence(target_features,
                 #    coords={'y': np.arange(-90, 90+sampling, sampling), 'x': np.arange(-180, 180+sampling, sampling)},
                 #   dims=['y', 'x']
                 #    )
-                prox_grid = zeros_grid_like(sampling=sampling, region=region)
+                prox_grid = zeros_grid_like(sampling=sampling, region=region) * np.nan
 
             return reconstruction_time, prox_grid
             
         except Exception as e:
-            if not target_features:
-                print('HERE')
-            print(reconstruction_time)
-            print(target_features)
-            print(target_features[reconstruction_time])
-            print(r_target_features.geometry.iloc[0])
             print(f"Error processing time {reconstruction_time}: {str(e)}")
             return reconstruction_time, None
     
