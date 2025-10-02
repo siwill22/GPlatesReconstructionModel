@@ -281,17 +281,18 @@ def fetch_Merdith2021(load=True, version='1.0'):
     '''
 
     if version=='1.1':
-        fnames = _retrieve(
-            url="https://github.com/siwill22/gpdata/blob/master/z/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1.zip?raw=true",
-            known_hash="sha256:b124a7618dc67789c74734d870a7321fe6cd680f2d935c4ac4bbf07316b46a78",  
-            downloader=_HTTPDownloader(progressbar=True),
-            path=_os_cache('gprm'),
-            processor=_Unzip(extract_dir='Merdith2021'),
-        )
-        # remove unneccessary space in extracted folder name
-        if _os.path.exists('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1 2'.format(str(_os_cache('gprm')))):
-            _os.rename('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1 2'.format(str(_os_cache('gprm'))),
-                       '{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1'.format(str(_os_cache('gprm'))))
+        if not _os.path.exists('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1'.format(str(_os_cache('gprm')))):
+            fnames = _retrieve(
+                url="https://github.com/siwill22/gpdata/blob/master/z/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1.zip?raw=true",
+                known_hash="sha256:b124a7618dc67789c74734d870a7321fe6cd680f2d935c4ac4bbf07316b46a78",  
+                downloader=_HTTPDownloader(progressbar=True),
+                path=_os_cache('gprm'),
+                processor=_Unzip(extract_dir='Merdith2021'),
+            )
+            # remove unneccessary space in extracted folder name
+            if _os.path.exists('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1 2'.format(str(_os_cache('gprm')))):
+                _os.rename('{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1 2'.format(str(_os_cache('gprm'))),
+                        '{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1'.format(str(_os_cache('gprm'))))
         dirname = '{:s}/Merdith2021/SM2-Merdith_et_al_1_Ga_reconstruction_v1.1'.format(str(_os_cache('gprm')))
 
     else:
