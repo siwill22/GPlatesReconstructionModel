@@ -32,7 +32,7 @@ import geopandas as _gpd
 #import collections
 #import xarray as _xr
 
-def fetch_GlobalTectonicMap():
+def fetch_GlobalTectonicMap(load=True):
     """
     Polygons from Hasterok et al (2022) ESR
     
@@ -66,10 +66,13 @@ def fetch_GlobalTectonicMap():
 
     dirname = '{:s}/GlobalTectonics/global_tectonics-766e485af4b63c34c88a555621541f64fd7e68d2/plates&provinces/'.format(str(_os_cache('gprm')))
 
-    return _gpd.read_file('{:s}/global_gprv_wage.shp'.format(dirname)).set_crs('EPSG:4326')
+    if load:
+        return _gpd.read_file('{:s}/global_gprv_wage.shp'.format(dirname)).set_crs('EPSG:4326')
+    else:
+        return '{:s}/global_gprv_wage.shp'.format(dirname)
 
 
-def fetch_SurfaceGeology():
+def fetch_SurfaceGeology(load=True):
 
     fnames = _retrieve(
         url="https://github.com/siwill22/global-geology/raw/d213c8696ad21bce851a2ce0a4d8351f62187503/global_geology_shapefile.zip",
@@ -81,5 +84,7 @@ def fetch_SurfaceGeology():
 
     dirname = '{:s}/SurfaceGeology/'.format(str(_os_cache('gprm')))
 
-    return _gpd.read_file('{:s}/nrcan_geology_with_ages.shp'.format(dirname))
-    
+    if load:
+        return _gpd.read_file('{:s}/nrcan_geology_with_ages.shp'.format(dirname))
+    else:
+        return '{:s}/nrcan_geology_with_ages.shp'.format(dirname)
