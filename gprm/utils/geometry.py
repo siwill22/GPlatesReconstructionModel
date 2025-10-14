@@ -87,3 +87,26 @@ def distance_between_reconstructed_points_and_features(reconstructed_point_featu
     return reconstructed_lon, reconstructed_lat, distances
 
 
+def wrap_polyline_feature(polyline_feature, date_line_wrapper=None):
+    
+    if not date_line_wrapper:
+        date_line_wrapper = pygplates.DateLineWrapper(0.0)
+
+    polyline = pygplates.PolylineOnSphere(
+        [(lat,lon) for lat,lon in zip(polyline_feature.geometry.xy[1], 
+                                      polyline_feature.geometry.xy[0])])
+    wrapped_polyline = date_line_wrapper.wrap(polyline)
+    return LineString([tuple(point.to_lat_lon()[::-1]) for point in wrapped_polyline[0].get_points()])
+
+
+def wrap_polygon_feature(polygon_feature, date_line_wrapper=None):
+    
+    if not date_line_wrapper:
+        date_line_wrapper = pygplates.DateLineWrapper(0.0)
+
+    polygon = pygplates.PolygonOnSphere(
+        [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1], 
+                                      polygon_feature.geometry.exterior.coords.xy[0])])
+    wrapped_polygon = date_line_wrapper.wrap(polygon)
+    return Polygon([tuple(point.to_lat_lon()[::-1]) for point in wrapped_polygon[0].get_points()])
+
