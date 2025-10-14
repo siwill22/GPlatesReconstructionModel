@@ -568,7 +568,8 @@ def sample_distance_analysis(data_df, reconstruction_model,
     else:
         raise ValueError("Unsupported input for targets...")
         
-        
+    print('Number of rows in input data: {}'.format(len(data_df)))
+    
     # From the input data, extract the data within the determined age range and assign plateids
     data_select = data_df[(data_df[age_field]<=time_max) & (data_df[age_field]>=time_min)]
     data_select = reconstruction_model.assign_plate_ids(data_select, 
@@ -583,6 +584,8 @@ def sample_distance_analysis(data_df, reconstruction_model,
     # reconstruct the points
     data_select['rgeometry'] = data_select.apply(lambda x: apply_reconstruction(x, reconstruction_model.rotation_model), axis=1)
     
+    print('Number of rows after filtering by age and valid plate IDs: {}'.format(len(data_select)))
+
     # Determine the shortest distance to the target features at the associated time
     data_select['distance_to_target'] = data_select.apply(
         lambda x: apply_nearest_feature(x, 
