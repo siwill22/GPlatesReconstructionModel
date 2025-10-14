@@ -29,12 +29,13 @@ def mask_to_da(mask, sampling=1):
                         name='z')
 
 
-def rasterize_polygons(gdf, sampling=1, zval_field=None):
+def rasterize_polygons(gdf, sampling=1, region=[-180, 180, -90, 90], zval_field=None):
     # given a geodataframe with some polygons, returns a raterized version
     # TODO add region option
     
-    dims = (int(180./sampling)+1, int(360./sampling)+1)
-    transform = Affine(sampling, 0.0, -180.-sampling/2., 0.0, sampling, -90.-sampling/2.)
+    dims = (int((region[3]-region[2])/sampling)+1, 
+            int((region[1]-region[0])/sampling)+1)
+    transform = Affine(sampling, 0.0, region[0]-sampling/2., 0.0, sampling, region[2]-sampling/2.)
 
     if zval_field is not None:
         geometry_zval_tuples = [(x.geometry, x[zval_field]) for i, x in gdf.iterrows()]
@@ -63,14 +64,14 @@ def reconstruct_and_rasterize_polygons(features, rotation_model, reconstruction_
 
 
 
-def polygons_buffer(gdf, sampling=1, inside=False):
+def polygons_buffer(gdf, sampling=1, region=[-180, 180, -90, 90], inside=False):
     # given a geodataframe containing a set of polygons,
     # computes a raster where each mode is the distance to the polygon boundaries
     # Options are to compute distance to inside, outside, or edge
 
     # TODO rename to polygon_proximity??
 
-    ds = rasterize_polygons(gdf, sampling=sampling)
+    ds = rasterize_polygons(gdf, sampling=sampling, region=region)
     
     return boundary_proximity(ds, inside=inside)
 
