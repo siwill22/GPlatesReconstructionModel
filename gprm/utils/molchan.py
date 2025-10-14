@@ -7,7 +7,7 @@ from .create_gpml import gpml2gdf
 import xarray as xr
 import shapely
 import pygplates
-from .geometry import apply_nearest_feature, apply_reconstruction
+from .geometry import apply_nearest_feature, apply_reconstruction, wrap_polygon_feature, wrap_polyline_feature
 from .spatial import topology_lookup
 
 
@@ -418,13 +418,17 @@ def generate_distance_raster_sequence(target_features,
                                                  region=region)
 
                 elif isinstance(r_target_features.geometry.iloc[0], shapely.geometry.linestring.LineString):
+                    date_line_wrapper = pygplates.DateLineWrapper(0.0)
+                    r_target_features['geometry'] = r_target_features.apply(lambda x: wrap_polyline_feature(x, date_line_wrapper), axis=1)
                     prox_grid = polyline_proximity(r_target_features,
                                                    spacing=sampling, 
                                                    region=region)
 
                 elif isinstance(r_target_features.geometry.iloc[0], shapely.geometry.polygon.Polygon):    
+                    date_line_wrapper = pygplates.DateLineWrapper(0.0)
+                    r_target_features['geometry'] = r_target_features.apply(lambda x: wrap_polygon_feature(x, date_line_wrapper), axis=1)
                     prox_grid = polygons_buffer(r_target_features,
-                                                spacing=sampling, 
+                                                sampling=sampling, 
                                                 region=region)
                     
                 else:
