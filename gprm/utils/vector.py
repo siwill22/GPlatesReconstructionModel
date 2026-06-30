@@ -1,3 +1,4 @@
+"""Plate velocity vector computation and conversion utilities."""
 import pygplates
 from .create_gpml import create_gpml_healpix_mesh
 

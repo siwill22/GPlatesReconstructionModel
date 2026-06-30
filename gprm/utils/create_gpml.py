@@ -1,3 +1,4 @@
+"""Functions for creating GPlates feature collections (meshes, healpix grids, geometries)."""
 import pygplates
 import numpy as np
 import geopandas as gpd

@@ -1,3 +1,4 @@
+"""Molchan test and space-time distance analysis for alarm-based forecast evaluation."""
 import numpy as np
 import pandas as pd
 import pygmt

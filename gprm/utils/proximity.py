@@ -1,3 +1,4 @@
+"""Distance and proximity rasters from polygon, polyline, and point features."""
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -13,8 +14,12 @@ from .spatial import get_merged_cob_terrane_raster
 
 
 def mask_to_da(mask, sampling=1):
-    # given a numpy array, create a xr.dataarray assuming that the extent
-    # is global in lat/long 
+    """Convert a 2D numpy mask to a global lat/lon xarray DataArray.
+
+    :param mask: 2-D numpy array with shape (n_lats, n_lons).
+    :param sampling: Grid spacing in degrees used to build the coordinate axes (default 1).
+    :returns: xarray DataArray with 'x' (longitude) and 'y' (latitude) coordinates.
+    """
 
     # the first and last columns should match, but may not due to the imposed dateline
     mask[:,0] = mask[:,-1]
@@ -28,8 +33,14 @@ def mask_to_da(mask, sampling=1):
 
 
 def rasterize_polygons(gdf, sampling=1, region=[-180, 180, -90, 90], zval_field=None):
-    # given a geodataframe with some polygons, returns a raterized version
-    # TODO add region option
+    """Rasterize geodataframe polygons to a DataArray, optionally using a per-polygon attribute as the cell value.
+
+    :param gdf: GeoDataFrame containing polygon geometries.
+    :param sampling: Grid spacing in degrees (default 1).
+    :param region: Bounding box [xmin, xmax, ymin, ymax] (default global).
+    :param zval_field: Column name to use as the raster value; if None, all polygons are burned as 1.
+    :returns: xarray DataArray.
+    """
     
     dims = (int((region[3]-region[2])/sampling)+1, 
             int((region[1]-region[0])/sampling)+1)
@@ -51,9 +62,15 @@ def rasterize_polygons(gdf, sampling=1, region=[-180, 180, -90, 90], zval_field=
 
 
 def reconstruct_and_rasterize_polygons(features, rotation_model, reconstruction_time, sampling=1, anchor_plate_id=0):
-    # given a set of reconstructable polygon features, together with a rotation model and
-    # reconstruction time, returns a raster that is a rasterized version of the reconstructed
-    # polygon geometries
+    """Reconstruct polygon features to a specified time and return a rasterized DataArray.
+
+    :param features: pygplates FeatureCollection or path to a GPlates-compatible polygon file.
+    :param rotation_model: pygplates RotationModel.
+    :param reconstruction_time: Age in Ma.
+    :param sampling: Grid spacing in degrees (default 1).
+    :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+    :returns: xarray DataArray with 1 inside reconstructed polygons and 0 outside.
+    """
 
     mask = get_merged_cob_terrane_raster(features, rotation_model, reconstruction_time,
                                          sampling=sampling, method='rasterio',
@@ -64,11 +81,14 @@ def reconstruct_and_rasterize_polygons(features, rotation_model, reconstruction_
 
 
 def polygons_buffer(gdf, sampling=1, region=[-180, 180, -90, 90], inside=False):
-    # given a geodataframe containing a set of polygons,
-    # computes a raster where each mode is the distance to the polygon boundaries
-    # Options are to compute distance to inside, outside, or edge
+    """Return a great-circle distance-to-polygon-boundary raster from geodataframe polygons.
 
-    # TODO rename to polygon_proximity??
+    :param gdf: GeoDataFrame containing polygon geometries.
+    :param sampling: Grid spacing in degrees (default 1).
+    :param region: Bounding box [xmin, xmax, ymin, ymax] (default global).
+    :param inside: If False (default), measure distance from outside; if True, from inside. See boundary_proximity for 'both'/'boundary' options.
+    :returns: xarray DataArray of great-circle distances in metres.
+    """
 
     ds = rasterize_polygons(gdf, sampling=sampling, region=region)
     
@@ -76,7 +96,13 @@ def polygons_buffer(gdf, sampling=1, region=[-180, 180, -90, 90], inside=False):
 
 
 def raster_buffer(ds, clipval=0, inside=False):
-    # DUPLICATING contour_proximity??
+    """Return a distance-to-boundary raster from a continuous DataArray thresholded at clipval.
+
+    :param ds: xarray DataArray (continuous values).
+    :param clipval: Threshold: cells >= clipval are treated as 'inside' (default 0).
+    :param inside: Distance direction; see boundary_proximity for accepted values.
+    :returns: xarray DataArray of great-circle distances.
+    """
     
     ds_binary = ds.where(ds>=clipval, other=0)
     ds_binary = ds_binary.where(ds_binary<=0, other=1)
@@ -85,8 +111,7 @@ def raster_buffer(ds, clipval=0, inside=False):
 
     
 def handle_da_coordinates(da):
-    # utility function to ensure the geographic coordinates from a xarray dataarray
-    # work correctly when passed to xrspatial functions
+    """Normalise DataArray coordinate names to 'x' and 'y' for xrspatial compatibility."""
     
     coord_keys = [key for key in da.coords.keys()]  # updated for python3 compatibility
 
@@ -105,10 +130,14 @@ def handle_da_coordinates(da):
 
     
 def boundary_proximity(da, inside=False):
-    # given a dataarray assumed to contain ones and zeros, returns a raster 
-    # of the same dimensions where each grid node contains the distance to some target values 
-    # options are to compute 'inside', 'outside', both inside and outside (returning both distance 
-    # arrays separately) or distance to the edge from both inside and outside
+    """Compute great-circle distance to polygon boundaries from a binary DataArray.
+
+    :param da: Binary xarray DataArray (1 = inside polygon, 0 = outside); coords must be 'x' and 'y'.
+    :param inside: Controls what distance is returned: False = distance from outside to polygon edge;
+        True = distance from inside to polygon edge; 'both' = returns (outside_dist, inside_dist) tuple;
+        'boundary' = sum of outside and inside distances (distance to the boundary from either side).
+    :returns: xarray DataArray of distances, or a tuple of two DataArrays if inside='both'.
+    """
     
     da = handle_da_coordinates(da)
 
@@ -126,7 +155,13 @@ def boundary_proximity(da, inside=False):
 
 
 def contour_proximity(da, target_value=0, inside='boundary'):
+    """Compute distance to a contour level in a continuous raster by thresholding at target_value.
 
+    :param da: Continuous xarray DataArray.
+    :param target_value: Contour level; cells below this value become the 'inside' region (default 0).
+    :param inside: Distance mode passed to boundary_proximity (default 'boundary').
+    :returns: xarray DataArray of distances.
+    """
     da2 = da.copy(deep=True)
     da2.data[da.data>=target_value] = 0
     da2.data[da.data<target_value] = 1
@@ -135,14 +170,14 @@ def contour_proximity(da, target_value=0, inside='boundary'):
 
 
 def points_proximity(x, y, spacing=1, region=[-180, 180, -90, 90]):
-    '''
-    Given a set of points, return a dataArray of distances to the nearest
-    point. 
-    Should work reasonable for lines given the points along the lines are tessellated
-    to a close spacing, and avoids dateline issues
-    Simplified from the example here:
-    https://xarray-spatial.org/user_guide/proximity.html
-    '''
+    """Compute a great-circle distance-to-nearest-point raster from arrays of point coordinates.
+
+    :param x: Longitude values of the input points.
+    :param y: Latitude values of the input points.
+    :param spacing: Output grid spacing in degrees (default 1).
+    :param region: Bounding box [xmin, xmax, ymin, ymax] (default global).
+    :returns: xarray DataArray of great-circle distances to the nearest input point.
+    """
     from datashader import Canvas
 
     df = pd.DataFrame({"x": x, "y": y,})
@@ -169,7 +204,13 @@ def points_proximity(x, y, spacing=1, region=[-180, 180, -90, 90]):
 
 
 def polyline_proximity(features, spacing=1, region=[-180, 180, -90, 90]):
-    # compute raster of distances to a set of polylines
+    """Compute a great-circle distance-to-polyline raster from GPlates features or a GeoDataFrame.
+
+    :param features: pygplates FeatureCollection (with polyline geometries) or a GeoDataFrame of LineStrings.
+    :param spacing: Output grid spacing in degrees; polylines are tessellated to spacing/5 (default 1).
+    :param region: Bounding box [xmin, xmax, ymin, ymax] (default global).
+    :returns: xarray DataArray of great-circle distances to the nearest polyline.
+    """
 
     import pygplates
     tesselation_spacing=spacing/5
@@ -191,7 +232,7 @@ def polyline_proximity(features, spacing=1, region=[-180, 180, -90, 90]):
 
     
 def generate_shadows(da, x, y, observer_elev):
-    
+    """Compute a viewshed raster from an observer point (x, y) and elevation grid."""
     da = handle_da_coordinates(da)
     
     #gridc = pygmt.grdclip(grid, below=[-100,-100])

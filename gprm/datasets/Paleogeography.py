@@ -1,4 +1,6 @@
-'''
+"""
+Loaders for paleogeographic raster reconstructions.
+
 MIT License
 
 Copyright (c) 2017-2021 Simon Williams
@@ -20,7 +22,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 from pooch import os_cache as _os_cache
 from pooch import retrieve as _retrieve

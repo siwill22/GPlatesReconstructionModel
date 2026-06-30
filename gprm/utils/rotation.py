@@ -1,8 +1,13 @@
+"""Utilities to extract and tabulate finite rotation data from rotation model files."""
 import pygplates
 import pandas as pd
 
 def generate_rotation_feature(rotation_filenames):
+    """Load finite rotation features from one or more rotation files into a feature collection.
 
+    :param rotation_filenames: List of paths to .rot rotation files.
+    :returns: pygplates FeatureCollection containing all rotation features.
+    """
     rotation_features = pygplates.FeatureCollection()
     for rotation_filename in rotation_filenames:
         rotation_features.add(pygplates.FeatureCollection(rotation_filename))
@@ -11,7 +16,14 @@ def generate_rotation_feature(rotation_filenames):
 
 
 def get_rotation_table(rotation_features, plate_id_list=None, asdataframe=False):
+    """Extract rotation poles and angles from a rotation feature collection.
 
+    :param rotation_features: pygplates FeatureCollection of rotation features.
+    :param plate_id_list: List of moving plate IDs to include; if None, all plates are returned.
+    :param asdataframe: If True, return a pandas DataFrame; otherwise return a list of lists (default False).
+    :returns: List of [moving_plate_id, time, lat, lon, angle, fixed_plate_id, description] rows,
+        or a DataFrame with those columns if asdataframe=True.
+    """
     list_of_rotations = []
     for feature in rotation_features:
 

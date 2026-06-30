@@ -1,3 +1,4 @@
+"""Paleogeography reconstruction and raster generation utilities."""
 import pygplates
 import glob
 import tempfile

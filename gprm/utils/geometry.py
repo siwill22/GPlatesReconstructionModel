@@ -1,17 +1,24 @@
+"""Geometric operations on GPlates and Shapely features: reconstruction, distance queries, and dateline wrapping."""
 import pygplates
 import numpy as np
 from shapely.geometry import Point, LineString, Polygon
 import geopandas as _gpd
 import sys
 
-def apply_reconstruction(feature, rotation_model, 
+def apply_reconstruction(feature, rotation_model,
                          reconstruction_time_field='reconstruction_time',
                          reconstruction_plate_id_field='PLATEID1',
                          anchor_plate_id=0, reverse=False):
-    '''
-    function that can be used within the 'apply' method of
-    a geodataframe to return a reconstructed geometry 
-    '''
+    """Apply a finite rotation to a GeoDataFrame row's geometry; designed for use with DataFrame.apply().
+
+    :param feature: A GeoDataFrame row (pandas Series) with geometry and plate ID/time columns.
+    :param rotation_model: pygplates RotationModel.
+    :param reconstruction_time_field: Column name containing the reconstruction age in Ma (default 'reconstruction_time').
+    :param reconstruction_plate_id_field: Column name containing the plate ID (default 'PLATEID1').
+    :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+    :param reverse: If True, apply the inverse rotation (un-reconstruct back to present day).
+    :returns: Reconstructed Shapely Point, LineString, or Polygon.
+    """
 
     rotation_pole = rotation_model.get_rotation(
                         feature[reconstruction_time_field],
@@ -36,9 +43,14 @@ def apply_reconstruction(feature, rotation_model,
 
 
 def apply_nearest_feature(point, lookup_dict, geometry_field='geometry', age_field='age'):
-    # function to apply the nearest feature function assuming we have points in geodataframe
-    # that also contains an 'age' field, and an existing lookup
-    # dictionary of reconstructed features
+    """Return the distance (km) from a GeoDataFrame row's point to the nearest feature in a time-keyed lookup dict.
+
+    :param point: A GeoDataFrame row (pandas Series) with geometry and age columns.
+    :param lookup_dict: Dict mapping age (float, Ma) to a list of pygplates features; build with topology_lookup.
+    :param geometry_field: Column name containing the Shapely Point geometry (default 'geometry').
+    :param age_field: Column name containing the reconstruction age in Ma (default 'age').
+    :returns: Distance in km to the nearest feature, or NaN if no feature is found.
+    """
     
     d = nearest_feature(pygplates.PointOnSphere(point[geometry_field].y, point[geometry_field].x), 
                            lookup_dict[point[age_field]])
@@ -49,7 +61,13 @@ def apply_nearest_feature(point, lookup_dict, geometry_field='geometry', age_fie
 
 
 def nearest_feature(point, features, return_nearest_feature=False):
-    # The minimum distance to all features and the nearest feature.
+    """Return the minimum angular distance from a point to a feature set, optionally returning the nearest feature.
+
+    :param point: pygplates PointOnSphere.
+    :param features: Iterable of pygplates features to search.
+    :param return_nearest_feature: If True, return (distance, feature) tuple instead of just distance.
+    :returns: Minimum angular distance in radians, or (distance, feature) if return_nearest_feature=True.
+    """
     min_distance_to_all_features = None
     nearest_feature_ = None
 
@@ -74,7 +92,13 @@ def nearest_feature(point, features, return_nearest_feature=False):
         return min_distance_to_all_features
 
 
-def distance_between_reconstructed_points_and_features(reconstructed_point_features,features):
+def distance_between_reconstructed_points_and_features(reconstructed_point_features, features):
+    """Return (lons, lats, distances_km) for each reconstructed point to its nearest feature.
+
+    :param reconstructed_point_features: List of pygplates ReconstructedFeatureGeometry objects (point type).
+    :param features: Iterable of pygplates features to measure distance to.
+    :returns: Tuple (lons, lats, distances_km) — three lists of floats, one value per input point.
+    """
     reconstructed_lat = []
     reconstructed_lon = []
     distances = []
@@ -90,7 +114,12 @@ def distance_between_reconstructed_points_and_features(reconstructed_point_featu
 
 
 def wrap_polyline_feature(polyline_feature, date_line_wrapper=None):
-    
+    """Split a polyline at the dateline and return a Shapely LineString in lon/lat.
+
+    :param polyline_feature: GeoDataFrame row (pandas Series) with a Shapely LineString geometry.
+    :param date_line_wrapper: pygplates DateLineWrapper instance; created with central meridian 0 if not provided.
+    :returns: Shapely LineString (only the first segment after splitting is returned).
+    """
     if not date_line_wrapper:
         date_line_wrapper = pygplates.DateLineWrapper(0.0)
 
@@ -102,7 +131,12 @@ def wrap_polyline_feature(polyline_feature, date_line_wrapper=None):
 
 
 def wrap_polygon_feature(polygon_feature, date_line_wrapper=None):
-    
+    """Split a polygon at the dateline and return a Shapely Polygon in lon/lat.
+
+    :param polygon_feature: GeoDataFrame row (pandas Series) with a Shapely Polygon geometry.
+    :param date_line_wrapper: pygplates DateLineWrapper instance; created with central meridian 0 if not provided.
+    :returns: Shapely Polygon (only the first segment is returned; a warning is printed if the polygon is split).
+    """
     if not date_line_wrapper:
         date_line_wrapper = pygplates.DateLineWrapper(0.0)
 
@@ -116,7 +150,7 @@ def wrap_polygon_feature(polygon_feature, date_line_wrapper=None):
 
 
 def wrap_polygon_features(polygon_features, date_line_wrapper=None):
-    
+    """Apply dateline wrapping to all polygon geometries in a GeoDataFrame."""
     if not date_line_wrapper:
         date_line_wrapper = pygplates.DateLineWrapper(0.0)
 
@@ -138,10 +172,8 @@ def wrap_polygon_features(polygon_features, date_line_wrapper=None):
     return _gpd.GeoDataFrame(results, crs=polygon_features.crs)
 
 
-# Determine the overriding and subducting plates of the subduction shared sub-segment.
 def find_overriding_and_subducting_plates(subduction_shared_sub_segment, time=-999):
-    
-    # Get the subduction polarity of the nearest subducting line.
+    """Return plate IDs and names for the overriding and subducting plates of a subduction sub-segment."""
     subduction_polarity = subduction_shared_sub_segment.get_feature().get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)
     if (not subduction_polarity) or (subduction_polarity == 'Unknown'):
         print('Unable to find the overriding plate of the subducting shared sub-segment "{0}"'.format(

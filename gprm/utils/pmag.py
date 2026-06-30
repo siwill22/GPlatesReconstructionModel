@@ -1,3 +1,4 @@
+"""Paleomagnetic data reconstruction and paleopole utilities."""
 from pandas.core.indexing import is_nested_tuple
 import pygplates
 import numpy as np

@@ -1,3 +1,4 @@
+"""Loaders and analysis tools for detrital zircon U-Pb age datasets."""
 from pooch import os_cache as _os_cache
 from pooch import retrieve as _retrieve
 from pooch import HTTPDownloader as _HTTPDownloader
