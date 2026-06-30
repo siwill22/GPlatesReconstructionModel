@@ -218,11 +218,27 @@ def space_time_distances(raster_dict, gdf, age_field_name='age',
     return pd.DataFrame(data=results, 
                         columns=['distance', 'area_fraction'])
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 from collections import OrderedDict
 import numpy as np
+
+
+def _process_polygon_rasterization(reconstruction_time, features, rotation_model,
+                                    sampling, anchor_plate_id, buffer_distance):
+    try:
+        tmp = reconstruct_and_rasterize_polygons(features, rotation_model,
+                                                  reconstruction_time,
+                                                  sampling=sampling,
+                                                  anchor_plate_id=anchor_plate_id)
+        tmp = tmp.where(tmp != 0, np.nan)
+        if buffer_distance is not None:
+            bn = boundary_proximity(tmp)
+            tmp.data[bn.data <= buffer_distance] = 1
+        return reconstruction_time, tmp
+    except Exception as e:
+        print(f"Error processing time {reconstruction_time}: {str(e)}")
+        return reconstruction_time, None
 
 
 def generate_raster_sequence_from_polygons(features,
@@ -233,8 +249,8 @@ def generate_raster_sequence_from_polygons(features,
                                            max_workers=None,
                                            anchor_plate_id=0):
     """
-    Given some reconstrutable polygon features, generates a series of rasterized outputs
-    using multithreading with progress bar.
+    Given some reconstructable polygon features, generates a series of rasterized outputs
+    using multiprocessing with progress bar.
 
     Parameters:
     -----------
@@ -249,7 +265,7 @@ def generate_raster_sequence_from_polygons(features,
     buffer_distance : float, optional
         Buffer distance for boundary proximity (default: None)
     max_workers : int, optional
-        Maximum number of worker threads (default: None uses ThreadPoolExecutor default)
+        Maximum number of worker processes (default: None uses ProcessPoolExecutor default)
     anchor_plate_id : int, optional
         Anchor plate ID for reconstruction (default: 0)
 
@@ -257,66 +273,79 @@ def generate_raster_sequence_from_polygons(features,
     --------
     OrderedDict : Ordered dictionary of rasterized data keyed by reconstruction time
     """
-
-    def process_single_time(reconstruction_time):
-        """Process a single reconstruction time."""
-        try:
-            # Reconstruct and rasterize polygons
-            tmp = reconstruct_and_rasterize_polygons(features,
-                                                   rotation_model,
-                                                   reconstruction_time,
-                                                   sampling=sampling,
-                                                   anchor_plate_id=anchor_plate_id)
-
-            # Replace 0 values with NaN
-            tmp = tmp.where(tmp != 0, np.nan)
-        
-            # Apply buffer distance if specified
-            if buffer_distance is not None:
-                bn = boundary_proximity(tmp)
-                tmp.data[bn.data <= buffer_distance] = 1
-            
-            return reconstruction_time, tmp
-            
-        except Exception as e:
-            print(f"Error processing time {reconstruction_time}: {str(e)}")
-            return reconstruction_time, None
-    
-    # Initialize results storage
     results = {}
-    
-    # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_time = {
-            executor.submit(process_single_time, time): time 
+            executor.submit(_process_polygon_rasterization, time, features, rotation_model,
+                            sampling, anchor_plate_id, buffer_distance): time
             for time in reconstruction_times
         }
-        
-        # Process completed tasks with progress bar
         with tqdm(total=len(reconstruction_times), desc="Processing polygon rasterization") as pbar:
             for future in as_completed(future_to_time):
                 reconstruction_time, raster_data = future.result()
                 results[reconstruction_time] = raster_data
                 pbar.update(1)
-    
-    # Create OrderedDict maintaining the original order of reconstruction_times
+
     raster_dict = OrderedDict()
     for reconstruction_time in reconstruction_times:
         raster_dict[reconstruction_time] = results[reconstruction_time]
-    
+
     return raster_dict
 
 
-def generate_distance_raster_sequence(target_features, 
+def _process_distance_raster(reconstruction_time, target_features, reconstruction_model,
+                              sampling, region):
+    try:
+        if isinstance(target_features, dict):
+            if not target_features[reconstruction_time]:
+                return reconstruction_time, zeros_grid_like(sampling=sampling, region=region) * np.nan
+            elif isinstance(target_features[reconstruction_time][0], pygplates.Feature):
+                r_target_features = gpml2gdf(target_features[reconstruction_time])
+            elif isinstance(target_features[reconstruction_time], pd.GeoDataFrame):
+                r_target_features = target_features[reconstruction_time]
+        else:
+            r_target_features = reconstruction_model.reconstruct(target_features,
+                                                                 reconstruction_time,
+                                                                 use_tempfile=False)
+
+        if r_target_features is not None:
+            if isinstance(r_target_features.geometry.iloc[0], shapely.geometry.point.Point):
+                prox_grid = points_proximity(r_target_features.geometry.x,
+                                             r_target_features.geometry.y,
+                                             spacing=sampling,
+                                             region=region)
+            elif isinstance(r_target_features.geometry.iloc[0], shapely.geometry.linestring.LineString):
+                date_line_wrapper = pygplates.DateLineWrapper(0.0)
+                r_target_features['geometry'] = r_target_features.apply(
+                    lambda x: wrap_polyline_feature(x, date_line_wrapper), axis=1)
+                prox_grid = polyline_proximity(r_target_features, spacing=sampling, region=region)
+            elif isinstance(r_target_features.geometry.iloc[0], shapely.geometry.polygon.Polygon):
+                date_line_wrapper = pygplates.DateLineWrapper(0.0)
+                r_target_features['geometry'] = r_target_features.apply(
+                    lambda x: wrap_polygon_feature(x, date_line_wrapper), axis=1)
+                prox_grid = polygons_buffer(r_target_features, sampling=sampling, region=region)
+            else:
+                raise ValueError("Unsupported geometry type in target features.")
+        else:
+            prox_grid = zeros_grid_like(sampling=sampling, region=region) * np.nan
+
+        return reconstruction_time, prox_grid
+
+    except Exception as e:
+        print(f"Error processing time {reconstruction_time}: {str(e)}")
+        return reconstruction_time, None
+
+
+def generate_distance_raster_sequence(target_features,
                                       reconstruction_model,
                                       reconstruction_times,
                                       sampling=DEFAULT_GEOGRAPHIC_SAMPLING,
                                       region=DEFAULT_GEOGRAPHIC_EXTENT,
                                       max_workers=None):
     """
-    Generate distance raster sequence using multithreading with progress bar.
-    
+    Generate distance raster sequence using multiprocessing with progress bar.
+
     Parameters:
     -----------
     target_features : dict or other
@@ -330,96 +359,30 @@ def generate_distance_raster_sequence(target_features,
     region : object
         Geographic region
     max_workers : int, optional
-        Maximum number of worker threads (default: None uses ThreadPoolExecutor default)
-    
+        Maximum number of worker processes (default: None uses ProcessPoolExecutor default)
+
     Returns:
     --------
     OrderedDict : Ordered dictionary of proximity grids keyed by reconstruction time
     """
-    
-    def process_single_time(reconstruction_time):
-        """Process a single reconstruction time."""
-        try:
-            if isinstance(target_features, dict):
-                if not target_features[reconstruction_time]:
-                    prox_grid = zeros_grid_like(sampling=sampling, region=region) * np.nan
-                    return reconstruction_time, prox_grid
-                elif isinstance(target_features[reconstruction_time][0], pygplates.Feature):
-                    r_target_features = gpml2gdf(target_features[reconstruction_time])
-                elif isinstance(target_features[reconstruction_time], pd.GeoDataFrame):
-                    r_target_features = target_features[reconstruction_time]
-
-            else:
-                r_target_features = reconstruction_model.reconstruct(target_features, 
-                                                                     reconstruction_time, 
-                                                                     use_tempfile=False)
-
-            # Generate distance raster, masked against the permissive area
-            if r_target_features is not None:
-
-                if isinstance(r_target_features.geometry.iloc[0], shapely.geometry.point.Point):
-                    prox_grid = points_proximity(r_target_features.geometry.x,
-                                                 r_target_features.geometry.y,
-                                                 spacing=sampling, 
-                                                 region=region)
-
-                elif isinstance(r_target_features.geometry.iloc[0], shapely.geometry.linestring.LineString):
-                    date_line_wrapper = pygplates.DateLineWrapper(0.0)
-                    r_target_features['geometry'] = r_target_features.apply(lambda x: wrap_polyline_feature(x, date_line_wrapper), axis=1)
-                    prox_grid = polyline_proximity(r_target_features,
-                                                   spacing=sampling, 
-                                                   region=region)
-
-                elif isinstance(r_target_features.geometry.iloc[0], shapely.geometry.polygon.Polygon):    
-                    date_line_wrapper = pygplates.DateLineWrapper(0.0)
-                    r_target_features['geometry'] = r_target_features.apply(lambda x: wrap_polygon_feature(x, date_line_wrapper), axis=1)
-                    prox_grid = polygons_buffer(r_target_features,
-                                                sampling=sampling, 
-                                                region=region)
-                    
-                else:
-                    raise ValueError("Unsupported geometry type in target features.")
-                    
-            else:
-                # Note: You'll need to define what 'tmp' should be in this context
-                # For now, assuming you want a grid of the same shape as expected output
-                #prox_grid = np.ones_like(tmp) * np.nan
-                #prox_grid = xr.DataArray(
-                #    np.full((len(np.arange(-90, 90+sampling, sampling)), len(np.arange(-180, 180+sampling, sampling))), np.nan),
-                #    coords={'y': np.arange(-90, 90+sampling, sampling), 'x': np.arange(-180, 180+sampling, sampling)},
-                #   dims=['y', 'x']
-                #    )
-                prox_grid = zeros_grid_like(sampling=sampling, region=region) * np.nan
-
-            return reconstruction_time, prox_grid
-            
-        except Exception as e:
-            print(f"Error processing time {reconstruction_time}: {str(e)}")
-            return reconstruction_time, None
-    
-    # Initialize results storage
     results = {}
-    
-    # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
+
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         future_to_time = {
-            executor.submit(process_single_time, time): time 
+            executor.submit(_process_distance_raster, time, target_features,
+                            reconstruction_model, sampling, region): time
             for time in reconstruction_times
         }
-        
-        # Process completed tasks with progress bar
         with tqdm(total=len(reconstruction_times), desc="Processing reconstruction times") as pbar:
             for future in as_completed(future_to_time):
                 reconstruction_time, prox_grid = future.result()
                 results[reconstruction_time] = prox_grid
                 pbar.update(1)
-    
-    # Create OrderedDict maintaining the original order of reconstruction_times
+
     prox_grid_sequence = OrderedDict()
     for reconstruction_time in reconstruction_times:
         prox_grid_sequence[reconstruction_time] = results[reconstruction_time]
-    
+
     return prox_grid_sequence
 
 
