@@ -2,14 +2,12 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import xarray as xr
-#import xrspatial as xrs
 
 import warnings
 try:
     from xrspatial import viewshed, proximity
-except:
+except Exception:
     warnings.warn('gprm.utils.proximity functions based on xrspatial not available')
-#import pygmt
 from rasterio.features import rasterize, Affine
 from .spatial import get_merged_cob_terrane_raster
 
@@ -114,9 +112,9 @@ def boundary_proximity(da, inside=False):
     
     da = handle_da_coordinates(da)
 
-    if inside==True:
+    if inside:
         return proximity(da, target_values=[0], distance_metric='GREAT_CIRCLE')
-    elif inside==False:
+    elif not inside:
         return proximity(da, target_values=[1], distance_metric='GREAT_CIRCLE')
     elif inside in ['both', 'boundary']:
         prox_outside = proximity(da, target_values=[1], distance_metric='GREAT_CIRCLE')
