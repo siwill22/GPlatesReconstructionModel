@@ -1,5 +1,6 @@
 import pygplates
 import glob
+import tempfile
 import numpy as np
 import os
 import sys
@@ -38,7 +39,7 @@ def load_paleogeography(pg_dir,env_list=None,
                     feature.set_shapefile_attribute('Layer',env)
                     pg_features.append(feature)
 
-            except:
+            except Exception:
                 print('no features of type %s' % env)
 
     return pg_features
@@ -110,9 +111,10 @@ def paleogeography2topography_xyz(pg_points,topo_dict,sampling,
         return Xr,Yr,Zr
     else:
         tmp = np.vstack((Xr,Yr,Zr)).T
-        np.savetxt('test.asc',tmp,fmt='%0.4f,%0.4f,%0.4f')
-
-        os.system('gmt xyz2grd test.asc -Rd -I%0.6f -G%s' % (sampling,grdfile))
+        tmp_asc = tempfile.mktemp(suffix='.asc')
+        np.savetxt(tmp_asc, tmp, fmt='%0.4f,%0.4f,%0.4f')
+        os.system('gmt xyz2grd %s -Rd -I%0.6f -G%s' % (tmp_asc, sampling, grdfile))
+        os.remove(tmp_asc)
 
 
 
