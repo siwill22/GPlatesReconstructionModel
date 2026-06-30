@@ -65,7 +65,7 @@ def molchan_test(grid,
     # invalid points (since they are 'missed' at any grid fraction)
     points_fraction = 1-np.cumsum(point_histogram)/len(points)
     
-    Skill = 0.5+np.trapz(grid_fraction, points_fraction)
+    Skill = 0.5 - np.trapz(points_fraction, 1-grid_fraction)
     
     return grid_fraction[::-1], points_fraction[::-1], Skill
 
