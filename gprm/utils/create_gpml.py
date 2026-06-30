@@ -64,10 +64,10 @@ def create_gpml_healpix_mesh(nSide,filename=None,feature_type=None):
         return output_feature_collection
 
 
-def create_gpml_regular_long_lat_mesh(Sampling=1,filename=None,feature_type=None):
+def create_gpml_regular_long_lat_mesh(sampling=1,filename=None,feature_type=None):
 
     # call the function to create a healpix array
-    longitude_array,latitude_array = np.meshgrid(np.arange(-180.,180.001,Sampling),np.arange(-90.,90.001,Sampling))
+    longitude_array,latitude_array = np.meshgrid(np.arange(-180.,180.001,sampling),np.arange(-90.,90.001,sampling))
     longitude_array = longitude_array.flatten()
     latitude_array = latitude_array.flatten()
 
