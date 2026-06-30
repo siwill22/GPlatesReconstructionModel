@@ -84,29 +84,6 @@ def get_polygon_centroids(polygons):
 
     return centroid_dict
 
-################ UNUSED????? START
-# function to get centroid from every polygon in the reconstructed static polygons
-def get_polygon_centroid(static_polygons,plateid):
-    centroid = None
-    target_polygon_area = 0
-    for polygon in static_polygons:
-        if polygon.get_feature().get_reconstruction_plate_id()==plateid:
-            if polygon.get_reconstructed_geometry().get_area()>target_polygon_area:
-                centroid = polygon.get_reconstructed_geometry().get_boundary_centroid().to_lat_lon()
-                target_polygon_area = polygon.get_reconstructed_geometry().get_area()
-
-    return centroid
-
-# Alternatively, get centroids of topological polygons
-def get_plate_centroid(resolved_polygons,plateid):
-    centroid = None
-    for polygon in resolved_polygons:
-        if polygon.get_feature().get_reconstruction_plate_id()==plateid:
-            centroid = polygon.get_resolved_boundary().get_boundary_centroid().to_lat_lon()
-
-    return centroid
-################ UNUSED????? END
-
 
 def get_root_static_polygon_plate_ids(reconstruction_tree, uniq_plates_from_static_polygons):
     """
