@@ -60,11 +60,15 @@ def molchan_test(grid,
     permissible_area = grid_histogram.iloc[0,1]
     print('Total permissible area is {:0.1f}% of total Earth surface'.format(100*permissible_area/earth_area))
     
-    grid_fraction = 1-grid_histogram.iloc[:,1]/permissible_area 
-    # Note that this computation will penalize models where there are lots of 
+    # grdvolume returns area ABOVE each contour (distance > d), decreasing from permissible_area to 0.
+    # So grid_fraction = tau = alarm fraction (area within distance d), going 0->1 as d increases.
+    grid_fraction = 1-grid_histogram.iloc[:,1]/permissible_area
+    # Note that this computation will penalize models where there are lots of
     # invalid points (since they are 'missed' at any grid fraction)
+    # points_fraction = mu = miss rate (fraction of events with distance > d), going 1->0 as d increases.
     points_fraction = 1-np.cumsum(point_histogram)/len(points)
-    
+
+    # Skill = 0.5 - integral(mu d_tau); x=mu goes 1->0, y=tau goes 0->1, so trapz gives -integral(mu d_tau).
     Skill = 0.5+np.trapz(grid_fraction, points_fraction)
     
     return grid_fraction[::-1], points_fraction[::-1], Skill
@@ -157,9 +161,12 @@ def space_time_molchan_test(raster_dict,
      bin_edges) = np.histogram(point_distances,
                                bins=np.arange(-distance_step, distance_max+distance_step, distance_step))
 
+    # grid_fraction = tau = alarm fraction (healpix equal-area proxy), going 0->1 as d increases.
     grid_fraction = np.cumsum(hp_histogram)/len(space_time_distances)
+    # point_fraction = mu = miss rate, going 1->0 as d increases.
     point_fraction = 1-np.cumsum(pm_histogram)/len(point_distances)
-    
+
+    # Skill = 0.5 - integral(mu d_tau); equivalent to trapz(1-tau, 1-mu) - 0.5 where x=1-mu goes 0->1.
     Skill = np.trapz(1-grid_fraction, 1-point_fraction) - 0.5
 
     return grid_fraction, point_fraction, Skill
