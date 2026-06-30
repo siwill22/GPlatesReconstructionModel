@@ -181,12 +181,14 @@ def topological_reconstruction(topological_model, points,
 
     #TODO iterate over scalar values and get reconstructed value
 
-    #print(points,reconstructed_points)
+    print(points,reconstructed_points)
     #TODO for cases where this could lead to an array of inconsistent length - maybe should allow points to be 'None'??
-    valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
-    pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
-
-    return pts, valid_index
+    if reconstructed_points is not None:
+        valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
+        pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
+        return pts, valid_index
+    else:
+        return None, None
 
 
 def geodataframe_topological_reconstruction(gdf, topological_model, 
@@ -252,7 +254,9 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
             
             # TODO put something in here to deal with cases where the whole geometry has become invalid
             # 
-            if feature.geometry.geom_type in ['LineString']:
+            if pts is None:
+                geom = None
+            elif feature.geometry.geom_type in ['LineString']:
                 geom = LineString([tuple(coord) for coord in zip(pts[1], pts[0])])
             elif feature.geometry.geom_type in ['Polygon']:
                 geom = Polygon([tuple(coord) for coord in zip(pts[1], pts[0])])

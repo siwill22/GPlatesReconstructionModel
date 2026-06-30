@@ -1,6 +1,8 @@
 import pygplates
 import numpy as np
 from shapely.geometry import Point, LineString, Polygon
+import geopandas as _gpd
+import sys
 
 def apply_reconstruction(feature, rotation_model, 
                          reconstruction_time_field='reconstruction_time',
@@ -108,5 +110,120 @@ def wrap_polygon_feature(polygon_feature, date_line_wrapper=None):
         [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1], 
                                       polygon_feature.geometry.exterior.coords.xy[0])])
     wrapped_polygon = date_line_wrapper.wrap(polygon)
+    if len(wrapped_polygon)>1:
+        print("Warning: polygon was split by dateline wrapping")
     return Polygon([tuple(point.to_lat_lon()[::-1]) for point in wrapped_polygon[0].get_points()])
 
+
+def wrap_polygon_features(polygon_features, date_line_wrapper=None):
+    
+    if not date_line_wrapper:
+        date_line_wrapper = pygplates.DateLineWrapper(0.0)
+
+    results = []
+    for idx, polygon_feature in polygon_features.iterrows():
+
+        polygon = pygplates.PolygonOnSphere(
+            [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1], 
+                                        polygon_feature.geometry.exterior.coords.xy[0])])
+        wrapped_polygon_list = date_line_wrapper.wrap(polygon)
+        wrapped_polygon_features = []
+        for row in wrapped_polygon_list:
+            wrapped_polygon_feature = polygon_feature.copy()
+            wrapped_polygon_feature['geometry'] = Polygon([tuple(point.to_lat_lon()[::-1]) for point in row.get_points()])
+            wrapped_polygon_features.append(wrapped_polygon_feature) 
+
+        results.extend(wrapped_polygon_features)
+
+    return _gpd.GeoDataFrame(results, crs=polygon_features.crs)
+
+'''
+def process_row(polygon_feature, date_line_wrapper):
+    """
+    Function that may return 1 or more rows.
+    Return a list of dictionaries or a list of Series/GeoSeries
+    """
+    if not date_line_wrapper:
+        date_line_wrapper = pygplates.DateLineWrapper(0.0)
+
+    polygon = pygplates.PolygonOnSphere(
+        [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1], 
+                                      polygon_feature.geometry.exterior.coords.xy[0])])
+    wrapped_polygon_list = date_line_wrapper.wrap(polygon)
+    wrapped_polygon_features = []
+    for row in wrapped_polygon_list:
+        wrapped_polygon_feature = polygon_feature.copy()
+        # Return two rows
+        wrapped_polygon_feature['geometry'] = Polygon([tuple(point.to_lat_lon()[::-1]) for point in row.get_points()])
+
+        wrapped_polygon_features.append(wrapped_polygon_feature) 
+
+    return wrapped_polygon_features       
+'''
+
+# Determine the overriding and subducting plates of the subduction shared sub-segment.
+def find_overriding_and_subducting_plates(subduction_shared_sub_segment, time=-999):
+    
+    # Get the subduction polarity of the nearest subducting line.
+    subduction_polarity = subduction_shared_sub_segment.get_feature().get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)
+    if (not subduction_polarity) or (subduction_polarity == 'Unknown'):
+        print('Unable to find the overriding plate of the subducting shared sub-segment "{0}"'.format(
+            subduction_shared_sub_segment.get_feature().get_name()), file=sys.stderr)
+        print('    subduction zone feature is missing subduction polarity property or it is set to "Unknown".', file=sys.stderr)
+        return
+
+    # There should be two sharing topologies - one is the overriding plate and the other the subducting plate.
+    sharing_resolved_topologies = subduction_shared_sub_segment.get_sharing_resolved_topologies()
+    if len(sharing_resolved_topologies) != 2:
+        print('Unable to find the overriding and subducting plates of the subducting shared sub-segment "{0}" at {1}Ma'.format(
+            subduction_shared_sub_segment.get_feature().get_name(), time), file=sys.stderr)
+        print('    there are not exactly 2 topologies sharing the sub-segment.', file=sys.stderr)
+        print(str(sharing_resolved_topologies[0].get_resolved_feature().get_reconstruction_plate_id()), file=sys.stderr)
+        return
+
+    overriding_plate = None
+    subducting_plate = None
+    
+    geometry_reversal_flags = subduction_shared_sub_segment.get_sharing_resolved_topology_geometry_reversal_flags()
+    for index in range(2):
+
+        sharing_resolved_topology = sharing_resolved_topologies[index]
+        geometry_reversal_flag = geometry_reversal_flags[index]
+
+        if sharing_resolved_topology.get_resolved_boundary().get_orientation() == pygplates.PolygonOnSphere.Orientation.clockwise:
+            # The current topology sharing the subducting line has clockwise orientation (when viewed from above the Earth).
+            # If the overriding plate is to the 'left' of the subducting line (when following its vertices in order) and
+            # the subducting line is reversed when contributing to the topology then that topology is the overriding plate.
+            # A similar test applies to the 'right' but with the subducting line not reversed in the topology.
+            if ((subduction_polarity == 'Left' and geometry_reversal_flag) or
+                (subduction_polarity == 'Right' and not geometry_reversal_flag)):
+                overriding_plate = sharing_resolved_topology
+            else:
+                subducting_plate = sharing_resolved_topology
+        else:
+            # The current topology sharing the subducting line has counter-clockwise orientation (when viewed from above the Earth).
+            # If the overriding plate is to the 'left' of the subducting line (when following its vertices in order) and
+            # the subducting line is not reversed when contributing to the topology then that topology is the overriding plate.
+            # A similar test applies to the 'right' but with the subducting line reversed in the topology.
+            if ((subduction_polarity == 'Left' and not geometry_reversal_flag) or
+                (subduction_polarity == 'Right' and geometry_reversal_flag)):
+                overriding_plate = sharing_resolved_topology
+            else:
+                subducting_plate = sharing_resolved_topology
+    
+    if overriding_plate is None:
+        print('Unable to find the overriding plate of the subducting shared sub-segment "{0}" at {1}Ma'.format(
+            subduction_shared_sub_segment.get_feature().get_name(), time), file=sys.stderr)
+        print('    both sharing topologies are on subducting side of subducting line.', file=sys.stderr)
+        return
+    
+    if subducting_plate is None:
+        print('Unable to find the subducting plate of the subducting shared sub-segment "{0}" at {1}Ma'.format(
+            subduction_shared_sub_segment.get_feature().get_name(), time), file=sys.stderr)
+        print('    both sharing topologies are on overriding side of subducting line.', file=sys.stderr)
+        return
+    
+    return (overriding_plate, subducting_plate, subduction_polarity)
+
+
+   

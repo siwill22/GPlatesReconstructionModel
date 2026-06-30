@@ -52,13 +52,14 @@ def rasterize_polygons(gdf, sampling=1, region=[-180, 180, -90, 90], zval_field=
     return mask_to_da(mask, sampling=sampling)
 
 
-def reconstruct_and_rasterize_polygons(features, rotation_model, reconstruction_time, sampling=1):
-    # given a set of reconstructable polygon features, together with a rotation model and 
-    # reconstruction time, returns a raster that is a rasterized version of the reconstructed 
-    # polygon geometries 
+def reconstruct_and_rasterize_polygons(features, rotation_model, reconstruction_time, sampling=1, anchor_plate_id=0):
+    # given a set of reconstructable polygon features, together with a rotation model and
+    # reconstruction time, returns a raster that is a rasterized version of the reconstructed
+    # polygon geometries
 
     mask = get_merged_cob_terrane_raster(features, rotation_model, reconstruction_time,
-                                         sampling=sampling, method='rasterio')
+                                         sampling=sampling, method='rasterio',
+                                         anchor_plate_id=anchor_plate_id)
 
     return mask_to_da(mask, sampling=sampling)
 

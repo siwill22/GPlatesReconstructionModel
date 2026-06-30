@@ -288,11 +288,12 @@ def generate_raster_sequence_from_polygons(features,
                                            reconstruction_times,
                                            sampling=DEFAULT_GEOGRAPHIC_SAMPLING,
                                            buffer_distance=None,
-                                           max_workers=None):
+                                           max_workers=None,
+                                           anchor_plate_id=0):
     """
     Given some reconstrutable polygon features, generates a series of rasterized outputs
     using multithreading with progress bar.
-    
+
     Parameters:
     -----------
     features : object
@@ -307,12 +308,14 @@ def generate_raster_sequence_from_polygons(features,
         Buffer distance for boundary proximity (default: None)
     max_workers : int, optional
         Maximum number of worker threads (default: None uses ThreadPoolExecutor default)
-    
+    anchor_plate_id : int, optional
+        Anchor plate ID for reconstruction (default: 0)
+
     Returns:
     --------
     OrderedDict : Ordered dictionary of rasterized data keyed by reconstruction time
     """
-    
+
     def process_single_time(reconstruction_time):
         """Process a single reconstruction time."""
         try:
@@ -320,7 +323,8 @@ def generate_raster_sequence_from_polygons(features,
             tmp = reconstruct_and_rasterize_polygons(features,
                                                    rotation_model,
                                                    reconstruction_time,
-                                                   sampling=sampling)
+                                                   sampling=sampling,
+                                                   anchor_plate_id=anchor_plate_id)
 
             # Replace 0 values with NaN
             tmp = tmp.where(tmp != 0, np.nan)

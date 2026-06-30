@@ -13,7 +13,7 @@ from shapely.validation import make_valid
 
 def merge_polygons(polygons,rotation_model,
                    reconstruction_time=0,sampling=1.,area_threshold=None,filename=None,
-                   return_raster=False):
+                   return_raster=False,anchor_plate_id=0):
 
     from skimage import measure
 
@@ -24,7 +24,7 @@ def merge_polygons(polygons,rotation_model,
         for mp in multipoint.get_all_geometries():
             points = mp.to_lat_lon_point_list()
 
-    bi = run_grid_pip(reconstruction_time,points,polygons,rotation_model,grid_dims)
+    bi = run_grid_pip(reconstruction_time,points,polygons,rotation_model,grid_dims,anchor_plate_id=anchor_plate_id)
     
     if return_raster:
         return bi
@@ -133,10 +133,10 @@ def polygon_area_threshold(polygons,area_threshold):
 
 
 #This is a function to do fast point in polygon text
-def run_grid_pip(time,points,polygons,rotation_model,grid_dims):
+def run_grid_pip(time,points,polygons,rotation_model,grid_dims,anchor_plate_id=0):
 
     reconstructed_polygons = []
-    pygplates.reconstruct(polygons,rotation_model,reconstructed_polygons,time)
+    pygplates.reconstruct(polygons,rotation_model,reconstructed_polygons,time,anchor_plate_id=anchor_plate_id)
 
     rpolygons = []
     for polygon in reconstructed_polygons:
@@ -226,7 +226,7 @@ def get_merged_cob_terrane_polygons(COBterrane_file, rotation_model, reconstruct
 # This cell uses COB Terranes to make a masking polygon
 # (which is called 'seive_polygons')
 def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstruction_time,
-                                  sampling, method='pygplates'):
+                                  sampling, method='pygplates', anchor_plate_id=0):
 
     if method == 'pygplates':
         polygon_features = pygplates.FeatureCollection(COBterrane_file)
@@ -234,7 +234,7 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
         cobter = force_polygon_geometries(polygon_features)
 
         mask = merge_polygons(cobter, rotation_model, reconstruction_time=reconstruction_time,
-                                sampling=sampling, return_raster=True)
+                                sampling=sampling, return_raster=True, anchor_plate_id=anchor_plate_id)
 
     elif method=='rasterio':
         import tempfile
@@ -274,7 +274,7 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
         gdf = gpml2gdf(wrapped_features)
         '''
         with tempfile.TemporaryDirectory() as temporary_directory:
-            pygplates.reconstruct(polygon_features, rotation_model, '{:s}/masking_temp.shp'.format(temporary_directory), reconstruction_time)
+            pygplates.reconstruct(polygon_features, rotation_model, '{:s}/masking_temp.shp'.format(temporary_directory), reconstruction_time, anchor_plate_id=anchor_plate_id)
 
             gdf = gpd.read_file('{:s}/masking_temp.shp'.format(temporary_directory))
             #temporary_directory.cleanup()
@@ -436,9 +436,10 @@ def polyline_zonal_lengths(gdf, binsize=10):
         else:
             bin_length = 0
             for i,feature in poly_clip.explode().iterrows():
-                bin_length += pygplates.PolylineOnSphere(
-                    [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
-                                                  feature.geometry.xy[0])]).get_arc_length()
+                if len(feature.geometry.xy[0])>1:
+                    bin_length += pygplates.PolylineOnSphere(
+                        [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
+                                                      feature.geometry.xy[0])]).get_arc_length()
                     
         bin_lengths.append(bin_length * pygplates.Earth.mean_radius_in_kms)
         
