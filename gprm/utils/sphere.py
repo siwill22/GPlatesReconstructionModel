@@ -116,7 +116,7 @@ def random_points_feature(N,filename=None):
     #multipoint = pygplates.MultiPointOnSphere((points.T))
     multipoint_feature = pygplates.Feature()
     multipoint_feature.set_geometry(pygplates.MultiPointOnSphere((points.T)))
-    multipoint_feature.set_name('Random Points from Marsaglia''s method')
+    multipoint_feature.set_name("Random Points from Marsaglia's method")
 
     multipoint_feature_collection = pygplates.FeatureCollection(multipoint_feature)
 
