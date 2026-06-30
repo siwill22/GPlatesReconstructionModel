@@ -59,7 +59,7 @@ def load_netcdf(grdfile,z_field_name='z'):
         gridX = data_array.coords[coord_keys[longitude_key]].data
         gridY = data_array.coords[coord_keys[latitude_key]].data
         gridZ = data_array.data
-    except:
+    except Exception:
         # attempt to handle old-school GMT netcdfs (e.g. produced by grdconvert)
         gridX = np.linspace(ds_disk.data_vars['x_range'].data[0],
                             ds_disk.data_vars['x_range'].data[1],
