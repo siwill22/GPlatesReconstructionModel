@@ -22,8 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-#from xarray.core.utils import to_0d_object_array
-
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -109,21 +107,21 @@ class ReconstructionModel(object):
 
     def __repr__(self, show_full_paths=False):
 
-        str = ['Name: {:s}\n'.format(self.name)]
+        lines = ['Name: {:s}\n'.format(self.name)]
 
         for item in [('Rotation', self.rotation_files),
-                     ('Static Polygon', self.static_polygon_files), 
+                     ('Static Polygon', self.static_polygon_files),
                      ('Coastlines', self.coastlines_files),
-                     ('Continent Polygon', self.continent_polygons_files), 
+                     ('Continent Polygon', self.continent_polygons_files),
                      ('Dynamic Polygon', self.dynamic_polygon_files)]:
-            str.append('{:s} Files:\n'.format(item[0]))
+            lines.append('{:s} Files:\n'.format(item[0]))
             for f in item[1]:
                 if show_full_paths:
-                    str.append('   - {:s}\n'.format(f))
+                    lines.append('   - {:s}\n'.format(f))
                 else:
-                    str.append('   - {:s}\n'.format(os.path.split(f)[1]))
+                    lines.append('   - {:s}\n'.format(os.path.split(f)[1]))
 
-        return ''.join(str)
+        return ''.join(lines)
 
     def add_rotation_model(self, rotation_file, replace=False):
         """
@@ -183,7 +181,6 @@ class ReconstructionModel(object):
 
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons.append(pygplates.FeatureCollection(dynamic_polygons_file))
-        #self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
     def add_coastlines(self, coastlines_file, replace=False,
                        force_polygons=False):
