@@ -31,7 +31,6 @@ import pygmt
 from .create_gpml import geometries_to_geodataframe, geodataframe_to_geometries
 from shapely.geometry import LineString, Polygon
 from .raster import xyz2grd
-# import litho1pt0 as litho
 
 
 DEFAULT_COLLISION_PARAMETERS = (0.7, 10)
@@ -157,7 +156,7 @@ def topological_reconstruction(topological_model, points,
                                deactivate_points=DEFAULT_DEACTIVATE_POINTS, 
                                collision_parameters=DEFAULT_COLLISION_PARAMETERS):
 
-    if not oldest_time:
+    if oldest_time is None:
         oldest_time = reconstruction_time
 
     # If deactivate points is a boolean, we use it with the default thresholds
@@ -181,7 +180,6 @@ def topological_reconstruction(topological_model, points,
 
     #TODO iterate over scalar values and get reconstructed value
 
-    print(points,reconstructed_points)
     #TODO for cases where this could lead to an array of inconsistent length - maybe should allow points to be 'None'??
     if reconstructed_points is not None:
         valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
@@ -202,7 +200,7 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
 
     # Given a geodataframe, will reconstruct using a topological model to a given reconstruction time   
     # TODO check if this is the default behaviour anyway??? 
-    if not oldest_time:
+    if oldest_time is None:
         oldest_time = reconstruction_time
     
     # Preprocessing:
