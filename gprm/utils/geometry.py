@@ -137,29 +137,6 @@ def wrap_polygon_features(polygon_features, date_line_wrapper=None):
 
     return _gpd.GeoDataFrame(results, crs=polygon_features.crs)
 
-'''
-def process_row(polygon_feature, date_line_wrapper):
-    """
-    Function that may return 1 or more rows.
-    Return a list of dictionaries or a list of Series/GeoSeries
-    """
-    if not date_line_wrapper:
-        date_line_wrapper = pygplates.DateLineWrapper(0.0)
-
-    polygon = pygplates.PolygonOnSphere(
-        [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1], 
-                                      polygon_feature.geometry.exterior.coords.xy[0])])
-    wrapped_polygon_list = date_line_wrapper.wrap(polygon)
-    wrapped_polygon_features = []
-    for row in wrapped_polygon_list:
-        wrapped_polygon_feature = polygon_feature.copy()
-        # Return two rows
-        wrapped_polygon_feature['geometry'] = Polygon([tuple(point.to_lat_lon()[::-1]) for point in row.get_points()])
-
-        wrapped_polygon_features.append(wrapped_polygon_feature) 
-
-    return wrapped_polygon_features       
-'''
 
 # Determine the overriding and subducting plates of the subduction shared sub-segment.
 def find_overriding_and_subducting_plates(subduction_shared_sub_segment, time=-999):
