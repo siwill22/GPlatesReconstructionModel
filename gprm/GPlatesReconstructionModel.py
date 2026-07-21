@@ -237,6 +237,40 @@ class ReconstructionModel(object):
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
 
+    @classmethod
+    def from_agegrid_config(cls, config_file, base_dir=None, name=None):
+        """Create a ReconstructionModel from an agegrid-format YAML configuration file.
+
+        :param config_file: Path to the YAML config file.
+        :param base_dir: Directory that contains the MODELDIR subdirectory. Defaults to the directory of config_file.
+        :param name: Optional name for the model; defaults to the MODELDIR value from the config.
+        :returns: ReconstructionModel with rotation model, dynamic polygons, and (if present) continent polygons loaded.
+        """
+        import yaml
+
+        config_file = os.path.abspath(config_file)
+        if base_dir is None:
+            base_dir = os.path.dirname(config_file)
+
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+
+        input_files = config['InputFiles']
+        model_dir = os.path.join(base_dir, input_files['MODELDIR'])
+
+        model = cls(name=name or input_files['MODELDIR'])
+
+        for rot_file in input_files['input_rotation_filenames']:
+            model.add_rotation_model(os.path.join(model_dir, rot_file))
+
+        for topo_file in input_files['topology_features']:
+            model.add_dynamic_polygons(os.path.join(model_dir, topo_file))
+
+        if 'COBterrane_file' in input_files:
+            model.add_continent_polygons(os.path.join(model_dir, input_files['COBterrane_file']))
+
+        return model
+
     def copy(self, deep=False):
         """
         Make a copy of an existing reconstruction_model
