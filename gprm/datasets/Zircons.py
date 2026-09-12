@@ -191,6 +191,27 @@ def loadDB(version=2021):
 
         return gdf
 
+    elif version==2026:
+        # Supplementary Table (mmc5) from Puetz et al, 2026, Geoscience Frontiers
+        # "Global mapping and time-series analysis of orogens, cratons, and igneous zircon samples through time"
+        # https://doi.org/10.1016/j.gsf.2026.102416
+
+        fname = _retrieve(
+            url="https://ars.els-cdn.com/content/image/1-s2.0-S1674987126001702-mmc5.xlsx",
+            known_hash="sha256:3cd09ff70a6578942e6c20ad27ab844c82d0c351a5849b4c9f9590d621917467",
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+
+        xls = _pd.ExcelFile(fname)
+        print('Merging Samples and UPb_Data (~1M rows), please be patient....')
+        df = _pd.merge(xls.parse('Samples'), xls.parse('UPb_Data'), on='Ref-Sample Key')
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]  # drop blank trailing columns from the sheet
+
+        gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+        return gdf
+
 
 def load_Hf():
     # Supplementary table 5 from Puetz et al, 2021, ESR
@@ -212,8 +233,8 @@ def load_Hf():
 
 
 # These functions are specifically for the 2018 version, to match sample coordinates against age distributions
-def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018):
-    
+def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018,oldest_only=False):
+
     if version==2018:
         if df_SampleDetails is None:
             df_SampleDetails, df_Data = loadDB(version=2018)
@@ -271,7 +292,46 @@ def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018):
 
         IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
+    elif version==2026:
+        # Supplementary Table (mmc3) from Puetz et al, 2026, Geoscience Frontiers
+        # https://doi.org/10.1016/j.gsf.2026.102416
+
+        fname = _retrieve(
+            url="https://ars.els-cdn.com/content/image/1-s2.0-S1674987126001702-mmc3.xlsx",
+            known_hash="sha256:3c5fe3822d5e8155002efc5a549b81268afd5141e398af36577562c445067ff7",
+            downloader=_HTTPDownloader(progressbar=True),
+            path=_os_cache('gprm'),
+        )
+
+        xls = _pd.ExcelFile(fname)
+        df = xls.parse('Oldest_Samples' if oldest_only else 'Samples')
+
+        IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
     return IgneousZircons
+
+
+def get_mafic_felsic_samples(rock_type='Felsic'):
+    '''
+    Load the mafic/felsic igneous zircon sample compilation from Puetz et al, 2026, Geoscience Frontiers
+    https://doi.org/10.1016/j.gsf.2026.102416
+
+    rock_type must be one of 'Mafic', 'Felsic'
+    '''
+    if rock_type not in ['Mafic', 'Felsic']:
+        raise ValueError('Unknown rock_type {}'.format(rock_type))
+
+    fname = _retrieve(
+        url="https://ars.els-cdn.com/content/image/1-s2.0-S1674987126001702-mmc7.xlsx",
+        known_hash="sha256:f8836a98ce38f3f313d4d7a06edcc894145e9c88ae92ad85054385659f1f7c8e",
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+    )
+
+    xls = _pd.ExcelFile(fname)
+    df = xls.parse(rock_type)
+
+    return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
 
 def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
@@ -299,6 +359,10 @@ def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
     elif version==2024:
 
         SedimentaryZircons = loadDB(version=2024)
+
+    elif version==2026:
+
+        SedimentaryZircons = loadDB(version=2026)
 
 
     return SedimentaryZircons
@@ -377,27 +441,40 @@ def tectonic_fingerprint(SedimentaryZircons,
     percentile_list = []
 
     for sample_group in sample_groups:
+        # drop missing ages before anything else, rather than only checking for the
+        # all-missing case -- a sample with SOME missing ages among >=2 grains must not
+        # have those NaNs sorted in and treated as real values below
         grain_ages = sample_group[1][grain_age_key]
-        
-        # define the cdf
-        if not _np.any(_np.isfinite(grain_ages)):
+        grain_ages = grain_ages[_np.isfinite(grain_ages)]
+
+        if len(grain_ages) < 2:
             chi_square_list.append(_np.nan)
             percentile_list.append(_np.nan)
-        if len(grain_ages)<2:
+            continue
+
+        dst = _np.sort(grain_ages)
+        xtmp = _np.linspace(0,1,len(dst))
+
+        # sample cdf at 10% and 50%: well-defined regardless of the chi-square guard
+        # below, so always computed when there are enough grains
+        cdf_vals = _np.interp([0.1,0.5],xtmp,dst)
+        percentile_list.append(cdf_vals[1]-cdf_vals[0])
+
+        # chi_square() bins from the youngest grain to 4 Ga (see its own docstring); a
+        # small number of real samples (Archean/Jack-Hills-type standards) have a
+        # youngest grain already >= 4 Ga, leaving no range to bin at all -- the metric
+        # is undefined there, same as the too-few-grains case above, not a crash
+        if dst.min() >= 4000:
             chi_square_list.append(_np.nan)
-            percentile_list.append(_np.nan)
-        else:
-            dst = _np.sort(grain_ages)
-            xtmp = _np.linspace(0,1,len(dst))
-            
-            # sample cdf at 10% and 50%
-            cdf_vals = _np.interp([0.1,0.5],xtmp,dst)
+            continue
 
-            if chi_square_age_bins is None:
-                chi_square_age_bins = len(dst)
+        # per-sample bin count (number of grains, following Barham et al.'s "variable
+        # bin duration" choice) unless the caller fixed one -- must be a fresh local,
+        # not a reassignment of chi_square_age_bins itself, or every sample after the
+        # first would silently reuse the first sample's own grain count instead of its own
+        num_age_bins = chi_square_age_bins if chi_square_age_bins is not None else len(dst)
 
-            chi_square_list.append(chi_square(dst, chi_square_age_bins))
-            percentile_list.append(cdf_vals[1]-cdf_vals[0])
+        chi_square_list.append(chi_square(dst, num_age_bins))
 
     return _gpd.GeoDataFrame(
         data={'Longitude': sample_groups.Longitude.median(),
@@ -411,11 +488,19 @@ def tectonic_fingerprint(SedimentaryZircons,
 
 
 def chi_square(dst, num_age_bins=100):
+    '''
+    Modified chi-squared statistic following Barham et al (2022, EPSL): ages are binned,
+    from the youngest grain in the sample to 4 Ga (per the paper, not the age of the
+    Earth -- "since very few Hadean grains are preserved in the detrital record"; a grain
+    older than 4 Ga falls outside every bin and is excluded from the counts, same as the
+    paper's own assumption), into `num_age_bins` bins of equal width, compared against
+    the count expected under a perfectly even distribution, and normalised by the degrees
+    of freedom (bins - 1).
+    '''
+    bin_edges = _np.linspace(_np.min(dst), 4000, num_age_bins + 1)  # num_age_bins+1 edges -> num_age_bins bins
+    actual_bin_counts, _ = _np.histogram(dst, bins=bin_edges)
 
-    actual_bin_counts = _np.histogram(dst, bins=_np.linspace(_np.min(dst),4501,num_age_bins))
+    expected_bin_counts = len(dst) / num_age_bins
 
-    expected_bin_counts = len(dst)/len(actual_bin_counts[0])
-    
-    # chi square test, scaled by division by number of bins
-    return _np.sum(((actual_bin_counts[0] - expected_bin_counts)**2) / expected_bin_counts) / len(actual_bin_counts[0])
+    return _np.sum(((actual_bin_counts - expected_bin_counts)**2) / expected_bin_counts) / (num_age_bins - 1)
 
