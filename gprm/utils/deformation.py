@@ -1,4 +1,6 @@
-'''
+"""
+Topological deformation and crustal stretching reconstruction utilities.
+
 MIT License
 
 Copyright (c) 2017-2021 Simon Williams
@@ -20,18 +22,18 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 import pygplates
 import numpy as np
 import pandas as pd
 import geopandas as gpd
 import xarray as xr
-import pygmt
+# pygmt is imported per-function rather than at module level: it costs ~1.7 s to
+# import, and most of this module does not need it.
 from .create_gpml import geometries_to_geodataframe, geodataframe_to_geometries
 from shapely.geometry import LineString, Polygon
 from .raster import xyz2grd
-# import litho1pt0 as litho
 
 
 DEFAULT_COLLISION_PARAMETERS = (0.7, 10)
@@ -123,6 +125,8 @@ def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90],
 def get_crustal_thickness_points(points, grid=None, 
                                  top_name='CRUST1-TOP', 
                                  bottom_name='CRUST3-BOTTOM'):
+    from ._optional import require
+    pygmt = require('pygmt', 'sampling a grid at points')
     
     # if no grid is provided, we take the layer thickness from litho1.0
     if not grid:
@@ -157,7 +161,7 @@ def topological_reconstruction(topological_model, points,
                                deactivate_points=DEFAULT_DEACTIVATE_POINTS, 
                                collision_parameters=DEFAULT_COLLISION_PARAMETERS):
 
-    if not oldest_time:
+    if oldest_time is None:
         oldest_time = reconstruction_time
 
     # If deactivate points is a boolean, we use it with the default thresholds
@@ -181,12 +185,13 @@ def topological_reconstruction(topological_model, points,
 
     #TODO iterate over scalar values and get reconstructed value
 
-    #print(points,reconstructed_points)
     #TODO for cases where this could lead to an array of inconsistent length - maybe should allow points to be 'None'??
-    valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
-    pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
-
-    return pts, valid_index
+    if reconstructed_points is not None:
+        valid_index = [reconstructed_point is not None for reconstructed_point in reconstructed_points]
+        pts = list(zip(*[reconstructed_point.to_lat_lon() for reconstructed_point in reconstructed_points if reconstructed_point is not None]))
+        return pts, valid_index
+    else:
+        return None, None
 
 
 def geodataframe_topological_reconstruction(gdf, topological_model, 
@@ -200,7 +205,7 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
 
     # Given a geodataframe, will reconstruct using a topological model to a given reconstruction time   
     # TODO check if this is the default behaviour anyway??? 
-    if not oldest_time:
+    if oldest_time is None:
         oldest_time = reconstruction_time
     
     # Preprocessing:
@@ -252,7 +257,9 @@ def geodataframe_topological_reconstruction(gdf, topological_model,
             
             # TODO put something in here to deal with cases where the whole geometry has become invalid
             # 
-            if feature.geometry.geom_type in ['LineString']:
+            if pts is None:
+                geom = None
+            elif feature.geometry.geom_type in ['LineString']:
                 geom = LineString([tuple(coord) for coord in zip(pts[1], pts[0])])
             elif feature.geometry.geom_type in ['Polygon']:
                 geom = Polygon([tuple(coord) for coord in zip(pts[1], pts[0])])
@@ -272,6 +279,8 @@ def raster_topological_reconstruction(grid, topological_model, reconstruction_ti
     of the output raster (Which would work for global grids).
     Optionally, a different region and sampling for the output grid can be specified.
     """
+    from ._optional import require
+    pygmt = require('pygmt', 'sampling a grid at points')
     coord_keys = [key for key in grid.coords.keys()]
 
     if 'lon' in coord_keys[0].lower():

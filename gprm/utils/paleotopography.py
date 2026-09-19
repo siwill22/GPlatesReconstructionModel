@@ -341,10 +341,10 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
                          '%s/paleotopo_%0.2fd_%0.2fMa.nc' % (output_dir, sampling, reconstruction_time)])
 
     # clean-up temp files
-    land_marine_xyz_file.delete
-    mountain_xyz_file.delete
-    land_marine_nc_file.delete
-    mountain_nc_file.delete
+    land_marine_xyz_file.delete()
+    mountain_xyz_file.delete()
+    land_marine_nc_file.delete()
+    mountain_nc_file.delete()
     
     # load result back into python
     topoX,topoY,topoZ = load_netcdf('%s/paleotopo_%0.2fd_%0.2fMa.nc' % (output_dir, sampling, reconstruction_time))
@@ -426,5 +426,5 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
                                                                      reconstruction_time))
         plt.close()
 
-        paleotopobathy_nc_file.delete
-        paleotopobathy_smooth_nc_file.delete
+        paleotopobathy_nc_file.delete()
+        paleotopobathy_smooth_nc_file.delete()

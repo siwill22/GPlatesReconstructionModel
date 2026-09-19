@@ -1,4 +1,6 @@
-'''
+"""
+Loaders for seafloor datasets: magnetic picks, fabric, seamounts, and LIPs.
+
 MIT License
 
 Copyright (c) 2017-2021 Simon Williams
@@ -20,7 +22,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 from pooch import os_cache as _os_cache
 from pooch import retrieve as _retrieve
@@ -108,6 +110,12 @@ def SeafloorFabric(feature_type='FZ', load=True):
             else:
                 return fname
 
+    raise FileNotFoundError(
+        '{:s} was not found in the downloaded seafloor fabric archive. The download may be '
+        'incomplete or the archive may have been repackaged upstream; clearing the gprm cache '
+        '(see gprm.datasets.cache_path()) and retrying is the usual fix.'.format(
+            FABRIC_TYPE[feature_type]))
+
 
 def PacificSeamountAges(catalogue='2021', load=True):
     '''
@@ -148,6 +156,10 @@ def PacificSeamountAges(catalogue='2021', load=True):
             return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
         else:
             return fname
+
+    else:
+        raise ValueError(
+            "Unknown catalogue '{:s}'. Valid options are '2021' and '2013'.".format(catalogue))
 
 
 def Seamounts(catalogue='KimWessel', load=True):
@@ -225,9 +237,16 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
                 processor=_Unzip(extract_dir='LIPs'),
             )
 
+        dirname = None
         for fname in fnames:
             if _os.path.split(fname)[1] == 'License.txt':
                 dirname = _os.path.split(fname)[0]
+        if dirname is None:
+            raise FileNotFoundError(
+                'The Large Igneous Provinces archive did not contain the expected License.txt, '
+                'so the location of the data files could not be determined. The download may '
+                'be incomplete or the archive may have been repackaged upstream; clearing the '
+                'gprm cache (see gprm.datasets.cache_path()) and retrying is the usual fix.')
 
         if catalogue=='Whittaker':
             fname='{:s}/LargeIgneousProvinces_VolcanicProvinces/Whittaker_etal_2015_LargeIgneousProvinces/SHP/Whittaker_etal_2015_LIPs.shp'.format(dirname)

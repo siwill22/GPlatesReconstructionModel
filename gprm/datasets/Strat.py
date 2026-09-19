@@ -1,4 +1,6 @@
-'''
+"""
+Loaders for stratigraphic and fossil occurrence datasets (paleo-currents, PBDB).
+
 MIT License
 
 Copyright (c) 2017-2021 Simon Williams
@@ -20,7 +22,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 from pooch import os_cache as _os_cache
 from pooch import retrieve as _retrieve
@@ -30,6 +32,8 @@ import pandas as _pd
 import geopandas as _gpd
 import numpy as _np
 import os as _os
+
+_DATA_DIR = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), 'Data')
 
 
 def PaleoCurrents():
@@ -213,9 +217,112 @@ def pbdb_elevation_mapping(pbdb):
     # TODO change this so that the eleva
     #pbdb = pbdb.dropna(subset=['environment']).reset_index(drop=True)
 
-    elevation_ranges = _pd.DataFrame(pbdb['environment'].map(marine_env_dict).to_list(), 
-                                     index=pbdb.index, 
+    elevation_ranges = _pd.DataFrame(pbdb['environment'].map(marine_env_dict).to_list(),
+                                     index=pbdb.index,
                                      columns=['elevation_min', 'elevation_max'])
 
     return pbdb.join(elevation_ranges)
+
+
+# LithCode -> indicator name, from Boucot, Chen & Scotese (2013). 'M' is Boucot's own
+# code for two distinct indicators (mostly mangroves, some lateritic manganese) and is
+# left conflated here rather than split, since the source data doesn't disambiguate it.
+BOUCOT_INDICATORS = {
+    'C': 'Coal',
+    'E': 'Evaporite',
+    'B': 'Bauxite',
+    'K': 'Kaolinite',
+    'CA': 'Calcrete',
+    'T': 'Tillite',
+    'CR': 'Crocodilian',
+    'L': 'Laterite',
+    'D': 'Dropstone',
+    'PA': 'Palm',
+    'M': 'Mangrove or lateritic manganese',
+    'G': 'Glendonite',
+    'O': 'Oolitic ironstone',
+    'I': 'Ice crystal',
+    'LF': 'Lungfish burrow',
+    'H': 'Humid soil',
+}
+
+# LithCode -> climate group, following the 3-way scheme of Cao et al. (2018, Geol. Mag.)
+# doi:10.1017/S0016756818000110. Coals indicate terrestrial humidity, evaporites indicate
+# aridity, and tillites/dropstones/glendonites indicate glacial/cold conditions. Cao et al.
+# deliberately excluded the remaining indicators as unreliable latitude proxies (palms,
+# mangroves and crocodilians are sampling-biased toward mid-high latitudes; laterites and
+# oolitic ironstones have too few occurrences) -- codes not listed here are left unmapped.
+BOUCOT_CLIMATE_GROUPS = {
+    'C': 'Humid',
+    'E': 'Arid',
+    'T': 'Glacial',
+    'D': 'Glacial',
+    'G': 'Glacial',
+}
+
+
+def PaleoLithology(lithology=None, reconstruction_time=None):
+    """
+    Load the Boucot, Chen & Scotese (2013) compilation of climate-sensitive
+    palaeolithologic and biotic indicators (coals, evaporites, bauxites, calcretes,
+    tillites, dropstones, glendonites, kaolinites, laterites, oolitic ironstones,
+    palms, mangroves, crocodilians, and a few singletons), spanning the Cambrian
+    to the Miocene.
+
+    Boucot, A.J., Chen, X., Scotese, C.R. & Morley, R.J. (2013). Phanerozoic
+    Paleoclimate: An Atlas of Lithologic Indicators of Climate. SEPM Concepts in
+    Sedimentology and Paleontology, 11.
+
+    The returned GeoDataFrame carries no plate id: the source shapefile's plate ids
+    were assigned by partitioning against an unrecorded static polygon set, so they
+    are dropped rather than risk misleading anyone reconstructing against a
+    different plate model. Before calling ``ReconstructionModel.reconstruct()``, run
+    the result through ``ReconstructionModel.assign_plate_ids()`` against your
+    chosen static polygons.
+
+    :param lithology: a single indicator code or name (or a list of them) to select,
+        e.g. 'C', 'Coal', ['T', 'D', 'G']. Case-insensitive. Default: all indicators.
+    :param reconstruction_time: if given, keep only points valid at this age (Ma),
+        i.e. where TOAGE <= reconstruction_time <= FROMAGE.
+    :returns: GeoDataFrame with columns including LithCode, Indicator, GeogComm,
+        Continent, Country, Stage, FROMAGE, TOAGE, ReconstructionAge, Lithology,
+        Formation, LithComm, PrimRef, SeeAlso, geometry.
+    """
+    fname = '{:s}/boucot_paleolithology.gpkg'.format(_DATA_DIR)
+    gdf = _gpd.read_file(fname)
+    gdf['Indicator'] = gdf['LithCode'].map(BOUCOT_INDICATORS)
+
+    if lithology is not None:
+        if isinstance(lithology, str):
+            lithology = [lithology]
+        indicator_names_lower = {name.lower(): code for code, name in BOUCOT_INDICATORS.items()}
+        codes = set()
+        for item in lithology:
+            item = item.strip()
+            if item.upper() in BOUCOT_INDICATORS:
+                codes.add(item.upper())
+            elif item.lower() in indicator_names_lower:
+                codes.add(indicator_names_lower[item.lower()])
+            else:
+                raise ValueError(f"'{item}' is not a recognised LithCode or indicator name")
+        gdf = gdf[gdf['LithCode'].isin(codes)]
+
+    if reconstruction_time is not None:
+        gdf = gdf[(gdf['TOAGE'] <= reconstruction_time) & (reconstruction_time <= gdf['FROMAGE'])]
+
+    return gdf.reset_index(drop=True)
+
+
+def paleolithology_climate_mapping(gdf):
+    """
+    Add a 'ClimateGroup' column (Humid/Arid/Glacial) to a GeoDataFrame returned by
+    PaleoLithology(), following the 3-way scheme of Cao et al. (2018, Geol. Mag.)
+    doi:10.1017/S0016756818000110. Indicators outside that scheme are left as NaN --
+    this is not a judgement that they carry no climate signal, only that Cao et al.
+    considered them unreliable latitude proxies (see BOUCOT_CLIMATE_GROUPS).
+
+    :param gdf: a GeoDataFrame with a LithCode column, as returned by PaleoLithology().
+    :returns: the same GeoDataFrame with a ClimateGroup column added.
+    """
+    return gdf.assign(ClimateGroup=gdf['LithCode'].map(BOUCOT_CLIMATE_GROUPS))
 

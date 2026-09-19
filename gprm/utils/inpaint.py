@@ -34,7 +34,7 @@ def fill_crystalgrowth(data,invalid):
     dim = len(shape)
     slcs = [slice(None)]*dim
     while np.any(~invalid): # as long as there are any False's in invalid
-       for i in xrange(dim): # do each axis
+       for i in range(dim): # do each axis
           # make slices to shift view one element along the axis
           slcs1 = slcs[:]
           slcs2 = slcs[:]

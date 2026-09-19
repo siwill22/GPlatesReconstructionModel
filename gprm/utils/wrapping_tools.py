@@ -1,7 +1,4 @@
-#
-# Functions for wrapping geometries to dateline before returning request geojson
-#
-
+"""Dateline wrapping utilities for GPlates polygon and polyline geometries."""
 import pygplates
 
 

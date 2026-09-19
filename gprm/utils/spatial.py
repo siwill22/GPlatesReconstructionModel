@@ -1,3 +1,6 @@
+"""Spatial analysis utilities: polygon rasterisation, plate partitioning, and topology queries."""
+import warnings
+
 import pygplates
 from ptt.utils import points_in_polygons
 from ptt.utils import points_spatial_tree
@@ -11,10 +14,28 @@ from shapely.geometry import Polygon
 from shapely.validation import make_valid
 
 
-def merge_polygons(polygons,rotation_model,
-                   reconstruction_time=0,sampling=1.,area_threshold=None,filename=None,
-                   return_raster=False):
+def merge_polygons(polygons, rotation_model,
+                   reconstruction_time=0, sampling=1., area_threshold=None, filename=None,
+                   return_raster=False, anchor_plate_id=0):
+    """Merge reconstructed polygons into contour polygons via grid point-in-polygon test and image contouring.
 
+    :param polygons: pygplates FeatureCollection of polygon features.
+    :param rotation_model: pygplates RotationModel.
+    :param reconstruction_time: Age in Ma (default 0).
+    :param sampling: Grid spacing in degrees used for the point-in-polygon test (default 1).
+    :param area_threshold: If set, discard output polygons smaller than this area in steradians.
+    :param filename: If set, write the resulting feature collection to this file and return None.
+    :param return_raster: If True, return the binary numpy grid instead of polygon features (default False).
+    :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+    :returns: List of pygplates features, or a 2-D numpy binary array if return_raster=True; None if filename is given.
+
+    .. warning::
+       When ``return_raster`` is False the merged outlines are traced with an image contouring
+       algorithm on a flat lon/lat grid, which is padded with zeros and clamped at the grid
+       edges. Polygons that cross the antimeridian are therefore cut in two at +/-180, and
+       polygons covering a pole are truncated there. ``return_raster=True`` returns the
+       point-in-polygon mask directly and is unaffected.
+    """
     from skimage import measure
 
     multipoints = create_gpml_regular_long_lat_mesh(sampling)
@@ -24,13 +45,20 @@ def merge_polygons(polygons,rotation_model,
         for mp in multipoint.get_all_geometries():
             points = mp.to_lat_lon_point_list()
 
-    bi = run_grid_pip(reconstruction_time,points,polygons,rotation_model,grid_dims)
+    bi = run_grid_pip(reconstruction_time,points,polygons,rotation_model,grid_dims,anchor_plate_id=anchor_plate_id)
     
     if return_raster:
         return bi
     
     else:
-        # To handle edge effects, pad grid before making contour polygons  
+        warnings.warn(
+            'merge_polygons traces outlines on a flat lon/lat grid padded with zeros, so '
+            'polygons crossing the antimeridian are split at +/-180 and polar polygons are '
+            'truncated. Pass return_raster=True to get the point-in-polygon mask instead, '
+            'which does not have this limitation.',
+            stacklevel=2)
+
+        # To handle edge effects, pad grid before making contour polygons
         ## --- start
         pad_hor = np.zeros((1,bi.shape[1]))
         pad_ver = np.zeros((bi.shape[0]+2,1))
@@ -70,11 +98,19 @@ def merge_polygons(polygons,rotation_model,
             return contour_features
 
 
-def rasterise_polygons(polygon_features, rotation_model, reconstruction_time, raster_domain_points=None, 
+def rasterise_polygons(polygon_features, rotation_model, reconstruction_time, raster_domain_points=None,
 					   sampling=0.5, meshtype='LongLatGrid', masking=None):
-    # takes a set of polygons and converts them into a raster, or other regular point distribution,
-    # with the polygon shapefile attributes mapped to points 
-    # if meshtype is set to 'healpix', sampling should be set to an integer defining nSide
+    """Partition a regular grid or healpix mesh by polygon features, mapping shapefile attributes to each point.
+
+    :param polygon_features: pygplates FeatureCollection of polygon features.
+    :param rotation_model: pygplates RotationModel.
+    :param reconstruction_time: Age in Ma.
+    :param raster_domain_points: Pre-built mesh of domain points; generated from sampling/meshtype if None.
+    :param sampling: Grid spacing in degrees, or healpix nSide integer if meshtype='healpix' (default 0.5).
+    :param meshtype: 'LongLatGrid' (default) or 'healpix'.
+    :param masking: None = return all points; 'outside' = points inside polygons only; 'inside' = points outside polygons only.
+    :returns: List of pygplates point features with polygon attributes copied.
+    """
 
     if not raster_domain_points:
         if meshtype=='healpix':
@@ -101,9 +137,7 @@ def rasterise_polygons(polygon_features, rotation_model, reconstruction_time, ra
 
 
 def force_polygon_geometries(input_features):
-# given any pygplates feature collection, creates an output feature collection
-# where all geometries are polygons based on the input geometries
-# intended for use in forcing features that are strictly polylines to close
+    """Convert all feature geometries to closed polygons, preserving plate IDs and valid times."""
 
     polygons = []
     for feature in input_features: 
@@ -121,8 +155,8 @@ def force_polygon_geometries(input_features):
     return polygon_features
 
 
-def polygon_area_threshold(polygons,area_threshold):
-    
+def polygon_area_threshold(polygons, area_threshold):
+    """Return only the polygons whose area exceeds area_threshold (in steradians)."""
     polygons_larger_than_threshold = []
     for polygon in polygons:
         if polygon.get_geometry() is not None:
@@ -132,11 +166,19 @@ def polygon_area_threshold(polygons,area_threshold):
     return polygons_larger_than_threshold
 
 
-#This is a function to do fast point in polygon text
-def run_grid_pip(time,points,polygons,rotation_model,grid_dims):
+def run_grid_pip(time, points, polygons, rotation_model, grid_dims, anchor_plate_id=0):
+    """Point-in-polygon test on a regular grid of points using reconstructed polygons; returns binary array.
 
+    :param time: Reconstruction age in Ma.
+    :param points: List of pygplates PointOnSphere objects covering the grid.
+    :param polygons: pygplates FeatureCollection of polygon features.
+    :param rotation_model: pygplates RotationModel.
+    :param grid_dims: Tuple (n_rows, n_cols) giving the shape of the output array.
+    :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+    :returns: 2-D numpy binary array (1 = inside a polygon, 0 = outside) with shape grid_dims.
+    """
     reconstructed_polygons = []
-    pygplates.reconstruct(polygons,rotation_model,reconstructed_polygons,time)
+    pygplates.reconstruct(polygons,rotation_model,reconstructed_polygons,time,anchor_plate_id=anchor_plate_id)
 
     rpolygons = []
     for polygon in reconstructed_polygons:
@@ -163,16 +205,27 @@ def run_grid_pip(time,points,polygons,rotation_model,grid_dims):
 
 # Function to run efficient point in/near polygons
 # returns two numbers - one is distance to polygon edge,
-# other is distance to polygon where distance is zero if inside
-def run_grid_pnp(recon_time, 
-                 points, 
-                 spatial_tree_of_uniform_recon_points, 
-                 polygons, 
-                 rotation_model, 
-                 distance_threshold_radians=2):
+def run_grid_pnp(recon_time,
+                 points,
+                 spatial_tree_of_uniform_recon_points,
+                 polygons,
+                 rotation_model,
+                 distance_threshold_radians=2,
+                 anchor_plate_id=0):
+    """Distance to polygon boundaries on a grid using a spatial tree; returns inside and boundary distance arrays.
 
+    :param recon_time: Reconstruction age in Ma.
+    :param points: List of pygplates PointOnSphere objects (uniform grid).
+    :param spatial_tree_of_uniform_recon_points: Pre-built spatial tree over the same point list (from points_spatial_tree).
+    :param polygons: pygplates FeatureCollection of polygon features.
+    :param rotation_model: pygplates RotationModel.
+    :param distance_threshold_radians: Search radius for the spatial tree query in radians (default 2).
+    :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+    :returns: Tuple (distance_to_polygon, distance_to_polygon_boundary) as 1-D numpy arrays in radians;
+        distance_to_polygon is 0 for points inside a polygon.
+    """
     reconstructed_polygons = []
-    pygplates.reconstruct(polygons, rotation_model, reconstructed_polygons, recon_time)
+    pygplates.reconstruct(polygons, rotation_model, reconstructed_polygons, recon_time, anchor_plate_id=anchor_plate_id)
     rpolygons = []
     for polygon in reconstructed_polygons:
         if polygon.get_reconstructed_geometry():
@@ -203,12 +256,9 @@ def run_grid_pnp(recon_time,
     return distance_to_polygon,distance_to_polygon_boundary
 
 
-# TODO merge the next two function, since they are largely duplicative
-#  
-# This cell uses COB Terranes to make a masking polygon
-# (which is called 'seive_polygons')
 def get_merged_cob_terrane_polygons(COBterrane_file, rotation_model, reconstruction_time,
                                     sampling, area_threshold=None, return_raster=False):
+    """Reconstruct COB terrane polygons and merge them into contour polygons, optionally filtered by area."""
 
     polygon_features = pygplates.FeatureCollection(COBterrane_file)
 
@@ -223,10 +273,18 @@ def get_merged_cob_terrane_polygons(COBterrane_file, rotation_model, reconstruct
     else:
         return cf
 
-# This cell uses COB Terranes to make a masking polygon
-# (which is called 'seive_polygons')
 def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstruction_time,
-                                  sampling, method='pygplates'):
+                                  sampling, method='pygplates', anchor_plate_id=0):
+    """Rasterize reconstructed COB terrane polygons to a binary mask array.
+
+    :param COBterrane_file: Path to a GPlates-compatible COB terrane polygon file.
+    :param rotation_model: pygplates RotationModel.
+    :param reconstruction_time: Age in Ma.
+    :param sampling: Grid spacing in degrees.
+    :param method: 'pygplates' (default) uses contour-based merging; 'rasterio' burns polygons directly.
+    :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+    :returns: 2-D numpy array (1 = inside terrane, 0 = outside).
+    """
 
     if method == 'pygplates':
         polygon_features = pygplates.FeatureCollection(COBterrane_file)
@@ -234,7 +292,7 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
         cobter = force_polygon_geometries(polygon_features)
 
         mask = merge_polygons(cobter, rotation_model, reconstruction_time=reconstruction_time,
-                                sampling=sampling, return_raster=True)
+                                sampling=sampling, return_raster=True, anchor_plate_id=anchor_plate_id)
 
     elif method=='rasterio':
         import tempfile
@@ -245,47 +303,16 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
 
         polygon_features = force_polygon_geometries(polygon_features)
 
-        '''
-        reconstructed_features = []
-        pygplates.reconstruct(polygon_features, rotation_model, reconstructed_features, reconstruction_time)
-
-        central_meridian = 0
-        tesselation_degrees = 0.1
-
-        date_line_wrapper = pygplates.DateLineWrapper(central_meridian=central_meridian)
-
-        wrapped_features = []
-        for reconstructed_feature in reconstructed_features:
-            geometry = reconstructed_feature.get_reconstructed_geometry()
-            if geometry is not None:
-                split_geometries = date_line_wrapper.wrap(geometry, tesselation_degrees)
-                for split_geometry in split_geometries:
-                    f = pygplates.Feature()
-                    if isinstance(split_geometry, date_line_wrapper.LatLonPolyline):
-                        f.set_geometry(pygplates.PolylineOnSphere(
-                            (wrapped_point.get_latitude(), wrapped_point.get_longitude()) for wrapped_point in split_geometry.get_points())
-                                    )
-                    elif isinstance(split_geometry, date_line_wrapper.LatLonPolygon):   
-                        f.set_geometry(pygplates.PolygonOnSphere(
-                            (wrapped_point.get_latitude(), wrapped_point.get_longitude()) for wrapped_point in split_geometry.get_exterior_points())
-                                    )
-                    wrapped_features.append(f)
-        
-        gdf = gpml2gdf(wrapped_features)
-        '''
         with tempfile.TemporaryDirectory() as temporary_directory:
-            pygplates.reconstruct(polygon_features, rotation_model, '{:s}/masking_temp.shp'.format(temporary_directory), reconstruction_time)
+            pygplates.reconstruct(polygon_features, rotation_model, '{:s}/masking_temp.shp'.format(temporary_directory), reconstruction_time, anchor_plate_id=anchor_plate_id)
 
             gdf = gpd.read_file('{:s}/masking_temp.shp'.format(temporary_directory))
-            #temporary_directory.cleanup()
 
         dims = (int(180./sampling)+1, int(360./sampling)+1)
         transform = Affine(sampling, 0.0, -180.-sampling/2., 0.0, sampling, -90.-sampling/2.)
-    
+
         geometry_zval_tuples = [(x.geometry, 1) for i, x in gdf.iterrows()]
-        
-        #with rasterio.open(raster_file) as src:
-            # iterate over features to get (geometry, id value) pairs
+
         mask = rasterize(
             geometry_zval_tuples,
             transform=transform,
@@ -299,6 +326,14 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
 
 def get_dynamic_polygon_raster(dynamic_polygons, rotation_model, reconstruction_time,
                                sampling):
+    """Resolve topological plate polygons at a given time and rasterize them by plate ID.
+
+    :param dynamic_polygons: List of pygplates FeatureCollection objects with topological polygon features.
+    :param rotation_model: pygplates RotationModel.
+    :param reconstruction_time: Age in Ma.
+    :param sampling: Grid spacing in degrees.
+    :returns: 2-D numpy array where each cell contains the plate ID of the enclosing polygon (0 = unassigned).
+    """
 
     import tempfile
     import geopandas as gpd
@@ -331,13 +366,15 @@ def get_dynamic_polygon_raster(dynamic_polygons, rotation_model, reconstruction_
 
 
 
-# Topology functions
-def plate_boundary_intersections(cross_section_geometry,shared_boundary_sections,ProfileX_kms):
+def plate_boundary_intersections(cross_section_geometry, shared_boundary_sections, ProfileX_kms):
+    """Find subduction, ridge, and other plate boundary crossings along a great-circle cross-section.
 
-    # Given a polyline, and the subduction boundary sections, finds places where the cross-section
-    # intersects a plate boundary
-    # returns the Lat/Long coordinates and the distance along profile
-
+    :param cross_section_geometry: pygplates PolylineOnSphere defining the cross-section path.
+    :param shared_boundary_sections: List of resolved topological boundary sections from pygplates.resolve_topologies.
+    :param ProfileX_kms: Cumulative distance array (km) along the cross-section, one value per segment start.
+    :returns: Tuple (subduction_intersections, ridge_intersections, other_intersections); each is a list of
+        [PointOnSphere, distance_along_profile_km, polarity] for subduction, or [PointOnSphere, distance_km] for others.
+    """
     subduction_intersections = []
     ridge_intersections = []
     other_intersections = []
@@ -376,10 +413,8 @@ def plate_boundary_intersections(cross_section_geometry,shared_boundary_sections
     return subduction_intersections,ridge_intersections,other_intersections
 
 
-def get_subduction_polarity(shared_subsegment,topology_index,cross_section_segment,distance_along_segment):
-# gets the subduction polarity at locations where a subduction segment intersects
-# another line segment
-
+def get_subduction_polarity(shared_subsegment, topology_index, cross_section_segment, distance_along_segment):
+    """Return the cross-section dip direction (True = left-to-right) for a subduction segment intersection."""
     topology_section_segment = shared_subsegment.get_resolved_geometry().get_segments()[topology_index]
 
     # Get cross-section segment direction at point of intersection.
@@ -436,9 +471,10 @@ def polyline_zonal_lengths(gdf, binsize=10):
         else:
             bin_length = 0
             for i,feature in poly_clip.explode().iterrows():
-                bin_length += pygplates.PolylineOnSphere(
-                    [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
-                                                  feature.geometry.xy[0])]).get_arc_length()
+                if len(feature.geometry.xy[0])>1:
+                    bin_length += pygplates.PolylineOnSphere(
+                        [(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
+                                                      feature.geometry.xy[0])]).get_arc_length()
                     
         bin_lengths.append(bin_length * pygplates.Earth.mean_radius_in_kms)
         
@@ -505,12 +541,17 @@ def polygon_zonal_areas(gdf, binsize=10, method='polygon', raster_sampling=1):
         return bin_areas
     
     else:
-        raise ValueError('Unknown value {} for method parameter')
+        raise ValueError('Unknown value {} for method parameter'.format(method))
 
 
 def raster_zonal_areas(grd, lats, binsize):
+    """Sum grid-cell areas within latitude bins from a binary mask, accounting for spherical area weighting.
 
-    # assumes that the sample spacing is uniform
+    :param grd: 2-D numpy binary array (1 = region of interest, 0 = elsewhere).
+    :param lats: 1-D array of latitude values corresponding to grd rows (uniform spacing assumed).
+    :param binsize: Width of each latitude bin in degrees.
+    :returns: List of areas in km² for each latitude bin from -90 to 90.
+    """
     raster_sampling = np.abs(lats[1]-lats[0])
 
     area_weights = pygplates.Earth.mean_radius_in_kms**2 * np.sin(np.radians(90-lats)) * np.radians(raster_sampling)**2
@@ -525,14 +566,16 @@ def raster_zonal_areas(grd, lats, binsize):
     return bin_areas
 
 
-def topology_lookup(reconstruction_model, 
-                    reconstruction_times=np.arange(0,1001,10), 
+def topology_lookup(reconstruction_model,
+                    reconstruction_times=np.arange(0,1001,10),
                     boundary_types=['subduction']):
-    # Given a reconstruction model with dynamic polygons, returns a lookup dictionary
-    # of the reconstructed boundaries. 
-    # The type of boundaries is specified by 'boundary_types 
-    # The series of times returned in the dictionary is specified by 'reconstruction_times'
+    """Build a time-keyed dict of reconstructed plate boundary features for fast per-time queries.
 
+    :param reconstruction_model: ReconstructionModel instance with dynamic polygons loaded.
+    :param reconstruction_times: Iterable of ages in Ma to pre-compute (default 0–1000 Ma in 10 Ma steps).
+    :param boundary_types: List of boundary types to include; valid values are 'subduction', 'midoceanridge', 'other'.
+    :returns: Dict mapping each reconstruction time (float, Ma) to a list of resolved boundary features.
+    """
     lookup_dict = {}
     for reconstruction_time in reconstruction_times:
         snapshot = reconstruction_model.plate_snapshot(reconstruction_time=reconstruction_time)

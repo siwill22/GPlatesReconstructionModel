@@ -1,4 +1,6 @@
-'''
+"""
+Core classes for working with GPlates plate tectonic reconstruction models.
+
 MIT License
 
 Copyright (c) 2017-2023 Simon Williams
@@ -20,9 +22,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
-
-#from xarray.core.utils import to_0d_object_array
+"""
 
 import numpy as np
 import pandas as pd
@@ -32,7 +32,8 @@ import geopandas as gpd
 # related to (probably) conflicting gdal versions
 import pygplates
 
-import pygmt
+# pygmt is imported where it is used rather than here: it costs ~1.7 s to import (it pulls in
+# rioxarray, dask and numba), and only the plotting methods and VelocityField.to_grid need it.
 
 import matplotlib.pyplot as plt
 import os
@@ -58,43 +59,19 @@ import warnings
 DATA_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'Data')
 
 
-class ReconstructionModel(object):
-    """
-    Class to contain the various elements of a GPlates-format reconstruction model, 
-    including some or all of plate rotation models, topologies, and reconstructable 
-    geometries
+# Key under which assign_plate_ids records which model assigned a GeoDataFrame's plate ids,
+# so that reconstruct can refuse ids that came from a different model.
+_PLATE_ID_PROVENANCE_KEY = 'gprm_reconstruction_model'
 
-    Attributes
-    ----------
-    name : str
-        a string with a name for the reconstruction model
-    rotation_model : pygplates.RotationModel
-        the rotation model in memory
-    rotation_files : list of str
-        list of filename(s) of rotation files used to build the
-        rotation model
-    static_polygons : list of str
-        list of static polygon feature collections
-    static_polygon_files : list of str
-        list of static polygon filename(s)
-    dynamic_polygons : list of pygplates.FeatureCollection
-        dynamic polygon features loaded into memory
-    dynamic_polygon_files : list of str
-        list of dynamic polygon filename(s)
-    coastlines : list of str
-        list of coastline feature collections
-    coastlines_files : list of str
-        list of coastline filename(s)
-    continent_polygons : list of str
-        list of continent polygons feature collections
-    continent_polygons_files : list of str
-        list of continent polygons filename(s)
-    """
+
+class ReconstructionModel(object):
+    """Container for a GPlates-format plate tectonic reconstruction model, including rotation files, topologies, and reconstructable geometries."""
 
     def __init__(self, name=None):
         self.name = name
         self.rotation_model = []    # creates a new empty list for each
         self.rotation_files = []
+        self._known_plate_ids = None
         self.static_polygons = []
         self.static_polygon_files = []
         self.dynamic_polygons = []
@@ -109,21 +86,21 @@ class ReconstructionModel(object):
 
     def __repr__(self, show_full_paths=False):
 
-        str = ['Name: {:s}\n'.format(self.name)]
+        lines = ['Name: {:s}\n'.format(self.name)]
 
         for item in [('Rotation', self.rotation_files),
-                     ('Static Polygon', self.static_polygon_files), 
+                     ('Static Polygon', self.static_polygon_files),
                      ('Coastlines', self.coastlines_files),
-                     ('Continent Polygon', self.continent_polygons_files), 
+                     ('Continent Polygon', self.continent_polygons_files),
                      ('Dynamic Polygon', self.dynamic_polygon_files)]:
-            str.append('{:s} Files:\n'.format(item[0]))
+            lines.append('{:s} Files:\n'.format(item[0]))
             for f in item[1]:
                 if show_full_paths:
-                    str.append('   - {:s}\n'.format(f))
+                    lines.append('   - {:s}\n'.format(f))
                 else:
-                    str.append('   - {:s}\n'.format(os.path.split(f)[1]))
+                    lines.append('   - {:s}\n'.format(os.path.split(f)[1]))
 
-        return ''.join(str)
+        return ''.join(lines)
 
     def add_rotation_model(self, rotation_file, replace=False):
         """
@@ -143,12 +120,15 @@ class ReconstructionModel(object):
 
         self.rotation_files.append(rotation_file)
         self.rotation_model = pygplates.RotationModel(self.rotation_files)
+        self._known_plate_ids = None
 
     def add_static_polygons(self, static_polygons_file, replace=False,
                             force_polygons=False):
-        """
-        Add a set of static polygons to the reconstruction model object by specifying
-        path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
+        """Add static polygons from a GPlates-compatible file (gpml, gpmlz, shp, gmt).
+
+        :param static_polygons_file: Path to the polygon file.
+        :param replace: If True, clear existing static polygons before adding (default False).
+        :param force_polygons: If True, convert all geometries to closed polygons (default False).
         """
         if not os.path.isfile(static_polygons_file):
             raise ValueError('Unable to find file {:s}'.format(static_polygons_file))
@@ -166,9 +146,10 @@ class ReconstructionModel(object):
         self.static_polygons.append(features)  # Should this be loaded into memory like dynamic polygons??
 
     def add_dynamic_polygons(self, dynamic_polygons_file, replace=False):
-        """
-        Add topology files to be used in resolving topological polygons.
-        Can be called multiple times to add a series of file into a single object instance.
+        """Add a topological polygon file for use with plate_snapshot and other topology operations.
+
+        :param dynamic_polygons_file: Path to a GPlates-compatible topology file.
+        :param replace: If True, clear existing dynamic polygons before adding (default False).
         """
 
         #TODO add option to add a list in one go, otherwise the loading is very slow 
@@ -183,13 +164,14 @@ class ReconstructionModel(object):
 
         self.dynamic_polygon_files.append(dynamic_polygons_file)
         self.dynamic_polygons.append(pygplates.FeatureCollection(dynamic_polygons_file))
-        #self.dynamic_polygons = [pygplates.FeatureCollection(dpfile) for dpfile in self.dynamic_polygon_files]
 
     def add_coastlines(self, coastlines_file, replace=False,
                        force_polygons=False):
-        """
-        Add a set of coastline polygons to the reconstruction model object by specifying
-        path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
+        """Add coastline features from a GPlates-compatible file (gpml, gpmlz, shp, gmt).
+
+        :param coastlines_file: Path to the coastline file.
+        :param replace: If True, clear existing coastlines before adding (default False).
+        :param force_polygons: If True, convert all geometries to closed polygons (default False).
         """
         if not os.path.isfile(coastlines_file):
             raise ValueError('Unable to find file {:s}'.format(coastlines_file))
@@ -206,11 +188,13 @@ class ReconstructionModel(object):
         self.coastlines_files.append(coastlines_file)
         self.coastlines.append(features)
 
-    def add_continent_polygons(self, continent_polygons_file, replace=False, 
+    def add_continent_polygons(self, continent_polygons_file, replace=False,
                                force_polygons=False):
-        """
-        Add a set of continent polygons to the reconstruction model object by specifying
-        path and file to a GPlates compatible file format (gpml, gpmlz, shp, gmt)
+        """Add continent polygon features from a GPlates-compatible file (gpml, gpmlz, shp, gmt).
+
+        :param continent_polygons_file: Path to the continent polygon file.
+        :param replace: If True, clear existing continent polygons before adding (default False).
+        :param force_polygons: If True, convert all geometries to closed polygons (default False).
         """
         if not os.path.isfile(continent_polygons_file):
             raise ValueError('Unable to find file {:s}'.format(continent_polygons_file))
@@ -281,9 +265,11 @@ class ReconstructionModel(object):
             return copy.copy(self)
 
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
-        """
-        Generate a snapshot of a topological reconstruction model
-        Returns an object of the PlateSnapshot class, containing the resolved plate polygons
+        """Generate a snapshot of the topological reconstruction model at a given time.
+
+        :param reconstruction_time: Age in Ma.
+        :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+        :returns: PlateSnapshot containing the resolved plate polygons and boundary sections.
         """
         resolved_topologies = []
         resolved_topological_sections = []
@@ -302,9 +288,12 @@ class ReconstructionModel(object):
                              anchor_plate_id)
 
     def polygon_snapshot(self, polygon_type, reconstruction_time, anchor_plate_id=0):
-        """
-        Create a set of reconstructed polygons for a specific reconstruction time
-        Options for polygon_type are: 'coastlines' | 'continents' | 'static_polygons'
+        """Reconstruct a set of static polygons to a given time.
+
+        :param polygon_type: Which polygon set to reconstruct: 'coastlines', 'continents', or 'static_polygons'.
+        :param reconstruction_time: Age in Ma.
+        :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+        :returns: ReconstructedPolygonSnapshot containing the reconstructed polygons.
         """
 
         if polygon_type == 'coastlines':
@@ -345,6 +334,84 @@ class ReconstructionModel(object):
         return utils.rotation.get_rotation_table(rotation_features, plate_id_list=plate_id_list, asdataframe=asdataframe)
 
 
+    def known_plate_ids(self):
+        """
+        Return the set of plate ids for which this model's rotation files define a rotation.
+
+        :returns: set of ints, or None if the rotation model was not built from files
+            (in which case plate id provenance cannot be checked)
+        """
+        if not self.rotation_files:
+            return None
+
+        if self._known_plate_ids is None:
+            plate_ids = set()
+            for rotation_file in self.rotation_files:
+                for feature in pygplates.FeatureCollection(rotation_file):
+                    pole = feature.get_total_reconstruction_pole()
+                    if pole:
+                        fixed_plate_id, moving_plate_id, _ = pole
+                        plate_ids.add(int(fixed_plate_id))
+                        plate_ids.add(int(moving_plate_id))
+            self._known_plate_ids = plate_ids
+
+        return self._known_plate_ids
+
+
+    def _check_plate_ids(self, features):
+        """
+        Guard called before reconstructing a GeoDataFrame: verify that plate ids are present
+        and that they plausibly came from this reconstruction model.
+
+        Two independent checks, so that the second still catches the problem when the first
+        is unavailable:
+
+        1. The provenance stamp written by :meth:`assign_plate_ids`. Exact, but carried in
+           ``GeoDataFrame.attrs``, which pandas does not propagate through every operation.
+        2. Whether the plate ids themselves are defined in this model's rotation files. Works
+           whatever has happened to the dataframe in between.
+        """
+        if 'PLATEID1' not in features.columns:
+            raise ValueError(
+                "No 'PLATEID1' column found, so these features cannot be reconstructed.\n"
+                "Assign plate ids first, as a separate step:\n"
+                "    gdf = reconstruction_model.assign_plate_ids(gdf)")
+
+        source_model = features.attrs.get(_PLATE_ID_PROVENANCE_KEY)
+
+        if source_model is not None:
+            if self.name is not None and source_model != self.name:
+                raise ValueError(
+                    "Plate ids were assigned using reconstruction model '{:s}', but this is "
+                    "'{:s}'. Plate ids are only meaningful for the model that assigned them - "
+                    "re-run assign_plate_ids with this model.".format(source_model, str(self.name)))
+            return
+
+        # No stamp (either never assigned by gprm, or attrs lost in an intervening pandas
+        # operation), so fall back on checking the ids against the rotation model.
+        known_plate_ids = self.known_plate_ids()
+        if not known_plate_ids:
+            return
+
+        used_plate_ids = set(int(p) for p in features['PLATEID1'].dropna().unique())
+        # 0 is the anchor plate and the value given to unpartitioned features, so it is always valid
+        unknown_plate_ids = used_plate_ids - known_plate_ids - {0}
+        if not unknown_plate_ids:
+            return
+
+        listed = ', '.join(str(p) for p in sorted(unknown_plate_ids)[:10])
+        if unknown_plate_ids == used_plate_ids - {0}:
+            raise ValueError(
+                "None of the plate ids in this dataframe ({:s}) are defined in the rotation "
+                "files of reconstruction model '{:s}'. They were most likely assigned using a "
+                "different model - re-run assign_plate_ids with this model.".format(
+                    listed, str(self.name)))
+
+        warnings.warn(
+            "Plate ids {:s} are not defined in the rotation files of reconstruction model "
+            "'{:s}'. Features carrying them will not be rotated.".format(listed, str(self.name)))
+
+
     def platetree(self):
         """
         Return a plate tree hierarchy object associated with the reconstruction model
@@ -358,9 +425,7 @@ class ReconstructionModel(object):
     if pygplates.Version.get_imported_version() >= pygplates.Version(32):
         def construct_topological_model(self, anchor_plate_id=0,
                             default_resolve_topology_parameters=pygplates.ResolveTopologyParameters(enable_strain_rate_clamping=True)):
-
-            # tell the object to generate a TopologicalModel object based on the already
-            # assigned rotations and topologies
+            """Build a pygplates.TopologicalModel for deformation reconstruction (requires pygplates >= 32)."""
             self.topological_model = pygplates.TopologicalModel(
                 self.dynamic_polygons,
                 self.rotation_model,
@@ -369,15 +434,20 @@ class ReconstructionModel(object):
                 default_resolve_topology_parameters=default_resolve_topology_parameters)
 
 
-    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0, 
+    def reconstruct(self, features, reconstruction_time, anchor_plate_id=0,
                     topological=False, reverse=False,
                     wrap_to_dateline=False, use_tempfile=False):
-        """
-        Reconstruct feature collection or a geopandas dataframe using the reconstruction model
+        """Reconstruct a feature collection or GeoDataFrame to a given time using plate IDs already assigned.
 
-        Assumes that plate_ids have already been assigned
-
-        Return type matches the input (either feature collection or geodataframe)
+        :param features: pygplates FeatureCollection or GeoDataFrame (must have a PLATEID1 column).
+        :param reconstruction_time: Age in Ma.
+        :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+        :param topological: If True, perform a topological reconstruction (not yet implemented).
+        :param reverse: If True, un-reconstruct from reconstruction_time back to present day.
+        :param use_tempfile: For GeoDataFrames, write through a temp file instead of applying rotations
+            row-by-row; required for pygplates < 32 (default False).
+        :returns: Reconstructed FeatureCollection, list of ReconstructedFeatureGeometry, or GeoDataFrame
+            matching the type of the input.
         """
 
         if wrap_to_dateline:
@@ -409,7 +479,8 @@ class ReconstructionModel(object):
                     # convert geometries to gpml (features?)
                     # reconstruct
                     # somehow map reconstructed features back to original attribute table
-                    # TODO add check for valid plateid field
+
+                    self._check_plate_ids(features)
 
                     if pygplates.Version.get_imported_version() < pygplates.Version(32):
                         warnings.warn('Using version of pygplates that relies on OGR_GMT files for interoperability with geodataframes, \
@@ -461,7 +532,8 @@ class ReconstructionModel(object):
                     return reconstructed_gdf
 
                 else:
-                    # Testing......
+                    self._check_plate_ids(features)
+
                     # multipart features will cause problems, so split them up with 'explode'
                     # if the default names for valid_time fields are present, we use them
                     # otherwise, assume the correct data already selected
@@ -498,14 +570,15 @@ class ReconstructionModel(object):
 
 
 
-    def reconstruct_vector():
-
-        return
-
-
     def reconstruct_to_time_of_appearance(self, features, ReconstructTime=None, anchor_plate_id=0):
-        """
-        Reconstruct points to time of appearance corresponding to each point feature
+        """Reconstruct each feature to the age defined by its own valid time or a specified attribute.
+
+        :param features: pygplates FeatureCollection or GeoDataFrame of point features with plate IDs.
+        :param ReconstructTime: How to determine each feature's reconstruction age: None uses the feature's
+            appearance time (FROMAGE); 'MidTime' uses the midpoint of valid time; any other string is
+            treated as a column/attribute name containing the age in Ma.
+        :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+        :returns: List of reconstructed pygplates features, or a GeoDataFrame with updated geometries.
         """
         if isinstance(features, pygplates.FeatureCollection):
 
@@ -519,6 +592,15 @@ class ReconstructionModel(object):
                     reconstruction_time = feature.get_shapefile_attribute(ReconstructTime)
                 else:
                     raise ValueError('unrecognised value {:} for parameter ReconstructTime'.format(ReconstructTime))
+
+                # A negative age is in the future. Usually this means the feature's end time is
+                # the GPlates distant-future sentinel (-999) and has been averaged into a MidTime.
+                if reconstruction_time < 0:
+                    raise ValueError(
+                        "Feature '{:s}' gives a reconstruction age of {:.1f} Ma, which is in the "
+                        "future. If this came from MidTime, check the feature's end time for the "
+                        "GPlates distant-future sentinel of -999.".format(
+                            feature.get_name() or '<unnamed>', reconstruction_time))
 
                 if feature.get_geometry():
                     reconstructed_feature = pygplates.Feature()
@@ -535,19 +617,45 @@ class ReconstructionModel(object):
 
         elif isinstance(features, gpd.GeoDataFrame):
 
-            features = features.copy()
+            self._check_plate_ids(features)
+
+            # Multipart geometries are rotated one part at a time, so split them up first
+            # (as reconstruct does). Without this they would silently come back as None.
+            features = features.explode(index_parts=False).reset_index(drop=True)
 
             if ReconstructTime is None:
                 ReconstructTime = 'FROMAGE'
+                if ReconstructTime not in features.columns:
+                    raise ValueError(
+                        "No 'FROMAGE' column found to take each feature's age from. Either add "
+                        "one, or pass ReconstructTime='<column name>' naming the column that "
+                        "holds the age in Ma.")
             elif ReconstructTime == 'MidTime':
+                missing_columns = [c for c in ['FROMAGE', 'TOAGE'] if c not in features.columns]
+                if missing_columns:
+                    raise ValueError(
+                        "ReconstructTime='MidTime' needs both 'FROMAGE' and 'TOAGE' columns, "
+                        "but {:} not found.".format(missing_columns))
                 features['reconstruction_time'] = (features['FROMAGE']+features['TOAGE'])/2.
                 ReconstructTime = 'reconstruction_time'
             elif ReconstructTime not in features.columns:
                 raise ValueError('Field name {:} for parameter ReconstructTime not found in input geodataframe'.format(ReconstructTime))
-            
+
+            # Ages are in Ma increasing into the past, so a negative value is in the future and
+            # cannot be reconstructed to. The usual cause is the GPlates 'distant future'
+            # sentinel of -999 sitting in TOAGE and being averaged into a MidTime.
+            negative_ages = features[ReconstructTime] < 0
+            if negative_ages.any():
+                raise ValueError(
+                    "Column '{:s}' gives a negative age for {:d} of {:d} features (minimum "
+                    "{:.1f} Ma), which would reconstruct into the future. If this came from "
+                    "MidTime, check TOAGE for the GPlates distant-future sentinel of "
+                    "-999.".format(ReconstructTime, int(negative_ages.sum()), len(features),
+                                   float(features[ReconstructTime].min())))
+
             # TODO enable geometry types other than point
-            rgeometry = features.apply(lambda x: apply_reconstruction(x, 
-                                       self.rotation_model, reconstruction_time_field=ReconstructTime), 
+            rgeometry = features.apply(lambda x: apply_reconstruction(x,
+                                       self.rotation_model, reconstruction_time_field=ReconstructTime),
                                        axis=1)
 
             # TODO allow for geometry to be returned as an extra field
@@ -559,8 +667,13 @@ class ReconstructionModel(object):
 
 
     def assign_plate_ids(self, features, polygons='static', copy_valid_times=False, keep_unpartitioned_features=True):
-        """
-        assign plate ids to a data set using polygons from the ReconstructionModel 
+        """Assign plate IDs to features by partitioning them with polygons from the reconstruction model.
+
+        :param features: pygplates FeatureCollection or GeoDataFrame to be partitioned.
+        :param polygons: Which polygon set to use for partitioning: 'static' (default), 'coastlines', or 'continents'.
+        :param copy_valid_times: If True, also copy valid time from the partitioning polygon to each feature.
+        :param keep_unpartitioned_features: If True (default), retain features that fall outside all polygons.
+        :returns: pygplates FeatureCollection or GeoDataFrame with PLATEID1 assigned.
         """
         if polygons=='continents':
             partitioning_polygon_features = self.continent_polygons
@@ -620,6 +733,11 @@ class ReconstructionModel(object):
             if not keep_unpartitioned_features:
                 features = features[features['PLATEID1'] != 0]
 
+            # Record which model these plate ids came from, so that reconstruct can refuse
+            # them if they are later handed to a different one. Set last, since the pandas
+            # operations above each return a new object and would not carry it over.
+            features.attrs[_PLATE_ID_PROVENANCE_KEY] = self.name
+
             return features
 
         else:
@@ -644,7 +762,7 @@ class ReconstructionModel(object):
                 raise NotImplementedError()
 
             if platform.system() == 'Windows':
-                open_gplates_command.append('C:\Program Files\GPlates\GPlates 2.3.0\gplates.exe')
+                open_gplates_command.append(r'C:\Program Files\GPlates\GPlates 2.3.0\gplates.exe')
         else:
             open_gplates_command.append(path_to_gplates)
 
@@ -694,7 +812,7 @@ class ReconstructedPolygonSnapshot(object):
                      pen=pen, color=color, **kwargs)
 
     def plot(self, fig, pen='black', fill='wheat', color=None, **kwargs):
-
+        """Plot reconstructed polygons to a pygmt.Figure with configurable pen and fill."""
         if color is not None:
             warnings.warn('color parameter now renamed to fill in pygmt')
             fill=color
@@ -768,6 +886,17 @@ class PlateSnapshot(object):
         Optionally specify to only return boundaries of type 'SubductionZone', 'MidOceanRidge',
         or other boundaries not of these two types.
         """
+        # Validate up front: an unrecognised name would otherwise match nothing, silently
+        # return an empty list, and surface much later as an undefined distance.
+        if isinstance(boundary_types, str):
+            boundary_types = [boundary_types]
+        unrecognised = [b for b in boundary_types
+                        if b not in ('subduction', 'midoceanridge', 'other')]
+        if unrecognised:
+            raise ValueError(
+                "Unrecognised boundary type(s) {:}. Valid values are 'subduction', "
+                "'midoceanridge' and 'other'.".format(unrecognised))
+
         # return a list of boundary features, optionally matching a certain boundary type
         resolved_boundary_segments = []
         for resolved_topological_section in self.resolved_topological_sections:
@@ -1065,7 +1194,7 @@ class PlateSnapshot(object):
 
 
     def plot_polygons(self, fig, reduce_plate_ids=False, **kwargs):
-
+        """Plot plate polygons to a pygmt.Figure, optionally merging plates with the same ancestry."""
         plot_file = tempfile.NamedTemporaryFile(delete=False, suffix='.gmt')
         plot_file.close()
 
@@ -1150,7 +1279,7 @@ class MotionPathFeature:
         return trails
 
     def rate(self, reconstruction_model, reconstruction_time=0):
-
+        """Return the motion rate (in cm/yr) at each step along the motion path."""
         reconstructed_motion_paths = []
         pygplates.reconstruct(self.motion_path_feature, reconstruction_model.rotation_model,
                               reconstructed_motion_paths, reconstruction_time,
@@ -1170,9 +1299,9 @@ class MotionPathFeature:
         return rates
 
     def step_plot(self, reconstruction_model, reconstruction_time=0, show=False):
-
+        """Plot motion rate as a step function over reconstruction time."""
         rates = self.rate(reconstruction_model, reconstruction_time=0)
-        
+
         step_rates = []
         for rate in rates:
             step_rate = np.zeros(len(rate)*2)
@@ -1196,7 +1325,8 @@ class MotionPathFeature:
 
 
 class FlowlineFeature:
-    
+    """Reconstructable flowline feature with left and right branches from spreading centre seed points."""
+
     def __init__(self, path_times=np.arange(0.,151.,5.), 
                  seed_points=None, lats=None, longs=None,
                  left_plate=None, right_plate=None):
@@ -1491,6 +1621,8 @@ class VelocityField(object):
         create a regular grid of velocity magnitude by interpolation from domain points
         """
         # TODO make this use xyz2grd for domain points already at regular long/lat sampling
+        from gprm.utils._optional import require
+        pygmt = require('pygmt', 'interpolating velocities onto a regular grid')
 
         velgrd = pygmt.sphinterpolate(np.vstack((self.longitude,
                                                  self.latitude,
@@ -1612,202 +1744,6 @@ class SubductionConvergence(object):
 
 
 
-class AgeCodedPointDataset(object):
-
-    def __init__(self, source, field_mapping = None):
-        """
-        Initiate an AgeCodedPointDataset class
-
-        This can be:
-        1. Any feature collection file readable by GPlates
-        2. Any csv (TODO add support for any pandas-readable file)
-        3. The paleobiology database web service (TODO add more generic support for web services)
-        """
-
-        try:
-            filename, file_extension = os.path.splitext(source)
-        except:
-            filename = None; file_extension = None
-
-        if file_extension in ['.shp','.gpml','.gpmlz','.gmt']:
-            feature_collection = pygplates.FeatureCollection(source)
-
-            self._point_features = feature_collection
-
-            DataFrameTemplate = ['lon','lat','name','description','reconstruction_plate_id','from_age','to_age']
-
-            # Get attribute (other than coordinate) names from first feature
-            for feature in feature_collection:
-                if feature.get_shapefile_attributes():
-                    for attribute in feature.get_shapefile_attributes():
-                        DataFrameTemplate.append(attribute)
-                break
-
-            result = []
-            for feature in feature_collection:
-                tmp = []
-                tmp.append(feature.get_geometry().to_lat_lon()[1])
-                tmp.append(feature.get_geometry().to_lat_lon()[0])
-                tmp.append(feature.get_name())
-                tmp.append(feature.get_description())
-                tmp.append(feature.get_reconstruction_plate_id())
-                tmp.append(feature.get_valid_time()[0])
-                tmp.append(feature.get_valid_time()[1])
-                if feature.get_shapefile_attributes():
-                    for attribute in feature.get_shapefile_attributes():
-                        tmp.append(feature.get_shapefile_attribute(attribute))
-                result.append(tmp)
-
-            self._df = pd.DataFrame(result,columns=DataFrameTemplate)
-            self._field_mapping = {'latitude_field':'lat', 'longitude_field':'lon',
-                                   'max_age_field':'from_age', 'min_age_field':'to_age'}
-
-        else:
-            if file_extension == '.csv':
-                self._df = pd.read_csv(source)
-            elif "http://" in source or "https://" in source:
-                import requests
-                r = requests.get(source)
-                self._df = pd.read_csv(StringIO(r.text))
-                field_mapping = {'latitude_field':'lat', 'longitude_field':'lng',
-                                 'max_age_field':'max_ma', 'min_age_field':'min_ma'}
-            elif isinstance(source,pd.DataFrame):
-                self._df = source
-
-            self._field_mapping = field_mapping
-
-            self._point_features = []
-            for index,row in self._df.iterrows():
-                point = pygplates.PointOnSphere(float(row[field_mapping['latitude_field']]),
-                                                float(row[field_mapping['longitude_field']]))
-                point_feature = pygplates.Feature()
-                point_feature.set_geometry(point)
-                point_feature.set_reconstruction_plate_id(0)
-                try:
-                    point_feature.set_valid_time(row[field_mapping['max_age_field']],-999.)
-                except:
-                    warnings.warn('Unable to set valid time for row %d' % index)
-                    point_feature.set_valid_time(-998,-999.)
-                self._point_features.append(point_feature)
-
-
-    def assign_reconstruction_model(self, reconstruction_model, polygons='static'):
-        """
-        assign plate ids to a point data set using an existing ReconstructionModel class
-        """
-        if polygons=='continents':
-            partitioning_polygon_features = reconstruction_model.continent_polygons
-        elif polygons=='coastlines':
-            partitioning_polygon_features = reconstruction_model.coastlines
-        else:
-            partitioning_polygon_features = reconstruction_model.static_polygons
-
-        if not partitioning_polygon_features:
-            raise ValueError('No polygons found for partitioning')
-        partitioned_point_features = pygplates.partition_into_plates(partitioning_polygon_features,
-                                                                     reconstruction_model.rotation_model,
-                                                                     self._point_features)
-        self._point_features = partitioned_point_features
-        self.reconstruction_model = reconstruction_model
-
-
-    def reconstruct(self,reconstruction_time,anchor_plate_id=0):
-        """
-        reconstruct point data to specified time (and optionally with specified anchor
-        plate id)
-        """
-
-        reconstructed_features = []
-        pygplates.reconstruct(self._point_features,
-                              self.reconstruction_model.rotation_model,
-                              reconstructed_features,
-                              reconstruction_time,
-                              anchor_plate_id=anchor_plate_id)
-
-        return reconstructed_features
-
-
-    def plot_reconstructed(self,reconstruction_time,anchor_plate_id=0):
-        """
-        Quick plot of points reconstructed to specified time (and optionally with
-        specified anchor plate id)
-        """
-
-        reconstructed_features = []
-        pygplates.reconstruct(self._point_features,
-                              self.reconstruction_model.rotation_model,
-                              reconstructed_features,
-                              reconstruction_time,
-                              anchor_plate_id=anchor_plate_id)
-
-        plt.figure()
-        for reconstructed_feature in reconstructed_features:
-            plt.plot(reconstructed_feature.get_reconstructed_geometry().to_lat_lon()[1],
-                     reconstructed_feature.get_reconstructed_geometry().to_lat_lon()[0],'ro')
-            plt.axis([-180,180,-90,90])
-        plt.title('%0.2f Ma' % reconstruction_time)
-        plt.show()
-
-
-    def reconstruct_to_time_of_appearance(self,ReconstructTime='BirthTime',anchor_plate_id=0):
-        """
-        Reconstruct points to time of appearance corresponding to each point feature
-        """
-
-        rotation_model = pygplates.RotationModel(self.reconstruction_model.rotation_model)
-        recon_points = []
-        for point_feature in self._point_features:
-            if ReconstructTime == 'MidTime':
-                reconstruction_time = (point_feature.get_valid_time()[0]+point_feature.get_valid_time()[1])/2.
-            else:
-                reconstruction_time = point_feature.get_valid_time()[0]
-            if point_feature.get_reconstruction_plate_id()!=0:
-                point_rotation = rotation_model.get_rotation(reconstruction_time,
-                                                             point_feature.get_reconstruction_plate_id(),
-                                                             anchor_plate_id=anchor_plate_id)
-                reconstructed_point = point_rotation * point_feature.get_geometry()
-                recon_points.append([reconstructed_point.to_lat_lon()[1],
-                                     reconstructed_point.to_lat_lon()[0],
-                                     reconstruction_time])
-
-        return recon_points
-
-
-    def spatial_binning(self, reconstruction_time=None, anchor_plate_id=0, binsize=10., axis=None):
-        """
-        spatial binning within regular long-lat boxes,
-        [cf Zeigler++ 2003 Lethaia; Cao++ 2018 Geol.Mag]
-
-        """
-
-        bin_edges=(np.arange(-180,180+binsize,binsize),
-                   np.arange(-90,90+binsize,binsize))
-
-        if reconstruction_time is None:
-            result = np.histogram2d(self._df[self._field_mapping['longitude_field']],
-                                    self._df[self._field_mapping['latitude_field']],
-                                    bin_edges)
-        else:
-            reconstructed_features = []
-            pygplates.reconstruct(self._point_features,
-                                  self.reconstruction_model.rotation_model,
-                                  reconstructed_features,
-                                  reconstruction_time,
-                                  anchor_plate_id=anchor_plate_id)
-
-            result = np.histogram2d([feature.get_reconstructed_geometry().to_lat_lon()[1] for feature in reconstructed_features],
-                                    [feature.get_reconstructed_geometry().to_lat_lon()[0] for feature in reconstructed_features],
-                                    bin_edges)
-
-
-        if axis == None:
-            return result,bin_edges
-        elif axis in ['latitude',0]:
-            return np.nansum(result[0]/result[0],axis=0),bin_edges[1]
-        elif axis in ['longitude',1]:
-            return np.nansum(result[0]/result[0],axis=1),bin_edges[0]
-
-
 class PointDistributionOnSphere(object):
 
     """
@@ -1892,10 +1828,9 @@ class PointDistributionOnSphere(object):
             return pygplates.MultiPointOnSphere(merge_points)
 
 
-    #TODO - move this to be a method of AgeCodedPointDataset
     def point_feature_heatmap(self, target_features, return_indices=False):
         """
-        Given a AgeCodedPointDataset class object, returns a heatmap showing the number
+        Given a set of target point features, returns a heatmap showing the number
         of points for which each point in the point distribution is the closest.
         Most useful where the point distribution is equal area.
         """
@@ -1967,7 +1902,7 @@ class GPlatesRaster(object):
         return point_z
 
     def sample_using_gmt(self, point_lons, point_lats, extrapolate=False):
-
+        """Sample raster values at lon/lat points using GMT grdtrack."""
         dataout = np.vstack((np.asarray(point_lons),np.asarray(point_lats))).T
         xyzfile = tempfile.NamedTemporaryFile()
         grdtrack_file = tempfile.NamedTemporaryFile()
@@ -1993,6 +1928,7 @@ class GPlatesRaster(object):
         return np.array(G)
 
     def sample_using_stripy(self, point_lons, point_lats, order=0):
+        """Sample raster values at lon/lat points using stripy spherical triangulation."""
         import stripy
 
         LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
@@ -2034,9 +1970,10 @@ class GPlatesRaster(object):
 
 
 class CrossSection(object):
+    """Great-circle cross-section through a raster with plate boundary intersection detection."""
 
     def __init__(self, target_raster, PtLons, PtLats):
-
+        """Initialise cross-section along a great-circle path through the given raster."""
         self.GreatCirclePoints,self.ProfilePoints,arc_distance = utils.paleogeography.create_profile_points(PtLons,PtLats)
         # create an array of distances along profile in km, starting at zero
 
@@ -2052,68 +1989,9 @@ class CrossSection(object):
         self.source_filename = target_raster.source_filename
 
     def plate_boundary_intersections(self, shared_boundary_sections):
-
+        """Find subduction and ridge boundary crossings along the cross-section path."""
         (self.subduction_intersections,
          self.ridge_intersections,
-         self.other_intersections) = utils.paleogeography.plate_boundary_intersections(self.cross_section_geometry,
-                                                                                       shared_boundary_sections,
-                                                                                       self.profileX_kms)
-
-
-
-
-# reconstructable datasets
-class litho1_scalar_coverage(object):
-
-    def __init__(self, distribution_type='healpix', N=32):
-        import litho1pt0 as litho
-        self.points = PointDistributionOnSphere(distribution_type,N)
-        self.litho = litho
-        self.layer_keys = litho.l1_layer_decode.items()
-        self.value_keys = litho.l1_data_decode.items()
-
-
-    def write_layer_depth_to_scalar_coverage(self, filename=None, layer_names='All'):
-
-        if layer_names == 'All':
-            layer_names = [name[0] for name in self.layer_keys]
-
-        scalar_coverages = {}
-        for layer_name in layer_names:
-
-            layerZ = litho.layer_depth(self.points.latitude, self.points.longitude, layer_name)
-            scalar_coverages[pygplates.ScalarType.create_gpml(layer_name)] = layerZ
-
-        ct_feature = pygplates.Feature()
-        ct_feature.set_geometry((self.points.multipoint,scalar_coverages))
-        ct_feature.set_name('litho1.0 layers')
-
-        if filename:
-            pygplates.FeatureCollection(ct_feature).write(filename)
-        else:
-            return ct_feature
-
-
-    def write_layer_thickness_to_scalar_coverage(self, filename=None, 
-                                                 top_layer_name='CRUST1-TOP', 
-                                                 bottom_layer_name='CRUST3-BOTTOM'):
-
-        #if layer_names == 'All':
-        #    layer_names = [name[0] for name in self.layer_keys]
-        top_layer_depth = litho.layer_depth(self.points.latitude, self.points.longitude, top_layer_name)
-        bottom_layer_depth = litho.layer_depth(self.points.latitude, self.points.longitude, bottom_layer_name)
-        
-        scalar_coverage = {}
-        #layer_name = 'THICKNESS.{:s}--{:s}'.format(top_layer_name, bottom_layer_name)
-        layer_name = 'CrustalThickness'
-        layerZ = bottom_layer_depth-top_layer_depth
-        scalar_coverage[pygplates.ScalarType.create_gpml(layer_name)] = layerZ
-
-        ct_feature = pygplates.Feature()
-        ct_feature.set_geometry((self.points.multipoint,scalar_coverage))
-        ct_feature.set_name('litho1.0 layer thickness, {:s} to {:s}'.format(top_layer_name, bottom_layer_name))
-        
-        if filename:
-            pygplates.FeatureCollection(ct_feature).write(filename)
-        else:
-            return ct_feature
+         self.other_intersections) = utils.spatial.plate_boundary_intersections(self.cross_section_geometry,
+                                                                                shared_boundary_sections,
+                                                                                self.profileX_kms)

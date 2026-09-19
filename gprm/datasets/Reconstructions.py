@@ -1,4 +1,6 @@
-'''
+"""
+Loaders for published plate tectonic reconstruction models.
+
 MIT License
 
 Copyright (c) 2017-2025 Simon Williams
@@ -20,7 +22,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 from pooch import os_cache as _os_cache
 from pooch import retrieve as _retrieve
@@ -111,7 +113,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
     elif model_case == 'SSL':
         reconstruction_model.add_rotation_model('{:s}/NLR_SLOW_CONTINENT_0Ma_1000Ma_SSL.rot'.format(dirname))
     else:
-        ValueError('Unrecognised model name {}'.format(model_case))
+        raise ValueError('Unrecognised model name {}'.format(model_case))
 
     return reconstruction_model
 
@@ -257,9 +259,16 @@ def fetch_Matthews2016(load=True):
         processor=_Unzip(extract_dir='Matthews2016'),
     )
 
+    dirname = None
     for fname in fnames:
         if _os.path.split(fname)[1] == 'License.txt':
             dirname = _os.path.split(fname)[0]
+    if dirname is None:
+        raise FileNotFoundError(
+            'The Matthews et al. (2016) archive did not contain the expected License.txt, so '
+            'the location of the model files could not be determined. The download may be '
+            'incomplete or the archive may have been repackaged upstream; clearing the gprm '
+            'cache (see gprm.datasets.cache_path()) and retrying is the usual fix.')
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Matthews++2016')
@@ -599,34 +608,6 @@ def fetch_TorsvikCocks2017(load=True, wrap_static_polygons=True):
     return reconstruction_model
 
 
-def fetch_vanHinsbergen(load=True):
-    '''
-    Load global reconstructions compiled from Douwe van Hinsbergen's work
-
-    NB CURRENTLY INCOMPLETE - NEED TO ESTABLISH A SET OF POLYGONS TO USE
-
-    '''
-    fnames = _retrieve(
-        url="http://www.geologist.nl/wp-content/uploads/2019/09/vanHinsbergen_GPlates_reconstructions.zip",
-        known_hash="sha256:7ed6319f11b4f4626c8211359cfeb8b454cb4381a81ee368fa11effbf06c1eeb",  
-        downloader=_HTTPDownloader(progressbar=True),
-        path=_os_cache('gprm'),
-        processor=_Unzip(extract_dir='vanHinsbergen'),
-    )
-
-    #dirname = _os.path.split(fnames[0])[0]
-    dirname = '{:s}/vanHinsbergen/'.format(fnames[0].split('vanHinsbergen')[0])
-
-    from gprm import ReconstructionModel as _ReconstructionModel
-    reconstruction_model = _ReconstructionModel('vanHinsbergen++2017')
-    reconstruction_model.add_rotation_model('{:s}/'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/.shp'.format(dirname))
-    reconstruction_model.add_static_polygons('{:s}/.shp'.format(dirname))
-    reconstruction_model.add_coastlines('{:s}/.gpml'.format(dirname))
-    
-    return reconstruction_model
-
-
 def fetch_Young2019(load=True):
     '''
     Load 0-410 Ma reconstruction from Young et al (2019) Geoscience Frontiers 
@@ -841,7 +822,7 @@ def fetch_Clennett(load=True, model_case='M2019'):
         return reconstruction_model 
 
     else:
-        ValueError('Unrecognised model name {}'.format(model_case))
+        raise ValueError('Unrecognised model name {}'.format(model_case))
 
     
     

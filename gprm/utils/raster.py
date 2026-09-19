@@ -1,4 +1,6 @@
-'''
+"""
+Raster grid I/O, resampling, and GMT-interop utilities.
+
 MIT License
 
 Copyright (c) 2017-2021 Simon Williams
@@ -20,10 +22,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 
 import os
 import math
+import warnings
 import numpy as np
 import pygplates
 from ptt.utils import points_in_polygons
@@ -38,7 +41,8 @@ from scipy.spatial import cKDTree
 
 import pandas as pd
 import xarray as xr
-import pygmt
+# pygmt is imported per-function rather than at module level: it costs ~1.7 s to
+# import, and most of this module does not need it.
 
 
 def xyzfile_to_spatial_tree_of_points(xyzfile):
@@ -204,6 +208,8 @@ def run_grid_pnp(recon_time, points, spatial_tree_of_uniform_recon_points, polyg
 
 def reconstruct_raster(raster, static_polygons, rotation_model, time_from, time_to,
                        grid_sampling=1., anchor_plate_id=0, sampling_method='gmt', return_type='xarray'):
+    from ._optional import require
+    pygmt = require('pygmt', 'grid sampling and interpolation')
 
     grid_longitudes, grid_latitudes = np.meshgrid(np.arange(-180.,180.0001,grid_sampling), np.arange(-90.,90.0001,grid_sampling))
     grid_longitudes = grid_longitudes.flatten()
@@ -250,10 +256,27 @@ def xyz2grd(point_lons,point_lats,point_zvals,grid_lons,grid_lats):
     """
     Taking as input lists/flat arrays of longitudes, latitudes, and z values - already on a regular
     grid, convert to a 2D array containing the same values (suitable to be saved as netcdf for example)
+
+    .. warning::
+       The nearest-neighbour search here is Euclidean in raw lon/lat degrees, not spherical.
+       One degree of longitude is treated as equal to one degree of latitude at every
+       latitude, and there is no wrapping at the antimeridian, so results degrade towards the
+       poles and either side of +/-180. This is intended for points that are already on the
+       same regular grid as the output, where each point falls in its own cell and the
+       distortion does not change the answer. Do not use it to interpolate scattered data.
+       For a spherically correct nearest-neighbour, see ``gprm.utils.sphere.sampleOnSphere``
+       or the KD-tree engine in ``gprm.utils.proximity``.
     """
     # https://stackoverflow.com/questions/30655749/how-to-set-a-maximum-distance-between-points-for-interpolation-when-using-scipy
-    
+
     # TODO change this to the pygmt implementation?
+
+    warnings.warn(
+        'xyz2grd matches points to grid cells using Euclidean distance in lon/lat degrees, '
+        'which is not spherically correct away from the equator and does not wrap the '
+        'antimeridian. This is safe for points already on the output grid; for scattered '
+        'data use gprm.utils.sphere.sampleOnSphere instead.',
+        stacklevel=2)
 
     if grid_lons.ndim == 1:
         grid_lons, grid_lats = np.meshgrid(grid_lons, grid_lats)
@@ -287,6 +310,8 @@ def to_anchor_plate(grid, reconstruction_model, reconstruction_time,
     Optionally, specify a new region and grid sampling (default is to take the same region
     and grid sampling as the input)
     """
+    from ._optional import require
+    pygmt = require('pygmt', 'grid sampling and interpolation')
 
     # should be a better way to do this (ie pass the gridfile to grdtrack directly)
     if not isinstance(grid, xr.core.dataarray.DataArray):
