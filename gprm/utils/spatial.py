@@ -1,4 +1,6 @@
 """Spatial analysis utilities: polygon rasterisation, plate partitioning, and topology queries."""
+import warnings
+
 import pygplates
 from ptt.utils import points_in_polygons
 from ptt.utils import points_spatial_tree
@@ -26,6 +28,13 @@ def merge_polygons(polygons, rotation_model,
     :param return_raster: If True, return the binary numpy grid instead of polygon features (default False).
     :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
     :returns: List of pygplates features, or a 2-D numpy binary array if return_raster=True; None if filename is given.
+
+    .. warning::
+       When ``return_raster`` is False the merged outlines are traced with an image contouring
+       algorithm on a flat lon/lat grid, which is padded with zeros and clamped at the grid
+       edges. Polygons that cross the antimeridian are therefore cut in two at +/-180, and
+       polygons covering a pole are truncated there. ``return_raster=True`` returns the
+       point-in-polygon mask directly and is unaffected.
     """
     from skimage import measure
 
@@ -42,7 +51,14 @@ def merge_polygons(polygons, rotation_model,
         return bi
     
     else:
-        # To handle edge effects, pad grid before making contour polygons  
+        warnings.warn(
+            'merge_polygons traces outlines on a flat lon/lat grid padded with zeros, so '
+            'polygons crossing the antimeridian are split at +/-180 and polar polygons are '
+            'truncated. Pass return_raster=True to get the point-in-polygon mask instead, '
+            'which does not have this limitation.',
+            stacklevel=2)
+
+        # To handle edge effects, pad grid before making contour polygons
         ## --- start
         pad_hor = np.zeros((1,bi.shape[1]))
         pad_ver = np.zeros((bi.shape[0]+2,1))

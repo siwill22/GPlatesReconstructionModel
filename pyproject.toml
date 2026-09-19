@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gprm"
+version = "1.0.0"
+description = "Tools for building and working with GPlates plate tectonic reconstruction models"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    { name = "Simon Williams", email = "siwill22@gmail.com" },
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy",
+    "scipy",  # cKDTree backs the great-circle proximity engine in utils.proximity
+    "pandas",
+    "geopandas",
+    "shapely",
+    "matplotlib",
+    "xarray",
+    "pygplates",
+    "PlateTectonicTools",
+    "pooch",
+    "rasterio",
+    "requests",
+    "tqdm",
+    "pyyaml",
+    "setuptools<80",  # PlateTectonicTools imports pkg_resources, removed in setuptools 80+
+    "cartopy",  # PlateTectonicTools imports this unconditionally at module level
+]
+
+[project.urls]
+Homepage = "https://github.com/siwill22/GPlatesReconstructionModel"
+
+[project.optional-dependencies]
+# pygmt is optional because it needs the GMT command-line library, which pip cannot install.
+# Nothing on the data-preparation or analysis path imports it -- fetching models, assigning
+# plate ids, reconstructing, plate snapshots and all proximity calculations work without it,
+# so a headless machine does not need GMT at all.
+viz = ["pygmt", "basemap"]
+geophysics = ["pyshtools", "litho1pt0", "pmagpy"]
+# xarray-spatial is now needed only by utils.proximity.generate_shadows (viewshed); the
+# proximity/distance functions use scipy's cKDTree directly. datashader is no longer used.
+spatial = ["stripy", "astropy-healpix", "scikit-image", "scikit-learn", "xarray-spatial"]
+all = ["gprm[viz,geophysics,spatial]"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Network tests are opt-in: run them with `pytest -m network`. A failure there means an
+# upstream dataset URL has rotted, not that gprm is broken.
+addopts = "-m 'not network'"
+markers = [
+    "network: requires internet access to reach published dataset URLs",
+]
+
+[tool.setuptools.packages.find]
+include = ["gprm*"]
+
+[tool.setuptools.package-data]
+gprm = ["Data/*.gpmlz", "Data/*.gpkg"]

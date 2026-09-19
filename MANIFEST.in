@@ -1,1 +1,2 @@
 recursive-include gprm/Data *
+include LICENSE README.md

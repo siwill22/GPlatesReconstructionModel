@@ -2,6 +2,10 @@
 .ipynb_checkpoints/*
 *checkpoint*
 
+build/
+dist/
+*.egg-info/
+
 request.gpmlz
 request.rot
 gmt.conf

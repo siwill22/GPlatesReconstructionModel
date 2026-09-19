@@ -96,7 +96,7 @@ def fetch_Paleomap(resolution='01d'):
         return ordered_raster_dict
 
     else:
-        ValueError('Spacing for source grids must be either 01d (for 1 degree version) or 06m (for 6 minute version)')
+        raise ValueError('Spacing for source grids must be either 01d (for 1 degree version) or 06m (for 6 minute version)')
 
 
 def fetch_Pohl2022(return_xarray=False, value=None):

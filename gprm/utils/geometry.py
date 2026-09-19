@@ -1,7 +1,8 @@
 """Geometric operations on GPlates and Shapely features: reconstruction, distance queries, and dateline wrapping."""
 import pygplates
 import numpy as np
-from shapely.geometry import Point, LineString, Polygon
+from shapely.geometry import (Point, LineString, Polygon,
+                              MultiPoint, MultiLineString, MultiPolygon)
 import geopandas as _gpd
 import sys
 
@@ -17,7 +18,9 @@ def apply_reconstruction(feature, rotation_model,
     :param reconstruction_plate_id_field: Column name containing the plate ID (default 'PLATEID1').
     :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
     :param reverse: If True, apply the inverse rotation (un-reconstruct back to present day).
-    :returns: Reconstructed Shapely Point, LineString, or Polygon.
+    :returns: Reconstructed Shapely geometry of the same type as the input, including the
+        multipart types.
+    :raises TypeError: for a geometry type that cannot be rotated, rather than returning None.
     """
 
     rotation_pole = rotation_model.get_rotation(
@@ -27,19 +30,46 @@ def apply_reconstruction(feature, rotation_model,
 
     if reverse:
         rotation_pole = rotation_pole.get_inverse()
-    
-    if feature.geometry.geom_type=='Point':
-        rp = rotation_pole * pygplates.PointOnSphere(feature.geometry.y, feature.geometry.x)
-        return Point(rp.to_lat_lon()[::-1])
 
-    elif feature.geometry.geom_type in ['LineString']:
-        rp = rotation_pole * pygplates.PolylineOnSphere([(lat,lon) for lat,lon in zip(feature.geometry.xy[1], 
-                                                                                      feature.geometry.xy[0])])
-        return LineString([tuple(point.to_lat_lon()[::-1]) for point in rp.get_points()])
-    elif feature.geometry.geom_type in ['Polygon']:
-        rp = rotation_pole * pygplates.PolygonOnSphere([(lat,lon) for lat,lon in zip(feature.geometry.exterior.coords.xy[1], 
-                                                                                     feature.geometry.exterior.coords.xy[0])])
-        return Polygon([tuple(point.to_lat_lon()[::-1]) for point in rp.get_points()])
+    return _rotate_geometry(feature.geometry, rotation_pole)
+
+
+def _rotate_geometry(geometry, rotation_pole):
+    """Apply a finite rotation to a single Shapely geometry, of any supported type.
+
+    Multipart geometries are rotated part by part. They are common in real shapefiles, and
+    were previously unhandled: the dispatch fell off the end of an if/elif chain and returned
+    None, silently emptying the geometry column rather than raising.
+    """
+    geom_type = geometry.geom_type
+
+    if geom_type == 'Point':
+        rotated = rotation_pole * pygplates.PointOnSphere(geometry.y, geometry.x)
+        return Point(rotated.to_lat_lon()[::-1])
+
+    elif geom_type == 'LineString':
+        rotated = rotation_pole * pygplates.PolylineOnSphere(
+            [(lat, lon) for lat, lon in zip(geometry.xy[1], geometry.xy[0])])
+        return LineString([tuple(point.to_lat_lon()[::-1]) for point in rotated.get_points()])
+
+    elif geom_type == 'Polygon':
+        rotated = rotation_pole * pygplates.PolygonOnSphere(
+            [(lat, lon) for lat, lon in zip(geometry.exterior.coords.xy[1],
+                                            geometry.exterior.coords.xy[0])])
+        return Polygon([tuple(point.to_lat_lon()[::-1]) for point in rotated.get_points()])
+
+    elif geom_type == 'MultiPoint':
+        return MultiPoint([_rotate_geometry(part, rotation_pole) for part in geometry.geoms])
+
+    elif geom_type == 'MultiLineString':
+        return MultiLineString([_rotate_geometry(part, rotation_pole) for part in geometry.geoms])
+
+    elif geom_type == 'MultiPolygon':
+        return MultiPolygon([_rotate_geometry(part, rotation_pole) for part in geometry.geoms])
+
+    raise TypeError(
+        "Cannot reconstruct geometry of type '{:s}'. Supported types are Point, LineString, "
+        "Polygon and their multipart equivalents.".format(geom_type))
 
 
 def apply_nearest_feature(point, lookup_dict, geometry_field='geometry', age_field='age'):
@@ -98,7 +128,16 @@ def distance_between_reconstructed_points_and_features(reconstructed_point_featu
     :param reconstructed_point_features: List of pygplates ReconstructedFeatureGeometry objects (point type).
     :param features: Iterable of pygplates features to measure distance to.
     :returns: Tuple (lons, lats, distances_km) — three lists of floats, one value per input point.
+        A distance is NaN where no feature geometry was found to measure against.
+    :raises ValueError: if ``features`` is empty, since every distance would be undefined.
     """
+    features = list(features)
+    if not features:
+        raise ValueError(
+            'No features were given to measure distance to, so every distance would be '
+            'undefined. If these came from PlateSnapshot.get_boundary_features(), check that '
+            'boundary_types names at least one boundary type present at this reconstruction time.')
+
     reconstructed_lat = []
     reconstructed_lon = []
     distances = []
@@ -108,7 +147,8 @@ def distance_between_reconstructed_points_and_features(reconstructed_point_featu
 
         dist = nearest_feature(point.get_reconstructed_geometry(),
                                features)
-        distances.append(dist*pygplates.Earth.mean_radius_in_kms)
+        # nearest_feature returns None when none of the features carry a geometry
+        distances.append(np.nan if dist is None else dist*pygplates.Earth.mean_radius_in_kms)
 
     return reconstructed_lon, reconstructed_lat, distances
 
@@ -118,16 +158,25 @@ def wrap_polyline_feature(polyline_feature, date_line_wrapper=None):
 
     :param polyline_feature: GeoDataFrame row (pandas Series) with a Shapely LineString geometry.
     :param date_line_wrapper: pygplates DateLineWrapper instance; created with central meridian 0 if not provided.
-    :returns: Shapely LineString (only the first segment after splitting is returned).
+    :returns: Shapely LineString, or MultiLineString if the dateline split the input into
+        more than one piece.
     """
     if not date_line_wrapper:
         date_line_wrapper = pygplates.DateLineWrapper(0.0)
 
     polyline = pygplates.PolylineOnSphere(
-        [(lat,lon) for lat,lon in zip(polyline_feature.geometry.xy[1], 
+        [(lat,lon) for lat,lon in zip(polyline_feature.geometry.xy[1],
                                       polyline_feature.geometry.xy[0])])
     wrapped_polyline = date_line_wrapper.wrap(polyline)
-    return LineString([tuple(point.to_lat_lon()[::-1]) for point in wrapped_polyline[0].get_points()])
+
+    # A line crossing the dateline comes back as several pieces. Returning only the first
+    # would silently discard the rest of the line.
+    segments = [LineString([tuple(point.to_lat_lon()[::-1]) for point in segment.get_points()])
+                for segment in wrapped_polyline]
+
+    if len(segments) == 1:
+        return segments[0]
+    return MultiLineString(segments)
 
 
 def wrap_polygon_feature(polygon_feature, date_line_wrapper=None):
@@ -135,18 +184,25 @@ def wrap_polygon_feature(polygon_feature, date_line_wrapper=None):
 
     :param polygon_feature: GeoDataFrame row (pandas Series) with a Shapely Polygon geometry.
     :param date_line_wrapper: pygplates DateLineWrapper instance; created with central meridian 0 if not provided.
-    :returns: Shapely Polygon (only the first segment is returned; a warning is printed if the polygon is split).
+    :returns: Shapely Polygon, or MultiPolygon if the dateline split the input into more than
+        one piece.
     """
     if not date_line_wrapper:
         date_line_wrapper = pygplates.DateLineWrapper(0.0)
 
     polygon = pygplates.PolygonOnSphere(
-        [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1], 
+        [(lat,lon) for lat,lon in zip(polygon_feature.geometry.exterior.coords.xy[1],
                                       polygon_feature.geometry.exterior.coords.xy[0])])
     wrapped_polygon = date_line_wrapper.wrap(polygon)
-    if len(wrapped_polygon)>1:
-        print("Warning: polygon was split by dateline wrapping")
-    return Polygon([tuple(point.to_lat_lon()[::-1]) for point in wrapped_polygon[0].get_points()])
+
+    # A polygon straddling the dateline comes back as several pieces. Returning only the
+    # first would silently discard the rest of the polygon.
+    parts = [Polygon([tuple(point.to_lat_lon()[::-1]) for point in part.get_points()])
+             for part in wrapped_polygon]
+
+    if len(parts) == 1:
+        return parts[0]
+    return MultiPolygon(parts)
 
 
 def wrap_polygon_features(polygon_features, date_line_wrapper=None):

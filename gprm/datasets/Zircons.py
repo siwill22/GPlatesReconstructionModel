@@ -212,6 +212,10 @@ def loadDB(version=2021):
 
         return gdf
 
+    else:
+        raise ValueError(
+            'Unrecognised version {}. Valid versions are 2018, 2019, 2021, 2024 and 2026.'.format(version))
+
 
 def load_Hf():
     # Supplementary table 5 from Puetz et al, 2021, ESR
@@ -308,6 +312,10 @@ def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018,oldest_o
 
         IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
+    else:
+        raise ValueError(
+            'Unrecognised version {}. Valid versions are 2018, 2019 and 2026.'.format(version))
+
     return IgneousZircons
 
 
@@ -364,6 +372,9 @@ def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
 
         SedimentaryZircons = loadDB(version=2026)
 
+    else:
+        raise ValueError(
+            'Unrecognised version {}. Valid versions are 2018, 2019, 2021, 2024 and 2026.'.format(version))
 
     return SedimentaryZircons
 

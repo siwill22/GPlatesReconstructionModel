@@ -1,7 +1,8 @@
 """Molchan test and space-time distance analysis for alarm-based forecast evaluation."""
 import numpy as np
 import pandas as pd
-import pygmt
+from ._optional import require
+pygmt = require('pygmt', 'the molchan plotting utilities')
 from scipy.interpolate import RegularGridInterpolator
 from .proximity import contour_proximity, polyline_proximity, polygons_buffer, points_proximity, boundary_proximity, reconstruct_and_rasterize_polygons
 from .create_gpml import gpml2gdf

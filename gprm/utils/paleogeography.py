@@ -2,6 +2,7 @@
 import pygplates
 import glob
 import tempfile
+import subprocess
 import numpy as np
 import os
 import sys
@@ -112,17 +113,27 @@ def paleogeography2topography_xyz(pg_points,topo_dict,sampling,
         return Xr,Yr,Zr
     else:
         tmp = np.vstack((Xr,Yr,Zr)).T
-        tmp_asc = tempfile.mktemp(suffix='.asc')
-        np.savetxt(tmp_asc, tmp, fmt='%0.4f,%0.4f,%0.4f')
-        os.system('gmt xyz2grd %s -Rd -I%0.6f -G%s' % (tmp_asc, sampling, grdfile))
-        os.remove(tmp_asc)
+        # NamedTemporaryFile rather than mktemp, which is deprecated for a race condition
+        # between generating the name and creating the file.
+        with tempfile.NamedTemporaryFile(suffix='.asc', delete=False) as tmp_file:
+            tmp_asc = tmp_file.name
+        try:
+            np.savetxt(tmp_asc, tmp, fmt='%0.4f,%0.4f,%0.4f')
+            # Argument list rather than a shell string: grdfile is caller-supplied, and a
+            # path containing a space or a shell metacharacter would otherwise be split or
+            # interpreted by the shell.
+            subprocess.run(['gmt', 'xyz2grd', tmp_asc, '-Rd',
+                            '-I%0.6f' % sampling, '-G%s' % grdfile], check=True)
+        finally:
+            os.remove(tmp_asc)
 
 
 
 def smooth_topography_grid(grdfile,filt_grdfile,wavelength):
     # smooths a GMT grid using Gaussian filter of specified size (in kms)
 
-    os.system('gmt grdfilter %s -G%s -Fg%0.2f -D4 -Vl' % (grdfile,filt_grdfile,wavelength))
+    subprocess.run(['gmt', 'grdfilter', grdfile, '-G%s' % filt_grdfile,
+                    '-Fg%0.2f' % wavelength, '-D4', '-Vl'], check=True)
 
 
 

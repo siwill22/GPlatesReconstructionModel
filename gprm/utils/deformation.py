@@ -29,7 +29,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 import xarray as xr
-import pygmt
+# pygmt is imported per-function rather than at module level: it costs ~1.7 s to
+# import, and most of this module does not need it.
 from .create_gpml import geometries_to_geodataframe, geodataframe_to_geometries
 from shapely.geometry import LineString, Polygon
 from .raster import xyz2grd
@@ -124,6 +125,8 @@ def create_graticule(graticule_spacing=1, xlims=[-180,180], ylims=[-90,90],
 def get_crustal_thickness_points(points, grid=None, 
                                  top_name='CRUST1-TOP', 
                                  bottom_name='CRUST3-BOTTOM'):
+    from ._optional import require
+    pygmt = require('pygmt', 'sampling a grid at points')
     
     # if no grid is provided, we take the layer thickness from litho1.0
     if not grid:
@@ -276,6 +279,8 @@ def raster_topological_reconstruction(grid, topological_model, reconstruction_ti
     of the output raster (Which would work for global grids).
     Optionally, a different region and sampling for the output grid can be specified.
     """
+    from ._optional import require
+    pygmt = require('pygmt', 'sampling a grid at points')
     coord_keys = [key for key in grid.coords.keys()]
 
     if 'lon' in coord_keys[0].lower():

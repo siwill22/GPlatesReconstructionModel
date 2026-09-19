@@ -50,7 +50,6 @@ The links below provide documentation for the different classes in **gprm**
    GPlatesReconstructionModel_VelocityField
    GPlatesReconstructionModel_SubductionConvergence
    GPlatesReconstructionModel_PointDistributionOnSphere
-   GPlatesReconstructionModel_AgeCodedPointDataset
 
 
 
