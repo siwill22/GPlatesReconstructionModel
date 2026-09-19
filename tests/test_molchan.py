@@ -342,3 +342,52 @@ def test_points_off_the_permissible_region_count_as_misses(rng):
     # strictly decreasing: the previous implementation moved these *up* towards +0.5,
     # so a model that could not score most of its data scored better for it
     assert np.all(np.diff(skills) < 0), skills
+
+
+# ------------------------------------------------ raster lookup by sample age
+
+def test_age_not_on_the_time_steps_is_reported_clearly(alarm_grid):
+    """Previously a bare KeyError from a raw dict lookup, with nothing to say which age
+    was at fault or what the sequence covered."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    from gprm.utils.molchan import space_time_distances
+
+    raster_dict = {0.0: alarm_grid, 10.0: alarm_grid, 20.0: alarm_grid}
+    gdf = gpd.GeoDataFrame({'age': [14.3]}, geometry=[Point(0.0, 0.0)], crs='EPSG:4326')
+
+    with pytest.raises(ValueError, match='14.3'):
+        space_time_distances(raster_dict, gdf)
+
+
+def test_ages_on_the_time_steps_are_accepted(alarm_grid):
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    from gprm.utils.molchan import space_time_distances
+
+    raster_dict = {0.0: alarm_grid, 10.0: alarm_grid, 20.0: alarm_grid}
+    gdf = gpd.GeoDataFrame({'age': [10.0, 20.0]},
+                           geometry=[Point(0.0, 0.0), Point(30.0, 10.0)], crs='EPSG:4326')
+
+    result = space_time_distances(raster_dict, gdf)
+
+    assert list(result.columns) == ['distance', 'area_fraction']
+    assert len(result) == 2
+    assert np.all(np.isfinite(result['distance']))
+
+
+def test_floating_point_noise_in_an_age_still_matches(alarm_grid):
+    """An age of 10.0000000001, produced by rounding arithmetic upstream, should not be
+    treated as a missing time step."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    from gprm.utils.molchan import space_time_distances
+
+    raster_dict = {0.0: alarm_grid, 10.0: alarm_grid}
+    gdf = gpd.GeoDataFrame({'age': [10.0 + 1e-10]}, geometry=[Point(0.0, 0.0)],
+                           crs='EPSG:4326')
+
+    assert len(space_time_distances(raster_dict, gdf)) == 1

@@ -40,6 +40,20 @@ crudest form of this, and nothing here controls the rest.
 The score also carries no confidence interval. The usual one assumes independent events,
 which zircon grains from a single sample, or deposits from a single district, are not.
 
+Two further choices are made here rather than by the caller, and neither is announced by
+the result:
+
+* The alarm is *distance to the nearest* target, so a sample 500 km from three separate
+  trenches scores exactly as one 500 km from a single trench. If the hypothesis concerns
+  the amount of subduction rather than the presence of it, a density-weighted alarm would
+  be the right one and this is not it.
+* Reconstructed sample positions are treated as exact. Palaeo-position uncertainty at
+  100+ Ma is of the same order as the distances being tested, and it grows with age, so
+  the scores for young and old samples are not equally well determined. The effect is to
+  blur association, biasing skill towards zero, by an amount that varies across the
+  dataset. Quantifying it would take error propagation through the rotation model, which
+  nothing here does.
+
 MIT License
 
 Copyright (c) 2017-2021 Simon Williams
@@ -201,6 +215,33 @@ def _miss_rate(distances, contours):
     # divided by every event, not only the scoreable ones, so that events the alarm
     # cannot reach count against it
     return 1.0 - captured / distances.size
+
+
+def _matching_raster_time(raster_dict, age, age_field_name='age'):
+    """Find the key of raster_dict matching a sample's age.
+
+    Exact matches are used as they are; a key differing only by floating-point noise is
+    accepted. Anything else raises, rather than snapping silently, because an age that
+    misses the sequence usually means the ages were never rounded to the time step or are
+    in the wrong units, and quietly moving the sample would hide that.
+    """
+    if age in raster_dict:
+        return age
+
+    times = np.asarray(sorted(raster_dict.keys()), dtype=float)
+    if times.size == 0:
+        raise ValueError('raster_dict is empty, so there is nothing to sample.')
+
+    nearest = times[np.abs(times - float(age)).argmin()]
+    if np.isclose(nearest, float(age), rtol=0.0, atol=1e-6):
+        return next(k for k in raster_dict if np.isclose(float(k), nearest,
+                                                         rtol=0.0, atol=1e-6))
+
+    raise ValueError(
+        "No raster in the sequence for {} = {}. The nearest is {}, and the sequence runs "
+        "{} to {}. Round the ages onto the sequence's time steps before calling this, the "
+        "way sample_distance_analysis does.".format(
+            age_field_name, age, nearest, times.min(), times.max()))
 
 
 def _sample_distances(grid, points, interpolater, buffer_radius=1):
@@ -413,12 +454,18 @@ def space_time_distances(raster_dict, gdf, age_field_name='age',
     from a raster sequence of raster grids
     
     The input gdf is assumed to have reconstructed coordinates in its geometry
+
+    Each sample is looked up in ``raster_dict`` by its age, so the ages must already sit on
+    the sequence's time steps. Round them yourself, as ``sample_distance_analysis`` does,
+    rather than having it happen silently here; an age matching no raster raises an error
+    naming the nearest one available, instead of a bare KeyError.
     """
-    
+
     results = []
 
     for i,row in gdf.iterrows():
-        reconstruction_time = row[age_field_name]
+        reconstruction_time = _matching_raster_time(raster_dict, row[age_field_name],
+                                                    age_field_name)
         result = molchan_point(raster_dict[reconstruction_time],
                                pd.DataFrame(data={'Longitude': [row.geometry.x], 
                                                   'Latitude': [row.geometry.y]}),
@@ -602,8 +649,32 @@ def generate_distance_raster_sequence(target_features,
 
 def generate_masked_distance_raster_sequence(
         reconstruction_model, boundary_lookup,
-        reconstruction_times, sampling=DEFAULT_GEOGRAPHIC_SAMPLING, 
+        reconstruction_times, sampling=DEFAULT_GEOGRAPHIC_SAMPLING,
         polygon_buffer_distance=None):
+    """Distance-to-target rasters restricted to the continents at each reconstruction time.
+
+    Restricting the permissible region is what keeps the Molchan null honest: without it,
+    the alarm is compared against the whole sphere, most of which is ocean where a
+    continental sample could never have been collected, and almost any continental dataset
+    scores well for that reason alone.
+
+    Two things to be aware of when reporting a result built on this:
+
+    * **The domain moves.** Continents grow, drift and change area through time, so the
+      permissible region is different at every step and the alarm fraction tau is pooled
+      over a time-varying domain. That is the intended behaviour -- tau is a space-time
+      area fraction -- but it means tau is not a fraction of any one fixed map, and two
+      runs over different time ranges are not directly comparable.
+    * **A continental mask is the crudest possible control for collection bias.** It
+      removes the ocean and nothing else. Outcrop, accessibility, national survey coverage
+      and publication history are all spatially structured and none of them are addressed
+      here, so a positive result remains evidence of association rather than of a tectonic
+      relationship.
+
+    :param polygon_buffer_distance: if given, the continental mask is dilated by this
+        distance in metres, so that samples slightly off the reconstructed polygon edge
+        remain scoreable.
+    """
     # Make two raster sequences, where:
     # 1. Mask rasters where the pixels lying within continents (from those lying outside, therefore unreconstructable)
     # 2. Distance rasters from subduction zone geometries
