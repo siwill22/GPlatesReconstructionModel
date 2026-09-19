@@ -314,3 +314,69 @@ def test_to_gplates_rejects_a_path_that_does_not_exist(reconstruction_model):
 
     with pytest.raises(FileNotFoundError):
         reconstruction_model.to_GPlates(path_to_gplates='/no/such/gplates')
+
+
+# ----------------------------------------------------------- anchor plate id
+
+def test_anchor_plate_id_is_honoured_by_reconstruct_to_time_of_appearance(
+        reconstruction_model, sample_points):
+    """The argument was in the signature and the docstring, and was never passed through
+    to the rotation, so every GeoDataFrame result came back in the plate 0 frame however
+    it was called. The FeatureCollection branch did honour it, so the two disagreed."""
+    gdf = sample_points.copy()
+    gdf['PLATEID1'] = 801
+    gdf['age'] = 100.0
+
+    in_frame_000 = reconstruction_model.reconstruct_to_time_of_appearance(
+        gdf.copy(), ReconstructTime='age', anchor_plate_id=0)
+    in_frame_701 = reconstruction_model.reconstruct_to_time_of_appearance(
+        gdf.copy(), ReconstructTime='age', anchor_plate_id=701)
+
+    moved = [not a.equals(b) for a, b in zip(in_frame_000.geometry, in_frame_701.geometry)]
+    assert all(moved)
+
+
+def test_anchored_result_matches_pygplates_reconstruct(reconstruction_model, sample_points):
+    """The anchored rotation must be the one pygplates itself applies, not merely different
+    from the unanchored one."""
+    import pygplates
+
+    gdf = sample_points.copy()
+    gdf['PLATEID1'] = 801
+    gdf['age'] = 100.0
+
+    ours = reconstruction_model.reconstruct_to_time_of_appearance(
+        gdf.copy(), ReconstructTime='age', anchor_plate_id=701)
+
+    features = []
+    for point in gdf.geometry:
+        feature = pygplates.Feature()
+        feature.set_geometry(pygplates.PointOnSphere(point.y, point.x))
+        feature.set_reconstruction_plate_id(801)
+        feature.set_valid_time(600.0, -999.0)
+        features.append(feature)
+    reconstructed = []
+    pygplates.reconstruct(features, reconstruction_model.rotation_model, reconstructed,
+                          100.0, anchor_plate_id=701)
+
+    for mine, theirs in zip(ours.geometry, reconstructed):
+        lat, lon = theirs.get_reconstructed_geometry().to_lat_lon()
+        assert mine.y == pytest.approx(lat, abs=1e-9)
+        assert mine.x == pytest.approx(lon, abs=1e-9)
+
+
+def test_anchor_zero_matches_reconstruct_at_the_same_age(reconstruction_model, sample_points):
+    """reconstruct_to_time_of_appearance with a constant age column must agree with
+    reconstruct() at that age. Both now take the pygplates convention, in which the plate's
+    present-day rotation is not assumed to be the identity."""
+    gdf = sample_points.copy()
+    gdf['PLATEID1'] = 701
+    gdf['age'] = 100.0
+
+    by_age_column = reconstruction_model.reconstruct_to_time_of_appearance(
+        gdf.copy(), ReconstructTime='age')
+    at_fixed_time = reconstruction_model.reconstruct(gdf.copy(), 100.0)
+
+    for a, b in zip(by_age_column.geometry, at_fixed_time.geometry):
+        assert a.x == pytest.approx(b.x, abs=1e-9)
+        assert a.y == pytest.approx(b.y, abs=1e-9)

@@ -588,8 +588,16 @@ class ReconstructionModel(object):
         :param ReconstructTime: How to determine each feature's reconstruction age: None uses the feature's
             appearance time (FROMAGE); 'MidTime' uses the midpoint of valid time; any other string is
             treated as a column/attribute name containing the age in Ma.
-        :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
+        :param anchor_plate_id: Plate ID held fixed, i.e. the reference frame the reconstructed
+            coordinates are expressed in (default 0). Applies to both the FeatureCollection and
+            the GeoDataFrame input; the GeoDataFrame branch previously accepted this argument
+            and then ignored it, so every result came back in the plate 0 frame.
         :returns: List of reconstructed pygplates features, or a GeoDataFrame with updated geometries.
+
+        Input coordinates are taken to be present-day, and the rotation applied is the one
+        ``pygplates.reconstruct`` applies -- the total reconstruction pole at the target age,
+        without assuming the plate's present-day rotation is the identity. Results therefore
+        agree exactly with ``ReconstructionModel.reconstruct`` at the same age.
         """
         if isinstance(features, pygplates.FeatureCollection):
 
@@ -666,7 +674,10 @@ class ReconstructionModel(object):
 
             # TODO enable geometry types other than point
             rgeometry = features.apply(lambda x: apply_reconstruction(x,
-                                       self.rotation_model, reconstruction_time_field=ReconstructTime),
+                                       self.rotation_model,
+                                       reconstruction_time_field=ReconstructTime,
+                                       reconstruction_plate_id_field='PLATEID1',
+                                       anchor_plate_id=anchor_plate_id),
                                        axis=1)
 
             # TODO allow for geometry to be returned as an extra field
