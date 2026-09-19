@@ -285,6 +285,9 @@ def get_merged_cob_terrane_raster(COBterrane_file, rotation_model, reconstructio
     :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
     :returns: 2-D numpy array (1 = inside terrane, 0 = outside).
     """
+    if method not in ('pygplates', 'rasterio'):
+        raise ValueError(
+            "Unknown method {!r}. Choose one of: 'pygplates', 'rasterio'.".format(method))
 
     if method == 'pygplates':
         polygon_features = pygplates.FeatureCollection(COBterrane_file)

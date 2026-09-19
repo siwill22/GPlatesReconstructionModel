@@ -12,7 +12,6 @@ _INSTALL_HINT = {
     'pygmt': ('viz', 'pygmt also needs the GMT command-line library, which pip cannot install '
                      'for you: `conda install -c conda-forge gmt`, Homebrew\'s `gmt`, or your '
                      'system package manager'),
-    'xrspatial': ('spatial', None),
     'stripy': ('spatial', None),
     'litho1pt0': ('geophysics', None),
     'pmagpy': ('geophysics', None),

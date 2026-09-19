@@ -211,6 +211,11 @@ def reconstruct_raster(raster, static_polygons, rotation_model, time_from, time_
     from ._optional import require
     pygmt = require('pygmt', 'grid sampling and interpolation')
 
+    if sampling_method not in ('scipy', 'gmt', 'stripy'):
+        raise ValueError(
+            "Unknown sampling_method {!r}. Choose one of: 'scipy', 'gmt', 'stripy'. "
+            "(sampling_method is ignored when raster is an xarray DataArray.)".format(sampling_method))
+
     grid_longitudes, grid_latitudes = np.meshgrid(np.arange(-180.,180.0001,grid_sampling), np.arange(-90.,90.0001,grid_sampling))
     grid_longitudes = grid_longitudes.flatten()
     grid_latitudes = grid_latitudes.flatten()

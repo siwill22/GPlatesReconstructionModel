@@ -25,7 +25,7 @@ SOFTWARE.
 """
 
 from pooch import os_cache as _os_cache
-from pooch import retrieve as _retrieve
+from ._fetch import retrieve as _retrieve
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Untar as _Untar
 from pooch import Unzip as _Unzip

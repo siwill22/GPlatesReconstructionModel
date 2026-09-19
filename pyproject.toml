@@ -50,9 +50,10 @@ Homepage = "https://github.com/siwill22/GPlatesReconstructionModel"
 # so a headless machine does not need GMT at all.
 viz = ["pygmt", "basemap"]
 geophysics = ["pyshtools", "litho1pt0", "pmagpy"]
-# xarray-spatial is now needed only by utils.proximity.generate_shadows (viewshed); the
-# proximity/distance functions use scipy's cKDTree directly. datashader is no longer used.
-spatial = ["stripy", "astropy-healpix", "scikit-image", "scikit-learn", "xarray-spatial"]
+# xarray-spatial's only caller, utils.proximity.generate_shadows, has been removed (it never
+# returned a value): the proximity/distance functions use scipy's cKDTree directly, and
+# neither xarray-spatial nor datashader is imported anywhere now.
+spatial = ["stripy", "astropy-healpix", "scikit-image", "scikit-learn"]
 all = ["gprm[viz,geophysics,spatial]"]
 
 [tool.pytest.ini_options]

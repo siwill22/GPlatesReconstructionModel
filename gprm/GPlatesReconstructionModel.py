@@ -513,11 +513,22 @@ class ReconstructionModel(object):
                                             temporary_file_r.name, reconstruction_time,
                                             anchor_plate_id=anchor_plate_id)
 
-                        # TODO handle case where there are no reconstructed features, hence file doesn't get created
+                        # pygplates writes no output file when nothing reconstructs, so a read
+                        # failure here means an empty result rather than a real error. Return an
+                        # empty GeoDataFrame with the input's columns, so that callers always get
+                        # the same type back and do not have to test for None.
                         try:
                             reconstructed_gdf = gpd.read_file(temporary_file_r.name)
-                        except:
-                            return print('No reconstructed features returned')
+                        except Exception as err:
+                            warnings.warn(
+                                'No features could be reconstructed to {} Ma ({}). Returning an '
+                                'empty GeoDataFrame. Check that the plate ids and valid times of '
+                                'the input features span this reconstruction time.'.format(
+                                    reconstruction_time, err))
+                            for _tmp in (temporary_file.name, temporary_file_r.name):
+                                if os.path.exists(_tmp):
+                                    os.unlink(_tmp)
+                            return features.iloc[0:0].copy()
 
 
                         # The reconstructed file will have various extra columns, of which the name
@@ -748,23 +759,43 @@ class ReconstructionModel(object):
         '''
         Experimental Function to take a list of feature collections and launch
         GPlates desktop app with all the features loaded automatically
+
+        path_to_gplates: path to the GPlates executable. If not given, the executable is
+            looked for on PATH and then in the usual install locations for this platform.
         '''
 
-        import platform, subprocess
+        import glob, platform, shutil, subprocess
 
-        open_gplates_command = []
+        if path_to_gplates:
+            if not os.path.exists(path_to_gplates):
+                raise FileNotFoundError(
+                    'No GPlates executable at {}'.format(path_to_gplates))
+        else:
+            # PATH first, so that a user's own install or a conda environment wins over
+            # whatever happens to be in /Applications.
+            path_to_gplates = shutil.which('gplates')
 
         if not path_to_gplates:
-            if platform.system() == 'Darwin':
-                open_gplates_command.append('/Applications/GPlates_2.3.0/gplates.app/Contents/MacOS/gplates')
+            # Globbed rather than pinned to a version, so that this does not go stale with
+            # every GPlates release.
+            candidate_patterns = {
+                'Darwin': ['/Applications/GPlates*/gplates.app/Contents/MacOS/gplates',
+                           '/Applications/GPlates*.app/Contents/MacOS/gplates'],
+                'Linux': ['/usr/bin/gplates', '/usr/local/bin/gplates',
+                          '/opt/gplates*/gplates'],
+                'Windows': [r'C:\Program Files\GPlates\GPlates*\gplates.exe'],
+            }.get(platform.system(), [])
 
-            if platform.system() == 'Linux':
-                raise NotImplementedError()
+            candidates = sorted(c for pattern in candidate_patterns for c in glob.glob(pattern))
+            if candidates:
+                path_to_gplates = candidates[-1]   # highest version, by name
 
-            if platform.system() == 'Windows':
-                open_gplates_command.append(r'C:\Program Files\GPlates\GPlates 2.3.0\gplates.exe')
-        else:
-            open_gplates_command.append(path_to_gplates)
+        if not path_to_gplates:
+            raise FileNotFoundError(
+                'Could not find a GPlates executable on {}. Put it on PATH, or pass its '
+                'location as path_to_gplates.'.format(platform.system()))
+
+        open_gplates_command = [path_to_gplates]
 
         open_gplates_command.extend(self.rotation_files)
         open_gplates_command.extend(self.static_polygon_files)
@@ -1516,8 +1547,9 @@ class PlateTree(object):
         elif polygons=='dynamic':
             polygon_type = 'dynamic'
             polygons = self.reconstruction_model.dynamic_polygons
-        # TODO else check that the polygons are some other set of polygon features that 
-        # can be passed to plot_snapshot, else raise error
+        else:
+            raise ValueError(
+                "Unknown polygons {!r}. Choose one of: 'static', 'dynamic'.".format(polygons))
 
         links_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xy')
         links_file.close()
@@ -1775,7 +1807,10 @@ class PointDistributionOnSphere(object):
                 # ophis -> longitude, othetas -> latitude
                 self.longitude = np.degrees(ophis)
                 self.latitude = np.degrees(othetas)
-            except:
+            except ImportError:
+                # Only an absent astropy_healpix should fall back to the bundled meshes. A bare
+                # except here also swallowed errors raised *by* healpy (an N that is not a power
+                # of two, say) and reported them as an import failure.
                 warnings.warn('unable to import module for healpix generation, trying pregenerated point files')
                 features = pygplates.FeatureCollection('{:s}/healpix_mesh_{:d}.gpmlz'.format(DATA_DIR,N))
                 for feature in features:

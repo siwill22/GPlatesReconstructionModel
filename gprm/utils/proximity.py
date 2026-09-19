@@ -19,9 +19,10 @@ import xarray as xr
 from scipy.spatial import cKDTree
 
 import warnings
-# xrspatial is now imported only by generate_shadows, which needs its viewshed. Keeping it
-# out of the module top level means importing gprm no longer pulls in xrspatial and datashader.
-#     from xrspatial import viewshed, proximity
+# This module no longer imports xrspatial or datashader at all. The commented-out blocks
+# beside each function record what the previous implementations did:
+#     from xrspatial import proximity
+#     from datashader import Canvas
 from rasterio.features import rasterize, Affine
 from .spatial import get_merged_cob_terrane_raster
 
@@ -340,13 +341,3 @@ def polyline_proximity(features, spacing=1, region=[-180, 180, -90, 90]):
                             spacing=spacing, 
                             region=region)
 
-    
-def generate_shadows(da, x, y, observer_elev):
-    """Compute a viewshed raster from an observer point (x, y) and elevation grid."""
-    from xrspatial import viewshed
-
-    da = handle_da_coordinates(da)
-
-    res = viewshed(da, x=x, y=y, observer_elev=observer_elev)
-    
-    

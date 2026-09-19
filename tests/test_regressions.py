@@ -209,3 +209,108 @@ def test_reconstruction_actually_moves_the_points(reconstruction_model, sample_p
     moved = [not point.equals(original)
              for point, original in zip(result.geometry, gdf.geometry)]
     assert any(moved)
+
+
+# ---------------------------------------------- non-exhaustive if/elif chains
+
+def test_unknown_method_names_the_valid_options():
+    """Previously fell off the end of an if/elif chain and raised UnboundLocalError: mask.
+    This one is on Geode's path (prep_oldmap.py calls get_merged_cob_terrane_raster)."""
+    from gprm.utils.spatial import get_merged_cob_terrane_raster
+
+    with pytest.raises(ValueError, match="pygplates"):
+        get_merged_cob_terrane_raster('unused.gpml', None, 0, sampling=1, method='raterio')
+
+
+def test_unknown_sampling_method_names_the_valid_options():
+    """Previously UnboundLocalError: point_raster_values, raised well after the expensive
+    reconstruction had already run."""
+    pytest.importorskip('pygmt')
+    from gprm.utils.raster import reconstruct_raster
+
+    with pytest.raises(ValueError, match="'scipy', 'gmt', 'stripy'"):
+        reconstruct_raster(None, None, None, 0, 10, sampling_method='gtm')
+
+
+# ---------------------------------------------------------- dataset fetch errors
+
+def test_fetch_failure_names_the_dataset_and_the_url():
+    """Previously a dead URL surfaced as a bare requests traceback, with no indication of
+    which loader was responsible or where its cache lives."""
+    from gprm.datasets import DatasetFetchError
+    from gprm.datasets._fetch import retrieve
+
+    def Seamounts():           # stands in for a real loader, to exercise the stack walk
+        return retrieve(url='https://gprm.invalid/nope.nc', known_hash=None,
+                        path='/tmp/gprm-test-cache')
+
+    with pytest.raises(DatasetFetchError) as excinfo:
+        Seamounts()
+
+    message = str(excinfo.value)
+    assert 'Seamounts' in message
+    assert 'https://gprm.invalid/nope.nc' in message
+    assert '/tmp/gprm-test-cache' in message
+    assert excinfo.value.__cause__ is not None
+
+
+def test_dataset_fetch_error_is_a_runtime_error():
+    """Subclassing RuntimeError keeps existing broad excepts working."""
+    from gprm.datasets import DatasetFetchError
+
+    assert issubclass(DatasetFetchError, RuntimeError)
+
+
+def test_http_status_is_turned_into_advice():
+    from gprm.datasets._fetch import _diagnose
+
+    class FakeResponse:
+        status_code = 404
+
+    class FakeError(Exception):
+        response = FakeResponse()
+
+    assert 'no longer exists' in _diagnose(FakeError(), 'https://example.invalid/x')
+    assert _diagnose(ValueError('hash of downloaded file is different'), 'x') is not None
+
+
+# --------------------------------------------------------------- dead code / portability
+
+def test_proximity_does_not_import_xrspatial_or_datashader():
+    """generate_shadows was the last importer of xrspatial, and had no return statement."""
+    import gprm.utils.proximity as proximity
+
+    assert not hasattr(proximity, 'generate_shadows')
+
+    # Parsed rather than grepped: the module docstring and the commented-out previous
+    # implementations both still mention xrspatial by name, deliberately.
+    import ast
+
+    tree = ast.parse(open(proximity.__file__).read())
+    imported = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(alias.name.split('.')[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module.split('.')[0])
+
+    assert 'xrspatial' not in imported
+    assert 'datashader' not in imported
+
+
+def test_to_gplates_does_not_hardcode_a_version_or_reject_linux():
+    """Previously raised NotImplementedError on Linux, and pinned GPlates 2.3.0 elsewhere."""
+    import inspect
+    from gprm.GPlatesReconstructionModel import ReconstructionModel
+
+    source = inspect.getsource(ReconstructionModel.to_GPlates)
+
+    assert '2.3.0' not in source
+    assert 'NotImplementedError' not in source
+
+
+def test_to_gplates_rejects_a_path_that_does_not_exist(reconstruction_model):
+    from gprm.GPlatesReconstructionModel import ReconstructionModel
+
+    with pytest.raises(FileNotFoundError):
+        reconstruction_model.to_GPlates(path_to_gplates='/no/such/gplates')

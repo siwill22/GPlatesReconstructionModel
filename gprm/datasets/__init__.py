@@ -17,7 +17,7 @@ _SUBMODULES = (
     'Zircons',
 )
 
-__all__ = list(_SUBMODULES) + ['cache_path']
+__all__ = list(_SUBMODULES) + ['cache_path', 'DatasetFetchError']
 
 
 def cache_path(*parts):
@@ -48,6 +48,10 @@ def __getattr__(name):
         module = _import_module('.' + name, __name__)
         globals()[name] = module     # cache, so this runs once per submodule
         return module
+    if name == 'DatasetFetchError':
+        from ._fetch import DatasetFetchError
+        globals()[name] = DatasetFetchError
+        return DatasetFetchError
     raise AttributeError("module {!r} has no attribute {!r}".format(__name__, name))
 
 

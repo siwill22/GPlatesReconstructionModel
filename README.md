@@ -45,9 +45,9 @@ which import it at the point of use and tell you what to install if it is missin
   GMT >=6 installed separately**: `conda install -c conda-forge gmt`, Homebrew's `gmt`, or
   your Linux package manager.
 - `pip install "gprm[geophysics]"` — pyshtools, litho1pt0, pmagpy
-- `pip install "gprm[spatial]"` — stripy, astropy-healpix, scikit-image, scikit-learn,
-  xarray-spatial (if astropy-healpix is not installed, some functions fall back on
-  precomputed point distributions in the `Data` folder)
+- `pip install "gprm[spatial]"` — stripy, astropy-healpix, scikit-image, scikit-learn
+  (if astropy-healpix is not installed, some functions fall back on precomputed point
+  distributions in the `Data` folder)
 - `pip install "gprm[all]"` — everything above
 
 ### Where downloaded data goes
