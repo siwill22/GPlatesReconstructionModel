@@ -571,17 +571,23 @@ def raster_zonal_areas(grd, lats, binsize):
 
 def topology_lookup(reconstruction_model,
                     reconstruction_times=np.arange(0,1001,10),
-                    boundary_types=['subduction']):
+                    boundary_types=['subduction'],
+                    anchor_plate_id=0):
     """Build a time-keyed dict of reconstructed plate boundary features for fast per-time queries.
 
     :param reconstruction_model: ReconstructionModel instance with dynamic polygons loaded.
     :param reconstruction_times: Iterable of ages in Ma to pre-compute (default 0–1000 Ma in 10 Ma steps).
     :param boundary_types: List of boundary types to include; valid values are 'subduction', 'midoceanridge', 'other'.
+    :param anchor_plate_id: Plate held fixed, i.e. the reference frame the boundaries are
+        resolved in (default 0). Anything measured against these boundaries must be
+        reconstructed with the same anchor, or the two sit in different frames and the
+        distances between them are meaningless.
     :returns: Dict mapping each reconstruction time (float, Ma) to a list of resolved boundary features.
     """
     lookup_dict = {}
     for reconstruction_time in reconstruction_times:
-        snapshot = reconstruction_model.plate_snapshot(reconstruction_time=reconstruction_time)
+        snapshot = reconstruction_model.plate_snapshot(reconstruction_time=reconstruction_time,
+                                                       anchor_plate_id=anchor_plate_id)
         lookup_dict[reconstruction_time] = snapshot.get_boundary_features(boundary_types=boundary_types)
 
     return lookup_dict

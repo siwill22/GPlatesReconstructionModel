@@ -82,8 +82,19 @@ def apply_nearest_feature(point, lookup_dict, geometry_field='geometry', age_fie
     :returns: Distance in km to the nearest feature, or NaN if no feature is found.
     """
     
-    d = nearest_feature(pygplates.PointOnSphere(point[geometry_field].y, point[geometry_field].x), 
-                           lookup_dict[point[age_field]])
+    age = point[age_field]
+    if age not in lookup_dict:
+        # A raw dict lookup here gave a bare KeyError naming neither the column nor the times
+        # that were available, which is unhelpful when it fires on row 40,000 of an apply().
+        times = sorted(lookup_dict)
+        raise KeyError(
+            "No entry for {} = {} in the lookup. It covers {} times{}. The reconstruction "
+            'times of the data must line up with the times the lookup was built for.'.format(
+                age_field, age, len(times),
+                ' from {} to {}'.format(times[0], times[-1]) if times else ''))
+
+    d = nearest_feature(pygplates.PointOnSphere(point[geometry_field].y, point[geometry_field].x),
+                           lookup_dict[age])
     if d is None:
         return np.nan
     else:

@@ -83,6 +83,16 @@ DEFAULT_GEOGRAPHIC_SAMPLING = 0.25
 # IUGG mean radius, matching pygplates.Earth.mean_radius_in_kms and utils.proximity
 EARTH_RADIUS_KM = 6371.0088
 
+# GPlates uses FROMAGE and TOAGE for two unrelated things: the valid time of a reconstructable
+# feature, and -- in gprm's age-coded convention -- the age of the sample itself. Where both are
+# in play the plate's valid time gets its own names, so that neither silently overwrites the
+# other. See sample_distance_analysis.
+PLATE_ID_FIELD = 'PLATEID1'
+SAMPLE_APPEARANCE_FIELD = 'FROMAGE'
+SAMPLE_DISAPPEARANCE_FIELD = 'TOAGE'
+PLATE_APPEARANCE_FIELD = 'plate_FROMAGE'
+PLATE_DISAPPEARANCE_FIELD = 'plate_TOAGE'
+
 
 def scipy_interpolater(da, points):
     """Bilinearly sample a regular lon/lat grid at scattered points.
@@ -740,50 +750,140 @@ def zeros_grid_like(sampling=DEFAULT_GEOGRAPHIC_SAMPLING,
 
 
 def sample_distance_analysis(data_df, reconstruction_model, 
-                             age_field='age', time_min=0, time_max=1000., 
-                             reconstruction_time_step=1, targets='subduction'):
-    """
-    Perform nearest distance analysis between a set of samples and a set of target features,
-    using measurements from the geometries themselves. 
-    This is more accurate, but possibly slower for larger data sets, compared to using a distance
-    raster.
-    'targets' is a dictionary of 
+                             age_field='age', time_min=0, time_max=1000.,
+                             reconstruction_time_step=1, targets='subduction',
+                             anchor_plate_id=0):
+    """Nearest distance between age-coded samples and reconstructed target features.
+
+    Distances are measured from the geometries themselves rather than sampled off a distance
+    raster: more accurate, and slower on large datasets.
+
+    :param data_df: GeoDataFrame of samples, with an age column and point geometries at
+        present-day coordinates. If it already carries a ``PLATEID1`` column those ids are
+        used as they stand, after checking they came from this model; if not, the samples are
+        partitioned here.
+    :param age_field: column holding each sample's own age in Ma (default 'age').
+    :param targets: 'subduction', 'midoceanridge', 'other', or a {time: features} dict.
+    :param anchor_plate_id: Plate held fixed (default 0). Applied to both the samples and the
+        target boundaries, so the two stay in one reference frame. Note that it cannot be
+        applied to a ``targets`` dict you build yourself -- resolve that with the same anchor.
+    :returns: the analysed subset of data_df, with 'reconstruction_time', 'rgeometry' and
+        'distance_to_target' added. Counts of what was excluded and why are on
+        ``result.attrs['sample_distance_analysis_counts']``.
+
+    **On plate ids.** This used to call ``assign_plate_ids(copy_valid_times=True)``
+    unconditionally, which overwrote any ids the caller had assigned -- including ids from a
+    different and deliberately chosen polygon set -- and, because that call copies the
+    partitioning polygon's valid time into FROMAGE and TOAGE, silently replaced the sample
+    ages held in those columns with the polygon's. The row filter that followed then compared
+    each sample's age against the polygon's appearance time while appearing to compare it
+    against its own, discarding roughly 44% of a uniformly-aged dataset without saying so.
+
+    Now: supplied ids are validated, not replaced; absent ids are assigned for convenience;
+    the polygon's valid time is written to ``plate_FROMAGE``/``plate_TOAGE``, never over the
+    sample's own; and every exclusion is counted and warned about.
+
+    The filter that drops samples older than their plate's appearance can only be applied when
+    the partitioning happened here, since that is the only time the polygon's valid time is
+    known. Supply ``PLATEID1`` yourself and you are taken to have made that judgement already.
     """
     
     # If not provided, create a lookup table for the target features
     if isinstance(targets, dict):
         target_lookup = targets
     elif targets in ['subduction', 'midoceanridge', 'other']:
-        target_lookup = topology_lookup(reconstruction_model, 
+        target_lookup = topology_lookup(reconstruction_model,
                                         np.arange(time_min, time_max+reconstruction_time_step, reconstruction_time_step),
-                                        boundary_types=[targets])
+                                        boundary_types=[targets],
+                                        anchor_plate_id=anchor_plate_id)
+    elif isinstance(targets, str):
+        raise ValueError(
+            "Unknown targets {!r}. Choose one of: 'subduction', 'midoceanridge', 'other', or "
+            'pass a {{reconstruction_time: features}} dict.'.format(targets))
     else:
-        raise ValueError("Unsupported input for targets...")
+        raise TypeError(
+            'targets must be one of the boundary-type names or a '
+            '{reconstruction_time: features} dict, not {}.'.format(type(targets).__name__))
         
-    print('Number of rows in input data: {}'.format(len(data_df)))
-    
-    # From the input data, extract the data within the determined age range and assign plateids
-    data_select = data_df[(data_df[age_field]<=time_max) & (data_df[age_field]>=time_min)]
-    data_select = reconstruction_model.assign_plate_ids(data_select, 
-                                                        keep_unpartitioned_features=False,
-                                                        copy_valid_times=True)
-    # TODO this will hit problems if FROMAGE is already assigned in the input
-    data_select = data_select[data_select[age_field] <= data_select['FROMAGE']].reset_index(drop=True)
+    counts = {'input': len(data_df)}
+
+    data_select = data_df[(data_df[age_field] <= time_max) & (data_df[age_field] >= time_min)]
+    counts['within_time_range'] = len(data_select)
+
+    if PLATE_ID_FIELD in data_select.columns:
+        # The caller has already partitioned, deliberately and possibly against a polygon set
+        # of their own choosing, so respect it. Check only that the ids belong to this model,
+        # which is the same guard ReconstructionModel.reconstruct applies.
+        reconstruction_model._check_plate_ids(data_select)
+        data_select = data_select.copy().reset_index(drop=True)
+        counts['partitioned_here'] = 0
+    else:
+        # Nothing assigned, so do it -- more convenient than making the caller run one line
+        # before every analysis.
+        #
+        # assign_plate_ids(copy_valid_times=True) writes the *partitioning polygon's* valid
+        # time into FROMAGE and TOAGE, having first dropped whatever was in those columns.
+        # In gprm's age-coded convention those same columns hold the *sample's* own age, so
+        # the two meanings collide and the sample ages would be destroyed. Renaming them out
+        # of the way first is what keeps them: they then travel with their rows through the
+        # overlay, which reindexes and so rules out putting them back afterwards.
+        stash = {name: '__sample_' + name
+                 for name in (SAMPLE_APPEARANCE_FIELD, SAMPLE_DISAPPEARANCE_FIELD)
+                 if name in data_select.columns}
+        prepared = data_select.rename(columns=stash)
+
+        assigned = reconstruction_model.assign_plate_ids(prepared,
+                                                         keep_unpartitioned_features=False,
+                                                         copy_valid_times=True)
+        counts['partitioned_here'] = len(assigned)
+        counts['outside_all_polygons'] = counts['within_time_range'] - len(assigned)
+
+        assigned = assigned.rename(columns={SAMPLE_APPEARANCE_FIELD: PLATE_APPEARANCE_FIELD,
+                                            SAMPLE_DISAPPEARANCE_FIELD: PLATE_DISAPPEARANCE_FIELD})
+        assigned = assigned.rename(columns={v: k for k, v in stash.items()})
+
+        # A sample cannot sit on a plate that had not appeared yet. This was the intent of the
+        # original filter; it just used the column the sample ages live in.
+        in_existence = assigned[age_field] <= assigned[PLATE_APPEARANCE_FIELD]
+        counts['older_than_their_plate'] = int((~in_existence).sum())
+        data_select = assigned[in_existence].reset_index(drop=True)
+
+    counts['analysed'] = len(data_select)
+
+    counts['outside_time_range'] = counts['input'] - counts['within_time_range']
+
+    reasons = [(counts.get(reason, 0), description) for reason, description in (
+        ('outside_time_range', 'outside the {}-{} Ma range'.format(time_min, time_max)),
+        ('outside_all_polygons', 'not inside any polygon of the model'),
+        ('older_than_their_plate', 'older than the plate they sit on'))]
+    excluded = [(n, description) for n, description in reasons if n]
+
+    if excluded:
+        warnings.warn(
+            '{} of {} samples were not analysed: {}. Full counts are on the result, as '
+            "result.attrs['sample_distance_analysis_counts'].".format(
+                counts['input'] - counts['analysed'], counts['input'],
+                '; '.join('{} {}'.format(n, description) for n, description in excluded)),
+            stacklevel=2)
 
     # assign a reconstruction time which is the nearest time step to the age associated with the data point
     data_select['reconstruction_time'] = np.round(data_select[age_field]/reconstruction_time_step)*reconstruction_time_step
-    
+
     # reconstruct the points
-    data_select['rgeometry'] = data_select.apply(lambda x: apply_reconstruction(x, reconstruction_model.rotation_model), axis=1)
-    
-    print('Number of rows after filtering by age and valid plate IDs: {}'.format(len(data_select)))
+    # Same anchor as the targets were resolved in, or the samples and the boundaries they are
+    # measured against would sit in different reference frames.
+    data_select['rgeometry'] = data_select.apply(
+        lambda x: apply_reconstruction(x, reconstruction_model.rotation_model,
+                                       anchor_plate_id=anchor_plate_id), axis=1)
 
     # Determine the shortest distance to the target features at the associated time
     data_select['distance_to_target'] = data_select.apply(
-        lambda x: apply_nearest_feature(x, 
-                                        target_lookup, 
+        lambda x: apply_nearest_feature(x,
+                                        target_lookup,
                                         geometry_field='rgeometry',
                                         age_field='reconstruction_time'), axis=1)
+
+    data_select.attrs['sample_distance_analysis_counts'] = counts
 
     return data_select
 

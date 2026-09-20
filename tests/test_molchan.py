@@ -391,3 +391,116 @@ def test_floating_point_noise_in_an_age_still_matches(alarm_grid):
                            crs='EPSG:4326')
 
     assert len(space_time_distances(raster_dict, gdf)) == 1
+
+
+# ------------------------------------------- sample_distance_analysis: plate ids and ages
+
+@pytest.fixture
+def aged_samples():
+    """Samples carrying their own ages in gprm's FROMAGE/TOAGE convention."""
+    import geopandas as gpd
+    from shapely.geometry import Point
+
+    ages = [10.0, 50.0, 90.0, 130.0]
+    gdf = gpd.GeoDataFrame(
+        {'sample_id': list('abcd'), 'age': ages, 'FROMAGE': ages, 'TOAGE': [0.0] * 4},
+        geometry=[Point(x, 0.0) for x in (-30.0, -10.0, 10.0, 30.0)], crs='EPSG:4326')
+    return gdf
+
+
+@pytest.fixture
+def target_lookup():
+    """A target at every whole Ma, so the analysis has something to measure against."""
+    import pygplates
+
+    def one_target():
+        feature = pygplates.Feature()
+        feature.set_geometry(pygplates.PointOnSphere(0.0, 0.0))
+        return [feature]
+
+    return {float(t): one_target() for t in range(0, 1001)}
+
+
+def test_supplied_plate_ids_are_not_overwritten(reconstruction_model, aged_samples, target_lookup):
+    """It used to call assign_plate_ids unconditionally, replacing ids the caller had chosen
+    deliberately -- possibly from a different polygon set."""
+    from gprm.utils.molchan import sample_distance_analysis
+
+    gdf = aged_samples.copy()
+    gdf['PLATEID1'] = 701
+    gdf.attrs['gprm_reconstruction_model'] = reconstruction_model.name
+
+    result = sample_distance_analysis(gdf, reconstruction_model, age_field='age',
+                                      time_max=200, targets=target_lookup)
+
+    assert (result['PLATEID1'] == 701).all()
+
+
+def test_sample_ages_survive_the_analysis(reconstruction_model, aged_samples, target_lookup):
+    """assign_plate_ids(copy_valid_times=True) copies the partitioning polygon's valid time
+    into FROMAGE and TOAGE, which in gprm's age-coded convention hold the sample's own age.
+    The sample ages used to be destroyed, and the row filter then compared each sample
+    against its polygon's appearance time while appearing to compare it against its own."""
+    from gprm.utils.molchan import sample_distance_analysis
+
+    gdf = aged_samples.copy()
+    gdf['PLATEID1'] = 701
+    gdf.attrs['gprm_reconstruction_model'] = reconstruction_model.name
+
+    result = sample_distance_analysis(gdf, reconstruction_model, age_field='age',
+                                      time_max=200, targets=target_lookup)
+
+    assert list(result['FROMAGE']) == list(aged_samples['age'])
+    assert list(result['TOAGE']) == [0.0] * len(aged_samples)
+    assert list(result['age']) == list(aged_samples['age'])
+
+
+def test_plate_ids_from_another_model_are_refused_here_too(reconstruction_model, aged_samples, target_lookup):
+    from gprm.utils.molchan import sample_distance_analysis
+
+    gdf = aged_samples.copy()
+    gdf['PLATEID1'] = 701
+    gdf.attrs['gprm_reconstruction_model'] = 'SomeOtherModel'
+
+    with pytest.raises(ValueError, match='SomeOtherModel'):
+        sample_distance_analysis(gdf, reconstruction_model, age_field='age',
+                                 time_max=200, targets=target_lookup)
+
+
+def test_exclusions_are_counted_on_the_result(reconstruction_model, aged_samples, target_lookup):
+    """Rows used to disappear with only a print() to say so."""
+    from gprm.utils.molchan import sample_distance_analysis
+
+    gdf = aged_samples.copy()
+    gdf['PLATEID1'] = 701
+    gdf.attrs['gprm_reconstruction_model'] = reconstruction_model.name
+
+    with pytest.warns(UserWarning, match='outside the'):
+        result = sample_distance_analysis(gdf, reconstruction_model, age_field='age',
+                                          time_max=100, targets=target_lookup)
+
+    counts = result.attrs['sample_distance_analysis_counts']
+    assert counts['input'] == 4
+    assert counts['outside_time_range'] == 1          # only the 130 Ma sample exceeds 100
+    assert counts['analysed'] == len(result) == 3
+
+
+def test_unknown_targets_names_the_valid_options(reconstruction_model, aged_samples):
+    from gprm.utils.molchan import sample_distance_analysis
+
+    gdf = aged_samples.copy()
+    gdf['PLATEID1'] = 701
+    gdf.attrs['gprm_reconstruction_model'] = reconstruction_model.name
+
+    with pytest.raises(ValueError, match='midoceanridge'):
+        sample_distance_analysis(gdf, reconstruction_model, targets='subducton')
+
+
+def test_topology_lookup_accepts_an_anchor_plate(reconstruction_model):
+    """Without this the samples could be anchored but the targets could not, putting the two
+    in different frames and making every distance between them wrong."""
+    import inspect
+
+    from gprm.utils.spatial import topology_lookup
+
+    assert 'anchor_plate_id' in inspect.signature(topology_lookup).parameters
