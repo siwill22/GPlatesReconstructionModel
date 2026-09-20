@@ -140,18 +140,27 @@ def PacificSeamountAges(catalogue='2021', load=True):
             return fname
         
     elif catalogue=='2021':
-        fname = _retrieve(
+        fnames = _retrieve(
             url="https://zenodo.org/record/6558676/files/Pacific_Hotspot_Trails_Datasets.zip?download=1",
-            known_hash="md5:97bec4ebde94694698077eb527bc1ef4",  
+            known_hash="md5:97bec4ebde94694698077eb527bc1ef4",
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
             processor=_Unzip(extract_dir='PHT2021')
         )
-        dirname = '{:s}/PHT2021/'.format(str(_os_cache('gprm')))
+
+        fname = None
+        for candidate in fnames:
+            if candidate.endswith('PHT2021_pacific_ages.txt'):
+                fname = candidate
+        if fname is None:
+            raise FileNotFoundError(
+                'PHT2021_pacific_ages.txt was not found in the downloaded Pacific Hotspot '
+                'Trails archive. The download may be incomplete or the archive may have been '
+                'repackaged upstream; clearing the gprm cache (see gprm.datasets.cache_path()) '
+                'and retrying is the usual fix.')
 
         if load:
-            df = _pd.read_csv('{:}/PHT2021/PHT2021_raw_data/PHT2021_pacific_ages.txt'.format(dirname), 
-                              comment='#', delim_whitespace=True,
+            df = _pd.read_csv(fname, comment='#', delim_whitespace=True,
                               names=['Long', 'Lat', 'Average_Age_Ma', 'Average_Age_Error_Ma', 'Type', 'Ref', 'SampleName', 'Tag', 'SeamountChain'])
             return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
         else:
@@ -183,19 +192,27 @@ def Seamounts(catalogue='KimWessel', load=True):
             return fname
         
     if catalogue in ['SIO_all', 'SIO_good', 'SIO_shallow', 'SIO_short', 'SIO_tall']:
-        fname = _retrieve(
+        fnames = _retrieve(
             url="https://zenodo.org/record/7718512/files/SIO_Seamounts.zip?download=1",
-            known_hash="md5:efe6f739d34391f68b568a17eac7fee7",  
+            known_hash="md5:efe6f739d34391f68b568a17eac7fee7",
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
             processor=_Unzip(extract_dir='seamounts')
         )
-        
-        dirname = '{:s}/seamounts/'.format(str(_os_cache('gprm')))
+
+        target = '{:s}.xyhrdnc'.format(catalogue[4:])
+        fname = None
+        for candidate in fnames:
+            if _os.path.split(candidate)[1] == target:
+                fname = candidate
+        if fname is None:
+            raise FileNotFoundError(
+                '{:s} was not found in the downloaded SIO Seamounts archive. The download may '
+                'be incomplete or the archive may have been repackaged upstream; clearing the '
+                'gprm cache (see gprm.datasets.cache_path()) and retrying is the usual fix.'.format(target))
 
         if load:
-            df = _pd.read_csv('{:}/SIO_Seamounts/Seamounts_Modeled/{:s}.xyhrdnc'.format(dirname, catalogue[4:]), 
-                              delim_whitespace=True, skiprows=17, comment='>', 
+            df = _pd.read_csv(fname, delim_whitespace=True, skiprows=17, comment='>',
                     names=['Long', 'Lat', 'Height', 'Radius', 'Base_Depth', 'Name', 'Charted'])
             return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
         else:

@@ -41,8 +41,13 @@ def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=
 
     Options:
     usecols: optionally define a list of columns to load (rather than the full table) [default=None]
-    remove_invalid_coordinates: specify whether to remove rows from the table for which the latitude
-                                and/or longitide are invalid [default=True] 
+    remove_invalid_coordinates: specify whether to drop rows with a missing longitude/latitude
+                                or a latitude outside [-90, 90] (which cannot be a real point).
+                                A longitude outside [-180, 180] is not dropped -- a small number
+                                of rows in the source data record it in 0-360 convention (e.g.
+                                194.4 instead of -165.6), and the sphere does not care which
+                                convention is used, so these are wrapped into [-180, 180) instead
+                                of being discarded. [default=True]
     return_column_names: instead of loading table into memory, return a list of column names
 
     '''
@@ -66,10 +71,14 @@ def Geochem(usecols=None, return_column_names=False, remove_invalid_coordinates=
 
     else:
         df = _pd.read_csv(fname, usecols=usecols, engine='python', encoding="ISO-8859-1")
-        if remove_invalid_coordinates:
-            df = df.dropna(subset=['longitude','latitude'])
-            df.reset_index(inplace=True)
         df.rename(columns={'longitude':'Longitude', 'latitude':'Latitude'}, inplace=True)
+        if remove_invalid_coordinates:
+            df = df.dropna(subset=['Longitude','Latitude'])
+            # A latitude outside [-90, 90] cannot be wrapped into a real point and is dropped;
+            # a longitude outside [-180, 180] can be (see docstring) and is wrapped, not dropped.
+            df = df[df.Latitude.between(-90, 90)]
+            df['Longitude'] = ((df.Longitude + 180.) % 360.) - 180.
+            df.reset_index(inplace=True, drop=True)
         return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
 
@@ -126,17 +135,22 @@ def Carbonatites():
     '''
     Load Carbonatite data from Humphreys-Williams and Zahirovic (2021)
     '''
-    fname = _retrieve(
+    fnames = _retrieve(
         url="https://zenodo.org/record/5968095/files/1_CarbonatitesShapefile_WithAgeConstraints.zip?download=1",
-        known_hash="md5:7f219044c7a1ea9d81fc3410b64b2876",  
+        known_hash="md5:7f219044c7a1ea9d81fc3410b64b2876",
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
         processor=_Unzip(extract_dir='Carbonatites')
     )
 
-    gdf = _gpd.read_file('{:s}/Carbonatites/1_CarbonatitesShapefile_WithAgeConstraints/carbonatites_gplates.shp'.format(str(_os_cache('gprm'))))
+    for fname in fnames:
+        if fname.endswith('carbonatites_gplates.shp'):
+            return _gpd.read_file(fname)
 
-    return gdf
+    raise FileNotFoundError(
+        'carbonatites_gplates.shp was not found in the downloaded Carbonatites archive. The '
+        'download may be incomplete or the archive may have been repackaged upstream; clearing '
+        'the gprm cache (see gprm.datasets.cache_path()) and retrying is the usual fix.')
 
 
 def Metamorphism():
