@@ -516,3 +516,33 @@ def test_missing_grain_ages_do_not_shift_the_cumulative_proportions():
 def test_a_sample_too_small_to_classify_is_not_forced_into_a_category():
     assert _category([50.0]) is None
     assert _category([np.nan, np.nan]) is None
+
+
+def test_scipy_interpolater_accepts_lat_lon_named_coordinates():
+    """spherical_kde and sphere.py's plot_groups both emit ('lat','lon') DataArrays, but
+    scipy_interpolater indexed da['x']/da['y'] directly and raised KeyError on them -- the
+    x/y convention is internal to proximity.py and molchan.py, not something every gprm
+    function producing a raster actually follows."""
+    import xarray as xr
+    from gprm.utils.molchan import scipy_interpolater
+
+    da_xy = xr.DataArray(np.arange(20.).reshape(4, 5),
+                          coords=[('y', np.linspace(-10, 10, 4)), ('x', np.linspace(-20, 20, 5))])
+    da_latlon = xr.DataArray(np.arange(20.).reshape(4, 5),
+                             coords=[('lat', np.linspace(-10, 10, 4)), ('lon', np.linspace(-20, 20, 5))])
+
+    points = [[0., 0.]]
+    np.testing.assert_allclose(scipy_interpolater(da_xy, points),
+                               scipy_interpolater(da_latlon, points))
+
+
+def test_cell_area_weights_accepts_lat_lon_named_coordinates():
+    import xarray as xr
+    from gprm.utils.molchan import _cell_area_weights
+
+    da_xy = xr.DataArray(np.zeros((4, 5)),
+                          coords=[('y', np.linspace(-10, 10, 4)), ('x', np.linspace(-20, 20, 5))])
+    da_latlon = xr.DataArray(np.zeros((4, 5)),
+                             coords=[('lat', np.linspace(-10, 10, 4)), ('lon', np.linspace(-20, 20, 5))])
+
+    np.testing.assert_allclose(_cell_area_weights(da_xy), _cell_area_weights(da_latlon))

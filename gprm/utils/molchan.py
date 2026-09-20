@@ -63,7 +63,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
-from .proximity import contour_proximity, polyline_proximity, polygons_buffer, points_proximity, boundary_proximity, reconstruct_and_rasterize_polygons
+from .proximity import contour_proximity, polyline_proximity, polygons_buffer, points_proximity, boundary_proximity, reconstruct_and_rasterize_polygons, handle_da_coordinates
 from .create_gpml import gpml2gdf
 import xarray as xr
 import shapely
@@ -102,11 +102,14 @@ def scipy_interpolater(da, points):
     point at 190 degrees east is sampled at -170 rather than falling off the edge; points
     that genuinely fall on no-data cells come back NaN, as grdtrack's ``no_skip`` does.
 
-    :param da: xarray DataArray with dimensions (y, x) in degrees.
+    :param da: xarray DataArray on a regular lon/lat grid. Coordinates named 'x'/'y' or
+        'lon'/'lat' (in either order) are both accepted; see ``handle_da_coordinates``.
     :param points: array-like of shape (n, 2), first column longitude, second latitude.
         A DataFrame is accepted and its column *order* is what matters, not the names.
     :returns: 1-D numpy array of sampled values, NaN where the grid has no data.
     """
+    da = handle_da_coordinates(da)
+
     coordinates = np.asarray(points, dtype=float)
     lons = coordinates[:, 0]
     lats = coordinates[:, 1]
@@ -141,7 +144,11 @@ def _cell_area_weights(da):
     beyond the grid itself. Counting cells instead -- treating the grid as flat -- is wrong
     by up to 10% of the sphere for a target whose alarm region is concentrated in latitude,
     which trenches and ridges are.
+
+    Coordinates named 'x'/'y' or 'lon'/'lat' (in either order) are both accepted; see
+    ``handle_da_coordinates``.
     """
+    da = handle_da_coordinates(da)
     y = np.asarray(da['y'], dtype=float)
     x = np.asarray(da['x'], dtype=float)
     if y.size < 2 or x.size < 2:
