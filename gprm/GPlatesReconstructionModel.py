@@ -49,7 +49,7 @@ from ptt.utils.proximity_query import find_closest_geometries_to_points
 from gprm.utils.geometry import distance_between_reconstructed_points_and_features, apply_reconstruction
 from gprm.utils.spatial import force_polygon_geometries
 
-import ptt.subduction_convergence as sc
+from gprm.utils.spatial import subduction_convergence as _subduction_convergence
 from ptt.utils.call_system_command import call_system_command
 from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
@@ -1685,7 +1685,14 @@ class VelocityField(object):
 class SubductionConvergence(object):
     """
     Class for holding the analysis of subduction zone kinematics for a single time
-    or range of time, contained within a pandas data frame
+    or range of time, contained within a pandas data frame.
+
+    Kinematics come from gprm.utils.spatial.subduction_convergence(), which samples pygplates
+    1.0's plate-boundary statistics directly rather than walking each subduction segment's
+    shared sub-segments the way ptt.subduction_convergence.subduction_convergence() did. The
+    practical effect: a segment whose subducting plate is not directly attached to it (a
+    mislabelled boundary, or one level removed through a network) used to be silently dropped;
+    it is now included as long as a subducting plate exists on that side of the boundary.
     """
     def __init__(self, reconstruction_model,
                  reconstruction_times,
@@ -1716,7 +1723,7 @@ class SubductionConvergence(object):
 
         for reconstruction_time in reconstruction_times:
 
-            result = sc.subduction_convergence(
+            result = _subduction_convergence(
                 reconstruction_model.rotation_model,
                 reconstruction_model.dynamic_polygons,
                 threshold_sampling_distance_radians,

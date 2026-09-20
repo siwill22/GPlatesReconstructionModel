@@ -595,4 +595,124 @@ def topology_lookup(reconstruction_model,
 
 
 
+def _topology_point_location_plate_id(location):
+    """Extract the reconstruction plate ID of the plate or network a TopologyPointLocation sits in."""
+    resolved_boundary = location.located_in_resolved_boundary()
+    if resolved_boundary is not None:
+        return resolved_boundary.get_feature().get_reconstruction_plate_id()
+    resolved_network = location.located_in_resolved_network()
+    if resolved_network is not None:
+        return resolved_network.get_feature().get_reconstruction_plate_id()
+    return None
 
+
+def subduction_convergence(rotation_model, topological_features, threshold_sampling_distance_radians,
+                           time, velocity_delta_time=1., anchor_plate_id=0):
+    """Sample convergence and absolute kinematics along subduction zones at one reconstruction time.
+
+    Replacement for ``ptt.subduction_convergence.subduction_convergence()``, built on the pygplates 1.0
+    ``TopologicalSnapshot.calculate_plate_boundary_statistics`` API instead of walking each subduction
+    segment's shared sub-segments by hand. The practical difference: ptt's per-segment algorithm needs
+    exactly one subducting plate directly attached to a segment, and silently drops the segment if the
+    topology doesn't provide one (e.g. a mislabelled boundary, or a subducting plate one level removed
+    through a network). Sampling boundary statistics instead finds the subducting plate as long as one
+    exists on that side of the boundary at all. The output format is unchanged -- same columns, units
+    and sign conventions ptt's version documents -- so this is a drop-in replacement, not a new feature.
+
+    :param rotation_model: pygplates.RotationModel, or any valid argument to its constructor.
+    :param topological_features: Topological boundary/network features, or any valid argument to
+        pygplates.TopologicalSnapshot's constructor.
+    :param threshold_sampling_distance_radians: Spacing between sampled points along each subduction
+        zone, in radians.
+    :param time: Reconstruction time in Ma.
+    :param velocity_delta_time: Time interval used for velocity finite-differencing, in Myr (default 1).
+    :param anchor_plate_id: Plate held fixed (default 0).
+    :returns: List of (lon, lat, conv_rate_cm_yr, conv_obliq_deg, migr_rate_cm_yr, migr_obliq_deg,
+        arc_length_deg, arc_azimuth_deg, subducting_plate_id, overriding_plate_id) tuples, one per
+        sampled point. conv_rate and migr_rate are negative for divergence and trenchward-of-overriding
+        motion respectively, matching ptt's convention; obliquity angles are clockwise from the trench
+        normal (which points toward the overriding plate) in the range (-180, 180].
+    """
+
+    def _is_subduction_zone(resolved_topological_section):
+        return resolved_topological_section.get_feature().get_enumeration(
+            pygplates.PropertyName.gpml_subduction_polarity) is not None
+
+    snapshot = pygplates.TopologicalSnapshot(topological_features, rotation_model, time,
+                                             anchor_plate_id=anchor_plate_id)
+    stats_by_segment = snapshot.calculate_plate_boundary_statistics(
+        threshold_sampling_distance_radians,
+        velocity_delta_time=velocity_delta_time,
+        velocity_units=pygplates.VelocityUnits.cms_per_yr,
+        boundary_section_filter=_is_subduction_zone,
+        return_shared_sub_segment_dict=True)
+
+    results = []
+    for shared_sub_segment, stats in stats_by_segment.items():
+
+        # A segment's subduction polarity says which side the overriding plate is on; without one it's
+        # not usable as a subduction zone regardless of the property-name filter above (a segment can
+        # carry the property with a value pygplates doesn't recognise as 'Left'/'Right').
+        subducting_plate_and_polarity = shared_sub_segment.get_subducting_plate(
+            return_subduction_polarity=True, enforce_single_plate=False)
+        if not subducting_plate_and_polarity:
+            continue
+        _, subduction_polarity = subducting_plate_and_polarity
+        overriding_on_left = (subduction_polarity == 'Left')
+
+        for stat in stats:
+            subducting_plate_velocity = stat.right_plate_velocity if overriding_on_left else stat.left_plate_velocity
+            if subducting_plate_velocity is None:
+                continue
+
+            # The trench normal points toward the overriding plate; boundary_normal always points left,
+            # so it needs flipping (and its azimuth rotating by pi) when the overriding plate is on the right.
+            trench_normal = stat.boundary_normal
+            trench_normal_azimuth = stat.boundary_normal_azimuth
+            if not overriding_on_left:
+                trench_normal = -trench_normal
+                trench_normal_azimuth = (trench_normal_azimuth - np.pi) % (2 * np.pi)
+
+            # Convergence is the subducting plate's velocity relative to the trench line itself (not to
+            # the overriding plate directly), so that trench rollback/advance is reflected in conv_rate.
+            convergence_velocity = subducting_plate_velocity - stat.boundary_velocity
+            if convergence_velocity.is_zero_magnitude():
+                conv_rate, conv_obliq = 0., 0.
+            else:
+                conv_rate = convergence_velocity.get_magnitude()
+                conv_obliq = pygplates.Vector3D.angle_between(convergence_velocity, trench_normal)
+                # angle_between is unsigned (0 to pi); orient it clockwise/counter-clockwise using the
+                # local right-hand-rule direction, the standard way to sign an angle on a sphere.
+                clockwise_direction = pygplates.Vector3D.cross(trench_normal, stat.boundary_point.to_xyz())
+                if pygplates.Vector3D.dot(convergence_velocity, clockwise_direction) < 0:
+                    conv_obliq = -conv_obliq
+                # Negative conv_rate flags divergence, exactly as ptt's version does.
+                if pygplates.Vector3D.dot(convergence_velocity, trench_normal) < 0:
+                    conv_rate = -conv_rate
+
+            # Trench absolute (migration) velocity and obliquity, rotated from boundary-normal-relative
+            # to trench-normal-relative the same way as above.
+            migr_rate = stat.boundary_velocity_magnitude
+            migr_obliq = stat.boundary_velocity_obliquity
+            if not overriding_on_left:
+                migr_obliq = ((migr_obliq - np.pi + np.pi) % (2 * np.pi)) - np.pi  # rotate by pi, wrap to (-pi, pi]
+            # Negative migr_rate flags the trench moving toward the overriding plate.
+            if abs(migr_obliq) < 0.5 * np.pi:
+                migr_rate = -migr_rate
+
+            lat, lon = stat.boundary_point.to_lat_lon()
+            subducting_plate = stat.right_plate if overriding_on_left else stat.left_plate
+            subducting_plate_id = _topology_point_location_plate_id(subducting_plate)
+            overriding_plate_id = stat.boundary_feature.get_reconstruction_plate_id()
+
+            results.append((
+                lon, lat,
+                conv_rate, np.degrees(conv_obliq),
+                migr_rate, np.degrees(migr_obliq),
+                np.degrees(stat.boundary_length),
+                np.degrees(trench_normal_azimuth),
+                subducting_plate_id,
+                overriding_plate_id,
+            ))
+
+    return results
