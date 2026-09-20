@@ -15,6 +15,8 @@ _INSTALL_HINT = {
     'litho1pt0': ('geophysics', None),
     'pmagpy': ('geophysics', None),
     'pyshtools': ('geophysics', None),
+    'astropy_healpix': ('spatial', None),
+    'sklearn': ('spatial', "the PyPI package is called 'scikit-learn'"),
 }
 
 
