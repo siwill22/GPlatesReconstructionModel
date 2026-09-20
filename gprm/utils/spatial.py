@@ -144,16 +144,26 @@ def force_polygon_geometries(input_features):
     """Convert all feature geometries to closed polygons, preserving plate IDs and valid times."""
 
     polygons = []
-    for feature in input_features: 
+    dropped = 0
+    for feature in input_features:
         for geom in feature.get_all_geometries():
             polygon = pygplates.Feature(feature.get_feature_type())
             polygon.set_geometry(pygplates.PolygonOnSphere(geom))
             polygon.set_reconstruction_plate_id(feature.get_reconstruction_plate_id())
-            # some features in COBTerranes had invalid time ranges - these with throw an error if 
+            # some features in COBTerranes had invalid time ranges - these with throw an error if
             # we try to create a new feature with same times
             if feature.get_valid_time()[0]>=feature.get_valid_time()[1]:
                 polygon.set_valid_time(feature.get_valid_time()[0],feature.get_valid_time()[1])
                 polygons.append(polygon)
+            else:
+                dropped += 1
+
+    if dropped:
+        warnings.warn(
+            '{:d} feature(s) dropped by force_polygon_geometries: their valid time has FROMAGE '
+            '(the older, appearance age) less than TOAGE (the younger, disappearance age), '
+            'which is a reversed/invalid time range.'.format(dropped))
+
     polygon_features = pygplates.FeatureCollection(polygons)
 
     return polygon_features

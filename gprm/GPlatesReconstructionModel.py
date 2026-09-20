@@ -84,7 +84,7 @@ class ReconstructionModel(object):
 
     def __repr__(self, show_full_paths=False):
 
-        lines = ['Name: {:s}\n'.format(self.name)]
+        lines = ['Name: {:s}\n'.format(self.name if self.name is not None else '<unnamed>')]
 
         for item in [('Rotation', self.rotation_files),
                      ('Static Polygon', self.static_polygon_files),
@@ -109,8 +109,7 @@ class ReconstructionModel(object):
         :param replace: (bool, optional) A flag to specify whether to add to existing rotation model (if present), or 
             replace the current contents (default is False)
         """
-        if not os.path.isfile(rotation_file):
-            raise ValueError('Unable to find file {:s}'.format(rotation_file))
+        self._require_existing_file(rotation_file, 'rotation_file')
 
         if replace:
             self.rotation_model = []
@@ -128,8 +127,7 @@ class ReconstructionModel(object):
         :param replace: If True, clear existing static polygons before adding (default False).
         :param force_polygons: If True, convert all geometries to closed polygons (default False).
         """
-        if not os.path.isfile(static_polygons_file):
-            raise ValueError('Unable to find file {:s}'.format(static_polygons_file))
+        self._require_existing_file(static_polygons_file, 'static_polygons_file')
 
         if replace:
             self.static_polygons = []
@@ -153,8 +151,7 @@ class ReconstructionModel(object):
         #TODO add option to add a list in one go, otherwise the loading is very slow 
         # for models with many files such as M2019
 
-        if not os.path.isfile(dynamic_polygons_file):
-            raise ValueError('Unable to find file {:s}'.format(dynamic_polygons_file))
+        self._require_existing_file(dynamic_polygons_file, 'dynamic_polygons_file')
 
         if replace:
             self.dynamic_polygons = []
@@ -171,8 +168,7 @@ class ReconstructionModel(object):
         :param replace: If True, clear existing coastlines before adding (default False).
         :param force_polygons: If True, convert all geometries to closed polygons (default False).
         """
-        if not os.path.isfile(coastlines_file):
-            raise ValueError('Unable to find file {:s}'.format(coastlines_file))
+        self._require_existing_file(coastlines_file, 'coastlines_file')
 
         if replace:
             self.coastlines = []
@@ -194,9 +190,8 @@ class ReconstructionModel(object):
         :param replace: If True, clear existing continent polygons before adding (default False).
         :param force_polygons: If True, convert all geometries to closed polygons (default False).
         """
-        if not os.path.isfile(continent_polygons_file):
-            raise ValueError('Unable to find file {:s}'.format(continent_polygons_file))
-        
+        self._require_existing_file(continent_polygons_file, 'continent_polygons_file')
+
         if replace:
             self.continent_polygons = []
             self.continent_polygons_files = []
@@ -213,8 +208,18 @@ class ReconstructionModel(object):
     def from_web_service(self, model='MULLER2016', url='https://gws.gplates.org'):
         """
         Add a reconstruction model directly from the GPlates web service.
+
+        .. warning::
+           Requires ``gwsFeatureCollection``, which is not published on PyPI and cannot be
+           installed with ``pip install gprm`` or any of its extras -- you must already have it
+           available separately for this method to work at all.
         """
-        import gwsFeatureCollection
+        try:
+            import gwsFeatureCollection
+        except ImportError as error:
+            raise ImportError(
+                "from_web_service requires gwsFeatureCollection, which is not on PyPI and is "
+                "not installed by any gprm extra. You must obtain it separately.") from error
         self.rotation_model = gwsFeatureCollection.FeatureCollection(model=model, layer='rotations', url=url)
         self.static_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='static_polygons', url=url)
         self.dynamic_polygons = gwsFeatureCollection.FeatureCollection(model=model, layer='plate_polygons', url=url)
@@ -237,15 +242,28 @@ class ReconstructionModel(object):
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
 
-        input_files = config['InputFiles']
-        model_dir = os.path.join(base_dir, input_files['MODELDIR'])
+        try:
+            input_files = config['InputFiles']
+            model_dir = os.path.join(base_dir, input_files['MODELDIR'])
+        except KeyError as error:
+            raise ValueError(
+                "{:s} is missing the expected 'InputFiles'/'MODELDIR' keys.".format(
+                    config_file)) from error
 
         model = cls(name=name or input_files['MODELDIR'])
 
-        for rot_file in input_files['input_rotation_filenames']:
+        try:
+            rotation_filenames = input_files['input_rotation_filenames']
+            topology_filenames = input_files['topology_features']
+        except KeyError as error:
+            raise ValueError(
+                "{:s}'s 'InputFiles' section is missing the expected {!s} key.".format(
+                    config_file, error.args[0])) from error
+
+        for rot_file in rotation_filenames:
             model.add_rotation_model(os.path.join(model_dir, rot_file))
 
-        for topo_file in input_files['topology_features']:
+        for topo_file in topology_filenames:
             model.add_dynamic_polygons(os.path.join(model_dir, topo_file))
 
         if 'COBterrane_file' in input_files:
@@ -255,12 +273,21 @@ class ReconstructionModel(object):
 
     def copy(self, deep=False):
         """
-        Make a copy of an existing reconstruction_model
+        Make a copy of an existing reconstruction_model.
+
+        deep=False (default) still gives independent list containers -- calling add_rotation_model
+        or similar on the copy does not mutate the original -- but shares the FeatureCollection/
+        RotationModel contents themselves, which is what makes it cheaper than deep=True.
         """
         if deep:
             return copy.deepcopy(self)
         else:
-            return copy.copy(self)
+            new_model = copy.copy(self)
+            for attr in ('rotation_files', 'static_polygons', 'static_polygon_files',
+                        'dynamic_polygons', 'dynamic_polygon_files', 'coastlines',
+                        'coastlines_files', 'continent_polygons', 'continent_polygons_files'):
+                setattr(new_model, attr, list(getattr(self, attr)))
+            return new_model
 
     def plate_snapshot(self, reconstruction_time, anchor_plate_id=0):
         """Generate a snapshot of the topological reconstruction model at a given time.
@@ -269,6 +296,12 @@ class ReconstructionModel(object):
         :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
         :returns: PlateSnapshot containing the resolved plate polygons and boundary sections.
         """
+        if not isinstance(reconstruction_time, (int, float)):
+            raise TypeError(
+                "reconstruction_time must be a number (Ma), not {:s}.".format(
+                    type(reconstruction_time).__name__))
+        self._require_known_plate_id(anchor_plate_id)
+
         resolved_topologies = []
         resolved_topological_sections = []
         pygplates.resolve_topologies(self.dynamic_polygons,
@@ -293,6 +326,7 @@ class ReconstructionModel(object):
         :param anchor_plate_id: Plate ID used as the fixed reference frame (default 0).
         :returns: ReconstructedPolygonSnapshot containing the reconstructed polygons.
         """
+        self._require_known_plate_id(anchor_plate_id)
 
         if polygon_type == 'coastlines':
             polygons_to_reconstruct = self.coastlines
@@ -412,6 +446,84 @@ class ReconstructionModel(object):
             "'{:s}'. Features carrying them will not be rotated.".format(listed, str(self.name)))
 
 
+    def _check_geographic_crs(self, features):
+        """Reject a GeoDataFrame in a projected CRS before treating its coordinates as lon/lat.
+
+        Reconstruction treats every geometry's raw x/y as longitude/latitude degrees. A
+        projected CRS (e.g. a UTM zone or Web Mercator) either raises a confusing, unattributed
+        pygplates.InvalidLatLonError deep inside apply_reconstruction (large-magnitude cases) or
+        -- for a projected CRS whose coordinate magnitudes happen to fall inside +/-180/+/-90 --
+        silently reconstructs nonsense geometry (small-magnitude cases, not caught at all). Only
+        checked when a CRS is actually set: plenty of legitimate GeoDataFrames have none.
+        """
+        crs = getattr(features, 'crs', None)
+        if crs is not None and not crs.is_geographic:
+            raise ValueError(
+                "features is in a projected CRS ({!s}), but reconstruction treats coordinates "
+                "as longitude/latitude degrees. Reproject to a geographic CRS (e.g. EPSG:4326) "
+                "first.".format(crs))
+
+    def _check_known_reconstruction_plate_ids(self, features):
+        """The pygplates.FeatureCollection equivalent of _check_plate_ids' rotation-file check.
+
+        FeatureCollections have no attrs to carry a provenance stamp, so this only has the
+        against-the-rotation-model check, not _check_plate_ids' provenance-stamp check.
+        """
+        known_plate_ids = self.known_plate_ids()
+        if not known_plate_ids:
+            return
+
+        used_plate_ids = set()
+        for feature in features:
+            used_plate_ids.add(int(feature.get_reconstruction_plate_id()))
+
+        unknown_plate_ids = used_plate_ids - known_plate_ids - {0}
+        if not unknown_plate_ids:
+            return
+
+        listed = ', '.join(str(p) for p in sorted(unknown_plate_ids)[:10])
+        if unknown_plate_ids == used_plate_ids - {0}:
+            raise ValueError(
+                "None of the reconstruction plate ids in this feature collection ({:s}) are "
+                "defined in the rotation files of reconstruction model '{:s}'. They were most "
+                "likely assigned using a different model.".format(listed, str(self.name)))
+
+        warnings.warn(
+            "Plate ids {:s} are not defined in the rotation files of reconstruction model "
+            "'{:s}'. Features carrying them will not be rotated.".format(listed, str(self.name)))
+
+
+    def _require_existing_file(self, path, argname):
+        """Validate a file-path argument: the right type first, then that it exists.
+
+        Checking type before calling os.path.isfile matters: os.path.isfile(None) raises its
+        own unrelated TypeError, and formatting a non-string into '...{:s}...' raises a
+        confusing ValueError of its own -- either way the intended, friendly message below
+        never actually reaches the caller.
+        """
+        if not isinstance(path, (str, os.PathLike)):
+            raise TypeError(
+                "{:s} must be a file path (str or os.PathLike), not {:s}.".format(
+                    argname, type(path).__name__))
+        if not os.path.isfile(path):
+            raise ValueError('Unable to find file {!r} for {:s}.'.format(path, argname))
+
+    def _require_known_plate_id(self, plate_id, argname='anchor_plate_id'):
+        """Validate a plate id argument against this model's known plate ids, if known.
+
+        Mirrors _check_plate_ids' own rules: skip silently if known_plate_ids() can't say
+        (rotation model not built from files), and treat 0 as always valid (it is the anchor/
+        unpartitioned-feature default, not necessarily a rotation-file entry).
+        """
+        known_plate_ids = self.known_plate_ids()
+        if not known_plate_ids:
+            return
+        if plate_id != 0 and plate_id not in known_plate_ids:
+            raise ValueError(
+                "{:s}={!r} is not a plate id defined in the rotation files of reconstruction "
+                "model '{:s}'.".format(argname, plate_id, str(self.name)))
+
+
     def platetree(self):
         """
         Return a plate tree hierarchy object associated with the reconstruction model
@@ -422,16 +534,23 @@ class ReconstructionModel(object):
         
 
 
-    if pygplates.Version.get_imported_version() >= pygplates.Version(32):
-        def construct_topological_model(self, anchor_plate_id=0,
-                            default_resolve_topology_parameters=pygplates.ResolveTopologyParameters(enable_strain_rate_clamping=True)):
-            """Build a pygplates.TopologicalModel for deformation reconstruction (requires pygplates >= 32)."""
-            self.topological_model = pygplates.TopologicalModel(
-                self.dynamic_polygons,
-                self.rotation_model,
-                anchor_plate_id=anchor_plate_id,
-                # Enable strain rate clamping to better control crustal stretching factors...
-                default_resolve_topology_parameters=default_resolve_topology_parameters)
+    def construct_topological_model(self, anchor_plate_id=0, default_resolve_topology_parameters=None):
+        """Build a pygplates.TopologicalModel for deformation reconstruction (requires pygplates >= 32)."""
+        if pygplates.Version.get_imported_version() < pygplates.Version(32):
+            raise RuntimeError(
+                "construct_topological_model requires pygplates >= 32; this environment has "
+                "{!s}.".format(pygplates.Version.get_imported_version()))
+
+        if default_resolve_topology_parameters is None:
+            # Enable strain rate clamping to better control crustal stretching factors...
+            default_resolve_topology_parameters = pygplates.ResolveTopologyParameters(
+                enable_strain_rate_clamping=True)
+
+        self.topological_model = pygplates.TopologicalModel(
+            self.dynamic_polygons,
+            self.rotation_model,
+            anchor_plate_id=anchor_plate_id,
+            default_resolve_topology_parameters=default_resolve_topology_parameters)
 
 
     def reconstruct(self, features, reconstruction_time, anchor_plate_id=0,
@@ -452,10 +571,13 @@ class ReconstructionModel(object):
 
         if wrap_to_dateline:
             warnings.warn('wrap to dateline not yet implemented')
-            
+
+        self._require_known_plate_id(anchor_plate_id)
 
         if not topological:
             if isinstance(features, pygplates.FeatureCollection):
+
+                self._check_known_reconstruction_plate_ids(features)
 
                 # TODO assign plate ids if not available already (or option selected)
                 if reverse:
@@ -480,6 +602,7 @@ class ReconstructionModel(object):
                     # reconstruct
                     # somehow map reconstructed features back to original attribute table
 
+                    self._check_geographic_crs(features)
                     self._check_plate_ids(features)
 
                     if pygplates.Version.get_imported_version() < pygplates.Version(32):
@@ -543,6 +666,7 @@ class ReconstructionModel(object):
                     return reconstructed_gdf
 
                 else:
+                    self._check_geographic_crs(features)
                     self._check_plate_ids(features)
 
                     # multipart features will cause problems, so split them up with 'explode'
@@ -556,7 +680,9 @@ class ReconstructionModel(object):
                         reconstructed_gdf = features.explode(index_parts=True).reset_index(drop=True)
 
                     if len(reconstructed_gdf)==0:
-                        return None
+                        # Matches the use_tempfile=True branch: always return the same type,
+                        # so callers do not have to test for None.
+                        return reconstructed_gdf
                     else:
                         reconstructed_gdf['reconstruction_time'] = reconstruction_time
                         rgeometry = reconstructed_gdf.apply(lambda x: apply_reconstruction(x, 
@@ -572,12 +698,13 @@ class ReconstructionModel(object):
 
                         return reconstructed_gdf
 
+            else:
+                raise TypeError(
+                    "features must be a pygplates.FeatureCollection or a geopandas.GeoDataFrame, "
+                    "not {:s}.".format(type(features).__name__))
 
         else:
-             
-             #TODO perform a topological reconstruction
-
-             return
+             raise NotImplementedError('Topological reconstruction is not yet implemented.')
 
 
 
@@ -599,7 +726,11 @@ class ReconstructionModel(object):
         without assuming the plate's present-day rotation is the identity. Results therefore
         agree exactly with ``ReconstructionModel.reconstruct`` at the same age.
         """
+        self._require_known_plate_id(anchor_plate_id)
+
         if isinstance(features, pygplates.FeatureCollection):
+
+            self._check_known_reconstruction_plate_ids(features)
 
             reconstructed_features = []
             for feature in features:
@@ -636,6 +767,7 @@ class ReconstructionModel(object):
 
         elif isinstance(features, gpd.GeoDataFrame):
 
+            self._check_geographic_crs(features)
             self._check_plate_ids(features)
 
             # Multipart geometries are rotated one part at a time, so split them up first
@@ -686,6 +818,11 @@ class ReconstructionModel(object):
 
             return features
 
+        else:
+            raise TypeError(
+                "features must be a pygplates.FeatureCollection or a geopandas.GeoDataFrame, "
+                "not {:s}.".format(type(features).__name__))
+
 
 
     def assign_plate_ids(self, features, polygons='static', copy_valid_times=False, keep_unpartitioned_features=True):
@@ -697,14 +834,23 @@ class ReconstructionModel(object):
         :param keep_unpartitioned_features: If True (default), retain features that fall outside all polygons.
         :returns: pygplates FeatureCollection or GeoDataFrame with PLATEID1 assigned.
         """
+        if not isinstance(features, (pygplates.FeatureCollection, gpd.GeoDataFrame)):
+            raise TypeError(
+                "features must be a pygplates.FeatureCollection or a geopandas.GeoDataFrame, "
+                "not {:s}.".format(type(features).__name__))
+
         if polygons=='continents':
             partitioning_polygon_features = self.continent_polygons
         elif polygons=='coastlines':
             partitioning_polygon_features = self.coastlines
-        else:
+        elif polygons=='static':
             partitioning_polygon_features = self.static_polygons
+        else:
+            raise ValueError(
+                "Unknown polygons {!r}. Choose one of: 'static', 'coastlines', "
+                "'continents'.".format(polygons))
         if not partitioning_polygon_features:
-            raise ValueError('No polygons found for partitioning')
+            raise ValueError('No {:s} polygons loaded for partitioning.'.format(polygons))
 
         if isinstance(features, pygplates.FeatureCollection):
             if copy_valid_times:
@@ -727,7 +873,7 @@ class ReconstructionModel(object):
                                                     partition_return = pygplates.PartitionReturn.separate_partitioned_and_unpartitioned)[0])
 
 
-        elif isinstance(features, gpd.GeoDataFrame):
+        else:
 
             # TODO handle cases where static polygons are spread across multiple feature collections
             if len(partitioning_polygon_features)>1:
@@ -761,9 +907,6 @@ class ReconstructionModel(object):
             features.attrs[_PLATE_ID_PROVENANCE_KEY] = self.name
 
             return features
-
-        else:
-            raise ValueError('Error encountered in plate partitioning')
 
 
     def to_GPlates(self, feature_collections=None, path_to_gplates=None):
