@@ -30,13 +30,21 @@ dependencies = [
     "matplotlib",
     "xarray",
     "pygplates",
-    "PlateTectonicTools",
+    "PlateTectonicTools",  # ships no wheel (sdist only); pip builds it locally every install.
+                          # No compiler/system library needed -- it's pure Python -- so this is
+                          # slower, not riskier, but don't expect an instant wheel pull for it.
     "pooch",
     "rasterio",
     "requests",
     "tqdm",
     "pyyaml",
-    "setuptools<80",  # PlateTectonicTools imports pkg_resources, removed in setuptools 80+
+    # Required, not just defensive: PlateTectonicTools imports pkg_resources unconditionally at
+    # module load (ptt/documentation.py) but does not declare setuptools as its own dependency,
+    # and a modern `python -m venv` does not bundle setuptools by default. Without this pin, a
+    # fresh install has no pkg_resources at all and `import ptt` raises ModuleNotFoundError
+    # immediately -- not the deprecation warning the version cap below is about avoiding.
+    # Verified empirically (clean venv, setuptools absent -> that exact crash).
+    "setuptools<80",  # >=80 removes pkg_resources outright, which still gives an ImportError
     "cartopy",  # PlateTectonicTools imports this unconditionally at module level
 ]
 
