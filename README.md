@@ -45,7 +45,7 @@ which import it at the point of use and tell you what to install if it is missin
   installed separately**: `conda install -c conda-forge gmt`, Homebrew's `gmt`, or your Linux
   package manager.
 - `pip install "gprm[geophysics]"` — pyshtools, litho1pt0, pmagpy
-- `pip install "gprm[spatial]"` — stripy, astropy-healpix, scikit-image, scikit-learn
+- `pip install "gprm[spatial]"` — astropy-healpix, scikit-image, scikit-learn
   (if astropy-healpix is not installed, some functions fall back on precomputed point
   distributions in the `Data` folder)
 - `pip install "gprm[all]"` — everything above
@@ -59,10 +59,12 @@ cache_path()                                    # the cache root
 cache_path('TorsvikCocks2017', 'CEED6_LAND.gpml')  # a file inside a fetched bundle
 ```
 
-**Note on `stripy`**: `stripy` (pulled in directly by `spatial`, and transitively by
-`geophysics` via `litho1pt0`) has no prebuilt wheel for Apple Silicon macOS on any Python
-version, and none at all for Python 3.13+. On those platforms pip will try to build it from
-source, which needs a Fortran compiler (e.g. `brew install gcc` on macOS, or
-`conda install -c conda-forge stripy` as an alternative to pip for just that package).
+**Note on `stripy`**: `gprm` no longer uses `stripy` directly, but `geophysics` still pulls it
+in transitively via `litho1pt0`. `stripy` has no prebuilt wheel for Apple Silicon macOS on any
+Python version, and none at all for Python 3.13+. On those platforms pip will try to build it
+from source, which needs a Fortran compiler (e.g. `brew install gcc` on macOS, or
+`conda install -c conda-forge stripy` as an alternative to pip for just that package). This
+means `pip install "gprm[geophysics]"` and `"gprm[all]"` can fail on those platforms even
+though the bare install and `[spatial]`/`[viz]` do not.
 
 

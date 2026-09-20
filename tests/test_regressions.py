@@ -607,3 +607,61 @@ def test_merge_polygons_return_raster_does_not_need_scikit_image():
 
     assert result.shape == (19, 37)
     assert result.sum() == 8  # the square, at this sampling, covers 8 grid nodes
+
+
+# ---------------------------------------------------------------- raster sampling backends
+
+def test_sample_using_stripy_does_not_need_stripy_installed():
+    """sample_using_stripy used to build a spherical Delaunay triangulation via the `stripy`
+    package, which has no wheel for Apple Silicon macOS on any Python version and none at all
+    for Python 3.13+, forcing a from-source Fortran build. It now delegates to the same
+    spherical KD-tree engine as sample(), so the method (and sampling_method='stripy' in
+    utils.raster.reconstruct_raster) still work for anyone relying on them, without stripy.
+    """
+    import sys
+    from gprm.GPlatesReconstructionModel import GPlatesRaster
+
+    raster = object.__new__(GPlatesRaster)
+    raster.gridX = np.linspace(-10., 10., 5)
+    raster.gridY = np.linspace(-10., 10., 5)
+    LonGrid, LatGrid = np.meshgrid(raster.gridX, raster.gridY)
+    raster.gridZ = LonGrid + LatGrid
+
+    real_stripy = sys.modules.get('stripy')
+    sys.modules['stripy'] = None  # a None entry makes the import system raise ImportError
+    try:
+        point_z = raster.sample_using_stripy([0., 5.], [0., 5.])
+    finally:
+        if real_stripy is not None:
+            sys.modules['stripy'] = real_stripy
+        else:
+            del sys.modules['stripy']
+
+    np.testing.assert_allclose(point_z, raster.sample([0., 5.], [0., 5.]))
+
+
+def test_sample_using_gmt_matches_grid_values_at_nodes():
+    """sample_using_gmt used to shell out to the `gmt` CLI via subprocess with temp files,
+    parsing text output by hand; it now calls pygmt.grdtrack directly. Needs a real GMT
+    install, same as the rest of the pygmt-dependent surface.
+    """
+    pytest.importorskip('pygmt')
+    import tempfile
+    import xarray as xr
+    from gprm.GPlatesReconstructionModel import GPlatesRaster
+
+    lons = np.linspace(-10., 10., 5)
+    lats = np.linspace(-10., 10., 5)
+    LonGrid, LatGrid = np.meshgrid(lons, lats)
+    da = xr.DataArray(LonGrid + LatGrid, coords=[('lat', lats), ('lon', lons)], name='z')
+
+    with tempfile.NamedTemporaryFile(suffix='.nc') as tmp:
+        da.to_netcdf(tmp.name)
+
+        raster = object.__new__(GPlatesRaster)
+        raster.gridX, raster.gridY, raster.gridZ = lons, lats, LonGrid + LatGrid
+        raster.source_filename = tmp.name
+
+        result = raster.sample_using_gmt([0., 5.], [0., 5.])
+
+    np.testing.assert_allclose(result, [0., 10.])

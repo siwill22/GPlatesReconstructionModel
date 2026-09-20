@@ -40,7 +40,6 @@ import os
 from io import StringIO
 from pprint import pprint
 import tempfile
-import subprocess
 import copy
 import xarray as xr
 
@@ -1956,44 +1955,31 @@ class GPlatesRaster(object):
         return point_z
 
     def sample_using_gmt(self, point_lons, point_lats, extrapolate=False):
-        """Sample raster values at lon/lat points using GMT grdtrack."""
-        dataout = np.vstack((np.asarray(point_lons),np.asarray(point_lats))).T
-        xyzfile = tempfile.NamedTemporaryFile()
-        grdtrack_file = tempfile.NamedTemporaryFile()
+        """Sample raster values at lon/lat points using GMT's grdtrack, via pygmt.
 
-        np.savetxt(xyzfile.name,dataout)
-        # Note the a -T option would find the nearest valid grid value,
-        # if the point falls on a NaN grid node
-        # adding -T+e returns the distance to the node
-        if extrapolate:
-            subprocess.run(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-T', '-nl','-V','>', grdtrack_file.name], check=True)
-        else:
-            subprocess.run(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name], check=True)
-        G=[]
-        with open(grdtrack_file.name) as f:
-            for line in f:
-                if line[0] == '>':
-                    continue
-                else:
-                    tmp = line.split()
-                    G.append(float(tmp[2]))
+        Calls pygmt directly rather than shelling out to the ``gmt`` command-line tool with
+        temporary files, but the interpolation itself (linear, with ``extrapolate`` searching
+        outwards for the nearest non-NaN node) is unchanged.
+        """
+        from gprm.utils._optional import require
+        pygmt = require('pygmt', 'grid sampling using GMT grdtrack')
 
-        f.close()
-        return np.array(G)
+        points = pd.DataFrame({'x': np.asarray(point_lons), 'y': np.asarray(point_lats)})
+        track = pygmt.grdtrack(grid=self.source_filename, points=points, newcolname='z',
+                               interpolation='l', radius=True if extrapolate else None)
+        return track['z'].to_numpy()
 
     def sample_using_stripy(self, point_lons, point_lats, order=0):
-        """Sample raster values at lon/lat points using stripy spherical triangulation."""
-        import stripy
+        """Sample raster values at lon/lat points, spherically interpolated.
 
-        LonGrid, LatGrid = np.meshgrid(self.gridX,self.gridY)
-        tri = stripy.sTriangulation(lons=np.radians(LonGrid.flatten()),
-                                    lats=np.radians(LatGrid.flatten()))
-
-        point_z = tri.interpolate(np.radians(point_lons),np.radians(point_lats),
-                                  zdata=self.gridZ.flatten(),
-                                  order=order)
-
-        return point_z[0]
+        Formerly used the ``stripy`` package (spherical Delaunay triangulation). ``stripy``
+        ships no wheel for Apple Silicon macOS and none at all for Python 3.13+, forcing a
+        from-source Fortran build, so this now delegates to the same spherical KD-tree engine
+        as :meth:`sample` instead. Kept as a distinct method, rather than removed outright, in
+        case existing code still calls ``sampling_method='stripy'``. ``order`` is accepted for
+        backward compatibility but no longer selects an interpolation degree.
+        """
+        return self.sample(point_lons, point_lats)
 
     
     def reconstruct(self, reconstruction_model, to_time, from_time=0, grid_sampling=1.,

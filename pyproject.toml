@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gprm"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tools for building and working with GPlates plate tectonic reconstruction models"
 readme = "README.md"
 license = "MIT"
@@ -61,7 +61,7 @@ geophysics = ["pyshtools", "litho1pt0", "pmagpy"]
 # xarray-spatial's only caller, utils.proximity.generate_shadows, has been removed (it never
 # returned a value): the proximity/distance functions use scipy's cKDTree directly, and
 # neither xarray-spatial nor datashader is imported anywhere now.
-spatial = ["stripy", "astropy-healpix", "scikit-image", "scikit-learn"]
+spatial = ["astropy-healpix", "scikit-image", "scikit-learn"]
 all = ["gprm[viz,geophysics,spatial]"]
 
 [tool.pytest.ini_options]
