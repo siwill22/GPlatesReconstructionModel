@@ -1886,7 +1886,15 @@ class PointDistributionOnSphere(object):
         Given a set of target point features, returns a heatmap showing the number
         of points for which each point in the point distribution is the closest.
         Most useful where the point distribution is equal area.
+
+        .. deprecated::
+           Use ``gprm.utils.sphere.healpix_density`` (or ``point_density``) instead. Those
+           assign points to HEALPix pixels directly via astropy_healpix, exact and vectorized,
+           rather than via a nearest-point search against a separately-built point set.
         """
+        warnings.warn(
+            "point_feature_heatmap is deprecated; use gprm.utils.sphere.healpix_density "
+            "(or point_density) instead.")
 
         res = find_closest_geometries_to_points(target_features,
                                                 [self.multipoint],
