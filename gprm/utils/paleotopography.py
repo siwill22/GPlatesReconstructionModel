@@ -21,6 +21,12 @@ from ptt.utils import points_spatial_tree
 from ptt.utils.call_system_command import call_system_command
 import tempfile
 
+import logging
+
+# Progress messages go through logging rather than print, so that a library call is
+# silent by default. Turn them on with logging.basicConfig(level=logging.INFO).
+logger = logging.getLogger(__name__)
+
 
 
 # define a function that loads paleogeography multipoints at a specified time
@@ -151,7 +157,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
                         land_or_ocean_precedence='land', netcdf3_output=False, subdivision_depth=4):
 
 
-    print('Working on Time %0.2fMa\n' % reconstruction_time)
+    logger.info('Working on time %0.2f Ma', reconstruction_time)
         
     rotation_model = pygplates.RotationModel(rotation_file)
                         
@@ -165,7 +171,7 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
     # --> if the reconstruction time matches one of these times, then we can work directly on
     #     the geometries that match this time - hence the two routes through the if statement below
     
-    print('Selected Time is in the stage %0.2fMa to %0.2fMa' % (time_stage_min,time_stage_max))
+    logger.info('Selected time is in the stage %0.2f Ma to %0.2f Ma', time_stage_min, time_stage_max)
 
     land_points_file = '%s/tweentest_land_%0.2fMa_%0.2fMa.%s' % (tween_basedir,time_stage_min,time_stage_max,file_format)
     marine_points_file = '%s/tweentest_ocean_%0.2fMa_%0.2fMa.%s' % (tween_basedir,time_stage_min,time_stage_max,file_format)
@@ -222,7 +228,9 @@ def paleotopography_job(reconstruction_time, paleogeography_timeslice_list,
     ####################################
     # Deal with the mountains
     if np.equal(reconstruction_time, time_stage_min):
-        print('Temporary fix for valid time')
+        # Nudged by 0.01 Myr because at exactly the stage boundary the mountain features
+        # are not yet valid and nothing is returned. Marked as temporary since 2019.
+
         #dat3 = add_reconstructed_points_to_xyz(mountains_going_up_file,rotation_model,reconstruction_time,3)
         dat4 = add_reconstructed_points_to_xyz(mountains_going_down_file, rotation_model, reconstruction_time+0.01,1)
         dat5 = add_reconstructed_points_to_xyz(mountains_stable_file, rotation_model, reconstruction_time+0.01,1)

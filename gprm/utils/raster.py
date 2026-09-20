@@ -27,6 +27,7 @@ SOFTWARE.
 import os
 import math
 import warnings
+import logging
 import numpy as np
 import pygplates
 from ptt.utils import points_in_polygons
@@ -41,6 +42,10 @@ from scipy.spatial import cKDTree
 
 import pandas as pd
 import xarray as xr
+
+# Progress messages go through logging rather than print, so that a library call is
+# silent by default. Turn them on with logging.basicConfig(level=logging.INFO).
+logger = logging.getLogger(__name__)
 # pygmt is imported per-function rather than at module level: it costs ~1.7 s to
 # import, and most of this module does not need it.
 
@@ -62,7 +67,7 @@ def reconstruct_raster_stage(static_polygon_features,
                              spatial_tree_of_uniform_recon_points,
                              anchor_plate_id=0):
 
-    print('Reconstruct static polygons...')
+    logger.info('Reconstructing static polygons')
 
     # Reconstruct the multipoint feature.
     recon_static_polygon_features = []
@@ -78,7 +83,7 @@ def reconstruct_raster_stage(static_polygon_features,
         recon_static_polygon_plate_ids.append(recon_plate_id)
         recon_static_polygons.append(recon_polygon)
 
-    print('Find static polygons...')
+    logger.info('Finding static polygons')
 
     # Find the reconstructed static polygon (plate IDs) containing the uniform (reconstructed) points.
     #
@@ -87,7 +92,7 @@ def reconstruct_raster_stage(static_polygon_features,
     recon_point_plate_ids = points_in_polygons.find_polygons_using_points_spatial_tree(
             uniform_recon_points, spatial_tree_of_uniform_recon_points, recon_static_polygons, recon_static_polygon_plate_ids)
 
-    print('Group by polygons...')
+    logger.info('Grouping points by polygon')
 
     # Group recon points with plate IDs so we can later create one multipoint per plate.
     recon_points_grouped_by_plate_id = {}
@@ -104,7 +109,7 @@ def reconstruct_raster_stage(static_polygon_features,
         recon_point = uniform_recon_points[point_index]
         recon_points_grouped_by_plate_id[point_plate_id].append(recon_point)
 
-    print('Reverse reconstruct points...')
+    logger.info('Reverse reconstructing points')
 
     # Reconstructed points.
     recon_point_lons = []

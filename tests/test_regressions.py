@@ -380,3 +380,79 @@ def test_anchor_zero_matches_reconstruct_at_the_same_age(reconstruction_model, s
     for a, b in zip(by_age_column.geometry, at_fixed_time.geometry):
         assert a.x == pytest.approx(b.x, abs=1e-9)
         assert a.y == pytest.approx(b.y, abs=1e-9)
+
+
+# ------------------------------------------------------------- library output
+
+def test_library_code_does_not_print():
+    """A library that prints cannot be quietened by its caller, and the messages were
+    unusable anyway inside a loop over hundreds of reconstruction times. Progress now goes
+    through logging, diagnostics through warnings, and failures are raised.
+
+    The allowed cases are listed rather than pattern-matched, so a new print has to be
+    justified here rather than slipping in."""
+    import ast
+    import pathlib
+
+    allowed = {
+        # info() exists to print; that is the whole method
+        ('GPlatesReconstructionModel.py', 'info'),
+        # both are already behind an explicit verbose flag
+        ('molchan.py', 'molchan_test'),
+        ('molchan.py', 'molchan_point'),
+    }
+
+    root = pathlib.Path(__import__('gprm').__file__).parent
+    offenders = []
+    for path in sorted(root.rglob('*.py')):
+        if 'build' in path.parts:
+            continue
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            for call in ast.walk(node):
+                if (isinstance(call, ast.Call)
+                        and isinstance(call.func, ast.Name)
+                        and call.func.id == 'print'
+                        and (path.name, node.name) not in allowed):
+                    offenders.append('{}:{} in {}()'.format(path.name, call.lineno, node.name))
+
+    assert not offenders, 'print() in library code: ' + ', '.join(sorted(set(offenders)))
+
+
+def test_importing_gprm_installs_a_null_log_handler():
+    """Standard library practice: no output, and no 'no handlers could be found' either."""
+    import logging
+
+    import gprm  # noqa: F401
+
+    handlers = logging.getLogger('gprm').handlers
+    assert any(isinstance(h, logging.NullHandler) for h in handlers)
+
+
+def test_unknown_polygon_type_raises(reconstruction_model):
+    """polygon_snapshot printed the literal string 'some error msg' and then fell through to
+    an UnboundLocalError on the next line."""
+    with pytest.raises(ValueError, match='static_polygons'):
+        reconstruction_model.polygon_snapshot('contnents', 100.0)
+
+
+def test_unknown_depth_model_raises():
+    """age2depth printed 'unknown depth model' and returned an unbound name."""
+    from gprm.utils.paleogeography import age2depth
+
+    with pytest.raises(ValueError, match='GDH1'):
+        age2depth(np.array([10.0, 20.0]), model='GHD1')
+
+
+def test_forward_reconstruction_raises_rather_than_returning_none():
+    """deformation printed 'not yet implemented' and returned None, so the caller hit an
+    AttributeError on the result instead of being told."""
+    import inspect
+
+    from gprm.utils import deformation
+
+    source = inspect.getsource(deformation.raster_topological_reconstruction)
+    assert 'NotImplementedError' in source
+    assert "print('Forward reconstruction" not in source

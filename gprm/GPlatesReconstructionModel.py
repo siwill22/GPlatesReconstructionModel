@@ -303,7 +303,9 @@ class ReconstructionModel(object):
         elif polygon_type == 'static_polygons':
             polygons_to_reconstruct = self.static_polygons
         else:
-            print('some error msg')
+            raise ValueError(
+                "Unknown polygon_type {!r}. Choose one of: 'coastlines', 'continents', "
+                "'static_polygons'.".format(polygon_type))
         
         reconstructed_polygons = []
         pygplates.reconstruct(polygons_to_reconstruct,
@@ -860,7 +862,7 @@ class ReconstructedPolygonSnapshot(object):
             fill=color
 
         if not self.reconstructed_polygons:
-            print('No polygons to plot')
+            warnings.warn('No polygons to plot at this reconstruction time; the layer is absent from the figure rather than empty.')
             return
 
         # plotting is generally faster if saved to temporary file
@@ -1124,7 +1126,7 @@ class PlateSnapshot(object):
                     features.append(plot_feature)
 
         if not features:
-            print('No subduction zones to plot')
+            warnings.warn('No subduction zones to plot at this reconstruction time; the layer is absent from the figure rather than empty.')
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
@@ -1155,7 +1157,7 @@ class PlateSnapshot(object):
                     features.append(plot_feature)
 
         if not features:
-            print('No mid-ocean ridges to plot')
+            warnings.warn('No mid-ocean ridges to plot at this reconstruction time; the layer is absent from the figure rather than empty.')
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
@@ -1187,7 +1189,7 @@ class PlateSnapshot(object):
                     features.append(plot_feature)
         
         if not features:
-            print('No plate boundaries to plot')
+            warnings.warn('No plate boundaries to plot at this reconstruction time; the layer is absent from the figure rather than empty.')
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
@@ -1226,7 +1228,7 @@ class PlateSnapshot(object):
                 features.append(topology.get_resolved_feature())
 
         if not features:
-            print('No deformation zones to plot')
+            warnings.warn('No deformation zones to plot at this reconstruction time; the layer is absent from the figure rather than empty.')
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)
@@ -1253,7 +1255,7 @@ class PlateSnapshot(object):
             features = [topology.get_resolved_feature() for topology in self.resolved_topologies]
 
         if not features:
-            print('No polygons to plot')
+            warnings.warn('No polygons to plot at this reconstruction time; the layer is absent from the figure rather than empty.')
             return
 
         pygplates.FeatureCollection(features).write(plot_file.name)

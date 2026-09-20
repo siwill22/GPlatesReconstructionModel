@@ -268,7 +268,6 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
         raise ValueError('Unknown catalogue {:s}'.format(catalogue))
 
     if load:
-        print(fname)
         return _gpd.read_file(fname)
     else:
         return fname

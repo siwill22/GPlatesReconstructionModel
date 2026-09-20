@@ -7,6 +7,11 @@ import pandas as _pd
 import geopandas as _gpd
 import os as _os
 import numpy as _np
+import logging
+
+# Progress messages go through logging rather than print, so that a library call is
+# silent by default. Turn them on with logging.basicConfig(level=logging.INFO).
+_logger = logging.getLogger(__name__)
 
 
 def loadDB(version=2021):
@@ -180,7 +185,7 @@ def loadDB(version=2021):
         )
         xls3 = _pd.ExcelFile(fname3)
 
-        print('Concatenating databases, please be patient....')
+        _logger.info('Concatenating databases, this takes a while')
         df1_merge = _pd.merge(xls1.parse('Samples'),xls1.parse('UPb_Data'),on='Ref-Sample Key')
         df2_merge = _pd.merge(xls2.parse('Samples'),xls2.parse('UPb_Data'),on='Ref-Sample Key')
         df3_merge = _pd.merge(xls3.parse('Samples'),xls3.parse('UPb_Data'),on='Ref-Sample Key')
@@ -204,7 +209,7 @@ def loadDB(version=2021):
         )
 
         xls = _pd.ExcelFile(fname)
-        print('Merging Samples and UPb_Data (~1M rows), please be patient....')
+        _logger.info('Merging Samples and UPb_Data (~1M rows), this takes a while')
         df = _pd.merge(xls.parse('Samples'), xls.parse('UPb_Data'), on='Ref-Sample Key')
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]  # drop blank trailing columns from the sheet
 
@@ -415,9 +420,13 @@ def tectonic_category(SedimentaryZircons,
         cdf_vals = _np.interp(cdf_markers,xtmp,dst)
         #cdf_vals_ma = _np.interp(cdf_markers_ma,dst,xtmp)
 
-        # classify according to Cawood et al (2012)
-        print(cdf_vals[1], cdf_vals[6])
-        print('This looks like it wrongly assumes a 0.05 spacing in the cdf markers')
+        # Classify according to Cawood et al. (2012).
+        #
+        # SUSPECTED BUG, carried over from a print() that fired on every call: the
+        # thresholds below index cdf_vals at 1 and 6, which only correspond to the
+        # intended cumulative fractions if cdf_markers is spaced at 0.05. Nothing
+        # enforces that spacing. Verify against the paper before relying on the
+        # categories.
         category = 'C'
         if cdf_vals[1]<150.:
             category = 'B'

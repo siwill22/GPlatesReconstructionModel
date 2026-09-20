@@ -96,11 +96,9 @@ def fill_inpaint(array,invalid=None,max_iter=5,tol=0.5,kernel_size=1,method='loc
     replaced_old = np.zeros( n_nans, dtype=np.float64)
     # depending on kernel type, fill kernel array
     if method == 'localmean':
-        print('kernel_size', kernel_size)
         for i in range(2*kernel_size+1):
             for j in range(2*kernel_size+1):
                 kernel[i,j] = 1
-        print(kernel, 'kernel')
     
     elif method == 'idw':
         kernel = np.array([[0, 0.5, 0.5, 0.5,0],
@@ -108,7 +106,6 @@ def fill_inpaint(array,invalid=None,max_iter=5,tol=0.5,kernel_size=1,method='loc
             [0.5,0.75,1,0.75,0.5],
             [0.5,0.75,0.75,0.5,1],
             [0, 0.5, 0.5 ,0.5 ,0]])
-        print(kernel, 'kernel')
     
     else:
         raise NotImplementedError('Method not valid. Should be one of [\'localmean\',\'idw\'].')
@@ -121,7 +118,6 @@ def fill_inpaint(array,invalid=None,max_iter=5,tol=0.5,kernel_size=1,method='loc
     # make several passes
     # until we reach convergence
     for it in range(max_iter):
-        print('iteration', it)
         # for each NaN element
         for k in range(n_nans):
             i = inans[k]
@@ -158,7 +154,6 @@ def fill_inpaint(array,invalid=None,max_iter=5,tol=0.5,kernel_size=1,method='loc
 
         # check if mean square difference between values of replaced
         #elements is below a certain tolerance
-        print('tolerance', np.mean( (replaced_new-replaced_old)**2 ))
         if np.mean( (replaced_new-replaced_old)**2 ) < tol:
             break
         else:

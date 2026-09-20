@@ -18,6 +18,11 @@
 import pygplates
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
+
+# Progress messages go through logging rather than print, so that a library call is
+# silent by default. Turn them on with logging.basicConfig(level=logging.INFO).
+logger = logging.getLogger(__name__)
 
 
 def get_unique_plate_pairs_from_rotation_model(rotation_model,recon_time):
@@ -290,7 +295,7 @@ def write_trees_to_file(input_features, rotation_model, filename,
 
     for reconstruction_time in reconstruction_times:
 
-        print('working on time %0.2f Ma' % reconstruction_time)
+        logger.info('working on time %0.2f Ma', reconstruction_time)
 
         reconstructed_polygons = []
         if polygon_type in ['topological','dynamic']:  # so this should be fixed, no need for duplicate terminology

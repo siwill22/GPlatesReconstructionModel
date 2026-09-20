@@ -165,7 +165,6 @@ def fetch_Li2023(load=True, model_case='East'):
     
     #dirname = _os.path.split(fnames[0])[0]
     dirname = '{:s}/Li2023/'.format(fnames[0].split('Li2023')[0])
-    print(dirname)
 
     # The first time we load, we look for the directory with the long filename with 
     # strange characters (which may appear differently on different OS?), 

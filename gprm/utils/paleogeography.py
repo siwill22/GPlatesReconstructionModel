@@ -1,6 +1,8 @@
 """Paleogeography reconstruction and raster generation utilities."""
 import pygplates
 import glob
+import warnings
+import logging
 import tempfile
 import subprocess
 import numpy as np
@@ -13,6 +15,10 @@ from .create_gpml import create_gpml_regular_long_lat_mesh, create_gpml_healpix_
 import matplotlib
 import matplotlib.pyplot as plt
 
+# Progress messages go through logging rather than print, so that a library call is
+# silent by default. Turn them on with logging.basicConfig(level=logging.INFO).
+logger = logging.getLogger(__name__)
+
 
 def load_paleogeography(pg_dir,env_list=None,
                         single_file=False,env_field='ENV'):
@@ -22,7 +28,6 @@ def load_paleogeography(pg_dir,env_list=None,
         env_list = ['lm','m','sm','i']
 
     if single_file:
-        print(pg_dir)
         features = pygplates.FeatureCollection(pg_dir)
         pg_features = []
         for feature in features:
@@ -35,14 +40,16 @@ def load_paleogeography(pg_dir,env_list=None,
         for env in env_list:
             try:
                 filename = glob.glob('%s/%s_*.shp' % (pg_dir,env))
-                print(filename)
                 features = pygplates.FeatureCollection(filename[0])
                 for feature in features:
                     feature.set_shapefile_attribute('Layer',env)
                     pg_features.append(feature)
 
-            except Exception:
-                print('no features of type %s' % env)
+            except Exception as err:
+                # Printed and moved on, so a missing or unreadable layer looked the same as
+                # a layer that genuinely holds nothing.
+                warnings.warn('No features of type {!r} were loaded from {}: {}: {}'.format(
+                    env, pg_dir, type(err).__name__, err))
 
     return pg_features
 
@@ -207,7 +214,7 @@ def find_distance_to_nearest_ridge(resolved_topologies,shared_boundary_sections,
 
     for topology in resolved_topologies:
         plate_id = topology.get_resolved_feature().get_reconstruction_plate_id()
-        print('Generating distances for Plate %d ...' % plate_id)
+        logger.info('Generating distances for plate %d', plate_id)
 
         # Section to isolate the mid-ocean ridge segments that bound the current plate
         mid_ocean_ridges_on_plate = []
@@ -274,7 +281,8 @@ def age2depth(age_array,model='GDH1'):
         paleodepth = -paleodepth
 
     else:
-        print('unknown depth model')
+        raise ValueError(
+            "Unknown depth model {!r}. Choose one of: 'GDH1', 'Crosby'.".format(model))
 
     return paleodepth
 

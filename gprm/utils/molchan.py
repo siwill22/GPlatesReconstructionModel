@@ -227,6 +227,24 @@ def _miss_rate(distances, contours):
     return 1.0 - captured / distances.size
 
 
+def _warn_about_failed_times(sequence, what):
+    """Say up front which times produced no raster, rather than leaving None in the sequence.
+
+    The workers warn individually, but those warnings come from separate processes and are
+    easily missed; a sequence with holes in it otherwise looks complete until something much
+    later skips the gaps without comment.
+    """
+    failed = [time for time, raster in sequence.items() if raster is None]
+    if failed:
+        shown = ', '.join(str(t) for t in failed[:8])
+        warnings.warn(
+            'Could not {} at {} of {} times ({}{}). Those entries are None, and any analysis '
+            'over this sequence will silently skip them.'.format(
+                what, len(failed), len(sequence), shown,
+                ', ...' if len(failed) > 8 else ''),
+            stacklevel=2)
+
+
 def _matching_raster_time(raster_dict, age, age_field_name='age'):
     """Find the key of raster_dict matching a sample's age.
 
@@ -508,7 +526,11 @@ def _process_polygon_rasterization(reconstruction_time, features, rotation_model
             tmp.data[bn.data <= buffer_distance] = 1
         return reconstruction_time, tmp
     except Exception as e:
-        print(f"Error processing time {reconstruction_time}: {str(e)}")
+        # Printed from a worker process, where stdout is easily lost, and the None then sat
+        # in the raster sequence to be skipped silently much later. Warned instead, and the
+        # caller is told how many times failed.
+        warnings.warn('Could not rasterize polygons at {} Ma: {}: {}'.format(
+            reconstruction_time, type(e).__name__, e))
         return reconstruction_time, None
 
 
@@ -562,6 +584,8 @@ def generate_raster_sequence_from_polygons(features,
     for reconstruction_time in reconstruction_times:
         raster_dict[reconstruction_time] = results[reconstruction_time]
 
+    _warn_about_failed_times(raster_dict, 'rasterize polygons')
+
     return raster_dict
 
 
@@ -604,7 +628,8 @@ def _process_distance_raster(reconstruction_time, target_features, reconstructio
         return reconstruction_time, prox_grid
 
     except Exception as e:
-        print(f"Error processing time {reconstruction_time}: {str(e)}")
+        warnings.warn('Could not build a distance raster at {} Ma: {}: {}'.format(
+            reconstruction_time, type(e).__name__, e))
         return reconstruction_time, None
 
 
@@ -653,6 +678,8 @@ def generate_distance_raster_sequence(target_features,
     prox_grid_sequence = OrderedDict()
     for reconstruction_time in reconstruction_times:
         prox_grid_sequence[reconstruction_time] = results[reconstruction_time]
+
+    _warn_about_failed_times(prox_grid_sequence, 'build a distance raster')
 
     return prox_grid_sequence
 

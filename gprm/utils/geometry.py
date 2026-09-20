@@ -4,7 +4,7 @@ import numpy as np
 from shapely.geometry import (Point, LineString, Polygon,
                               MultiPoint, MultiLineString, MultiPolygon)
 import geopandas as _gpd
-import sys
+import warnings
 
 def apply_reconstruction(feature, rotation_model,
                          reconstruction_time_field='reconstruction_time',
@@ -243,18 +243,23 @@ def find_overriding_and_subducting_plates(subduction_shared_sub_segment, time=-9
     """Return plate IDs and names for the overriding and subducting plates of a subduction sub-segment."""
     subduction_polarity = subduction_shared_sub_segment.get_feature().get_enumeration(pygplates.PropertyName.gpml_subduction_polarity)
     if (not subduction_polarity) or (subduction_polarity == 'Unknown'):
-        print('Unable to find the overriding plate of the subducting shared sub-segment "{0}"'.format(
-            subduction_shared_sub_segment.get_feature().get_name()), file=sys.stderr)
-        print('    subduction zone feature is missing subduction polarity property or it is set to "Unknown".', file=sys.stderr)
+        warnings.warn(
+            'Cannot identify the overriding plate of subduction sub-segment {0!r}: the feature '
+            'has no subduction polarity property, or it is set to "Unknown". Returning None.'
+            .format(subduction_shared_sub_segment.get_feature().get_name()))
         return
 
     # There should be two sharing topologies - one is the overriding plate and the other the subducting plate.
     sharing_resolved_topologies = subduction_shared_sub_segment.get_sharing_resolved_topologies()
     if len(sharing_resolved_topologies) != 2:
-        print('Unable to find the overriding and subducting plates of the subducting shared sub-segment "{0}" at {1}Ma'.format(
-            subduction_shared_sub_segment.get_feature().get_name(), time), file=sys.stderr)
-        print('    there are not exactly 2 topologies sharing the sub-segment.', file=sys.stderr)
-        print(str(sharing_resolved_topologies[0].get_resolved_feature().get_reconstruction_plate_id()), file=sys.stderr)
+        warnings.warn(
+            'Cannot identify the overriding and subducting plates of subduction sub-segment '
+            '{0!r} at {1} Ma: {2} topologies share it, not 2 (first is plate {3}). '
+            'Returning None.'.format(
+                subduction_shared_sub_segment.get_feature().get_name(), time,
+                len(sharing_resolved_topologies),
+                sharing_resolved_topologies[0].get_resolved_feature().get_reconstruction_plate_id()
+                if sharing_resolved_topologies else 'n/a'))
         return
 
     overriding_plate = None
@@ -288,15 +293,17 @@ def find_overriding_and_subducting_plates(subduction_shared_sub_segment, time=-9
                 subducting_plate = sharing_resolved_topology
     
     if overriding_plate is None:
-        print('Unable to find the overriding plate of the subducting shared sub-segment "{0}" at {1}Ma'.format(
-            subduction_shared_sub_segment.get_feature().get_name(), time), file=sys.stderr)
-        print('    both sharing topologies are on subducting side of subducting line.', file=sys.stderr)
+        warnings.warn(
+            'Cannot identify the overriding plate of subduction sub-segment {0!r} at {1} Ma: '
+            'both sharing topologies are on the subducting side of the line. Returning None.'
+            .format(subduction_shared_sub_segment.get_feature().get_name(), time))
         return
     
     if subducting_plate is None:
-        print('Unable to find the subducting plate of the subducting shared sub-segment "{0}" at {1}Ma'.format(
-            subduction_shared_sub_segment.get_feature().get_name(), time), file=sys.stderr)
-        print('    both sharing topologies are on overriding side of subducting line.', file=sys.stderr)
+        warnings.warn(
+            'Cannot identify the subducting plate of subduction sub-segment {0!r} at {1} Ma: '
+            'both sharing topologies are on the overriding side of the line. Returning None.'
+            .format(subduction_shared_sub_segment.get_feature().get_name(), time))
         return
     
     return (overriding_plate, subducting_plate, subduction_polarity)

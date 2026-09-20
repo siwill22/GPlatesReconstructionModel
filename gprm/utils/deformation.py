@@ -316,8 +316,11 @@ def raster_topological_reconstruction(grid, topological_model, reconstruction_ti
         return reconstructed_raster
 
     else:
-        print('Forward reconstruction not yet implemented')
-    # TODO implement the forward reconstruction case
+        # Previously printed this and returned None, so the caller got an AttributeError on
+        # the result rather than being told the case is unsupported.
+        raise NotImplementedError(
+            'Forward reconstruction (time_to > time_from) is not implemented; this function '
+            'only reconstructs back in time.')
 
 
 #def feature_collection_topological_reconstruction():
