@@ -56,7 +56,7 @@ Homepage = "https://github.com/siwill22/GPlatesReconstructionModel"
 # Nothing on the data-preparation or analysis path imports it -- fetching models, assigning
 # plate ids, reconstructing, plate snapshots and all proximity calculations work without it,
 # so a headless machine does not need GMT at all.
-viz = ["pygmt", "basemap"]
+viz = ["pygmt"]
 geophysics = ["pyshtools", "litho1pt0", "pmagpy"]
 # xarray-spatial's only caller, utils.proximity.generate_shadows, has been removed (it never
 # returned a value): the proximity/distance functions use scipy's cKDTree directly, and

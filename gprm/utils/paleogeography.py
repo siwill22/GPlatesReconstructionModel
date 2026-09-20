@@ -316,24 +316,6 @@ def paleobathymetry_from_topologies(resolved_topologies,shared_boundary_sections
 
 ########################
 # PLOTTING
-def paleogeography_points_basemap(pg_points,env_color_dict,fill_color='darkblue',markersize=2,alpha=1):
-    from mpl_toolkits.basemap import Basemap
-    m = Basemap(projection='robin', lon_0=0, resolution='c')
-    m.drawmapboundary(fill_color='white')
-    for feature in pg_points:
-        env = feature.get_shapefile_attribute('Layer')
-        if env is not None:
-            color=env_color_dict[env]
-        else:
-            color=fill_color
-
-        for geometry in feature.get_geometries():
-            x,y = m(geometry.to_lat_lon_array()[:,1],geometry.to_lat_lon_array()[:,0])
-            plt.plot(x,y,'.',color=color,markersize=markersize)
-
-    return m
-
-
 def paleogeography_cross_section(ProfileX_kms,topo_profile,moho_profile,
                                  subduction_intersections,ridge_intersections,
                                  vertical_exaggeration=20.):

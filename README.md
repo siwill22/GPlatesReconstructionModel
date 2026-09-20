@@ -41,9 +41,9 @@ which import it at the point of use and tell you what to install if it is missin
 - pooch, requests, tqdm, pyyaml
 
 ### Optional extras:
-- `pip install "gprm[viz]"` — pygmt and basemap (plotting, grid sampling). **pygmt also needs
-  GMT >=6 installed separately**: `conda install -c conda-forge gmt`, Homebrew's `gmt`, or
-  your Linux package manager.
+- `pip install "gprm[viz]"` — pygmt (plotting, grid sampling). **pygmt also needs GMT >=6
+  installed separately**: `conda install -c conda-forge gmt`, Homebrew's `gmt`, or your Linux
+  package manager.
 - `pip install "gprm[geophysics]"` — pyshtools, litho1pt0, pmagpy
 - `pip install "gprm[spatial]"` — stripy, astropy-healpix, scikit-image, scikit-learn
   (if astropy-healpix is not installed, some functions fall back on precomputed point
