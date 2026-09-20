@@ -396,41 +396,60 @@ def tectonic_category(SedimentaryZircons,
                       sample_key='Ref-Sample Key',
                       grain_age_key='Non_Iter_Age_Ma',
                       depositional_age_key='Est_Depos_Age_Ma'):
-    ''' 
-    Given a set of zircon spectra, return categories according to the 
-    method of Cawood et al (2012). See also Jian et al (2022)
     '''
-    cdf_markers = _np.arange(0,1.0001,0.01)
+    Given a set of zircon spectra, return categories according to the
+    method of Cawood et al (2012). See also Jian et al (2022)
+
+    The classification reads the cumulative distribution of the lag time (grain
+    crystallization age minus the depositional age of the sediment) at two cumulative
+    proportions:
+
+      A  -- convergent:   30% of the grains have a lag time under 100 Myr
+      B  -- collisional:   5% of the grains have a lag time under 150 Myr
+      C  -- extensional / intracratonic: neither
+
+    A sample with fewer than two grains carrying both an age and a depositional age is
+    returned as None rather than forced into a category.
+    '''
+    # The cumulative proportions at which Cawood et al. read their two thresholds. These
+    # used to be indices (1 and 6) into a cdf sampled at 0.01 intervals, which are the
+    # intended 5% and 30% only if that sampling is at 0.05 -- so the categories were in
+    # fact being decided at 1% and 6%. For a typical 74-grain sample the 1% mark falls
+    # between the youngest and second-youngest grain, which is the single-grain measure
+    # the cumulative construction exists to avoid. Sampling the cdf at the two fractions
+    # that are actually wanted removes the dependence on any marker spacing.
+    COLLISIONAL_FRACTION, COLLISIONAL_MAX_LAG = 0.05, 150.
+    CONVERGENT_FRACTION, CONVERGENT_MAX_LAG = 0.30, 100.
 
     sample_groups = SedimentaryZircons.groupby(by=sample_key)
 
     category_list = []
 
     for sample_group in sample_groups:
-    
+
         s = sample_group[1][grain_age_key]
-    
+
         age_at_deposition = s - sample_group[1][depositional_age_key]
 
-        # define the cdf
-        dst = _np.sort(age_at_deposition)
+        # drop missing values before sorting: np.sort puts NaN at the end, where it would
+        # both count towards the number of grains and so shift every cumulative proportion
+        age_at_deposition = _np.asarray(age_at_deposition, dtype=float)
+        dst = _np.sort(age_at_deposition[_np.isfinite(age_at_deposition)])
+
+        if len(dst) < 2:
+            category_list.append(None)
+            continue
+
+        # define the cdf and sample it at the two fractions the classification uses
         xtmp = _np.linspace(0,1,len(dst))
+        collisional_lag, convergent_lag = _np.interp(
+            [COLLISIONAL_FRACTION, CONVERGENT_FRACTION], xtmp, dst)
 
-        # sample cdf at regular increment
-        cdf_vals = _np.interp(cdf_markers,xtmp,dst)
-        #cdf_vals_ma = _np.interp(cdf_markers_ma,dst,xtmp)
-
-        # Classify according to Cawood et al. (2012).
-        #
-        # SUSPECTED BUG, carried over from a print() that fired on every call: the
-        # thresholds below index cdf_vals at 1 and 6, which only correspond to the
-        # intended cumulative fractions if cdf_markers is spaced at 0.05. Nothing
-        # enforces that spacing. Verify against the paper before relying on the
-        # categories.
+        # Classify according to Cawood et al. (2012): nested, A being the strictest
         category = 'C'
-        if cdf_vals[1]<150.:
+        if collisional_lag < COLLISIONAL_MAX_LAG:
             category = 'B'
-            if cdf_vals[6]<100.:
+            if convergent_lag < CONVERGENT_MAX_LAG:
                 category = 'A'
 
         category_list.append(category)

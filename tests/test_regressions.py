@@ -456,3 +456,63 @@ def test_forward_reconstruction_raises_rather_than_returning_none():
     source = inspect.getsource(deformation.raster_topological_reconstruction)
     assert 'NotImplementedError' in source
     assert "print('Forward reconstruction" not in source
+
+
+# --- Cawood et al. (2012) tectonic categories ---------------------------------------
+#
+# tectonic_category read its two thresholds at cdf_vals[1] and cdf_vals[6] of a cdf
+# sampled every 0.01, so the classification was decided at the 1% and 6% cumulative
+# proportions instead of the intended 5% and 30%. Both markers then sat among the very
+# youngest grains, which inflated the convergent class: over the Puetz 2021 database it
+# put 6120 of 11340 samples in category A where the published fractions give 3390.
+
+def _zircon_sample(lags, depositional_age=0.0, key='S1'):
+    """One sample's worth of rows, given the lag time (grain age - depositional age) of
+    each grain. NaN lags are passed through as missing grain ages."""
+    return pd.DataFrame({
+        'Ref-Sample Key': key,
+        'Non_Iter_Age_Ma': np.asarray(lags, dtype=float) + depositional_age,
+        'Est_Depos_Age_Ma': depositional_age,
+        'Longitude': 10.0,
+        'Latitude': 20.0,
+    })
+
+
+def _category(lags, **kwargs):
+    from gprm.datasets.Zircons import tectonic_category
+
+    return tectonic_category(_zircon_sample(lags, **kwargs)).TectonicClass.iloc[0]
+
+
+def test_categories_are_read_at_five_and_thirty_percent():
+    """Ten of a hundred grains have a short lag: enough for the 6% marker the code used to
+    read, not enough for the 30% marker the method actually specifies."""
+    lags = [50.0] * 10 + [500.0] * 90
+
+    # 5% -> 50 Myr < 150, so collisional; 30% -> 500 Myr, so not convergent.
+    assert _category(lags) == 'B'
+
+
+def test_a_genuinely_convergent_spectrum_is_still_category_a():
+    """Guard against the fix simply making the test stricter for everything."""
+    lags = [50.0] * 40 + [500.0] * 60
+
+    assert _category(lags) == 'A'
+
+
+def test_a_spectrum_with_no_young_grains_is_category_c():
+    assert _category([300.0] * 100) == 'C'
+
+
+def test_missing_grain_ages_do_not_shift_the_cumulative_proportions():
+    """np.sort puts NaN at the end, where it used to count towards the grain total and so
+    move every marker to a lower true percentile."""
+    lags = [50.0] * 35 + [500.0] * 65
+
+    assert _category(lags) == 'A'
+    assert _category(lags + [np.nan] * 40) == 'A'
+
+
+def test_a_sample_too_small_to_classify_is_not_forced_into_a_category():
+    assert _category([50.0]) is None
+    assert _category([np.nan, np.nan]) is None
