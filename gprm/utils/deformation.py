@@ -130,6 +130,12 @@ def get_crustal_thickness_points(points, grid=None,
     
     # if no grid is provided, we take the layer thickness from litho1.0
     if not grid:
+        # litho1pt0 unconditionally requires stripy, which has no wheel for Apple Silicon
+        # macOS or Python 3.13+, so `pip install "gprm[geophysics]"`/`"gprm[all]"` can fail on
+        # those platforms even though the bare install and gprm[spatial] no longer need stripy
+        # at all. This function has no callers in gprm or Geode today, but deformation-workflow
+        # callers are expected -- keep it (and litho1pt0 in the geophysics extra) rather than
+        # deleting it as an orphan.
         import litho1pt0 as litho
     
         ptlats = np.array([pt.to_lat_lon()[0] for pt in points])
