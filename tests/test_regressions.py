@@ -546,3 +546,31 @@ def test_cell_area_weights_accepts_lat_lon_named_coordinates():
                              coords=[('lat', np.linspace(-10, 10, 4)), ('lon', np.linspace(-20, 20, 5))])
 
     np.testing.assert_allclose(_cell_area_weights(da_xy), _cell_area_weights(da_latlon))
+
+
+def test_reconstruction_model_module_does_not_import_unused_ptt_symbols():
+    """topology2gmt (ptt.resolve_topologies.resolve_topologies) was imported but never called
+    anywhere. call_system_command (ptt.utils.call_system_command) had exactly one live call
+    site (GPlatesRaster.sample_using_gmt), a plain subprocess wrapper unrelated to pygplates,
+    now inlined with the stdlib. Neither needs PlateTectonicTools -- an effectively
+    unmaintained GPL dependency (PyPI's latest release declares requires_python>=2.7) --
+    imported for zero behaviour.
+
+    points_in_polygons and points_spatial_tree are deliberately NOT checked here: they back
+    the only bulk point-in-polygon query pygplates itself provides no equivalent for (its
+    PlatePartitioner works on whole Features, not raw point arrays), and are genuinely load-
+    bearing via merge_polygons and GPlatesRaster.reconstruct.
+    """
+    import ast
+    import gprm.GPlatesReconstructionModel as grm
+
+    tree = ast.parse(open(grm.__file__).read())
+    imported_from = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imported_from.add(node.module)
+
+    assert 'ptt.resolve_topologies' not in imported_from
+    assert 'ptt.utils.call_system_command' not in imported_from
+    assert not hasattr(grm, 'call_system_command')
+    assert not hasattr(grm, 'topology2gmt')

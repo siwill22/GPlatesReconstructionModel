@@ -40,6 +40,7 @@ import os
 from io import StringIO
 from pprint import pprint
 import tempfile
+import subprocess
 import copy
 import xarray as xr
 
@@ -50,8 +51,6 @@ from gprm.utils.geometry import distance_between_reconstructed_points_and_featur
 from gprm.utils.spatial import force_polygon_geometries
 
 from gprm.utils.spatial import subduction_convergence as _subduction_convergence
-from ptt.utils.call_system_command import call_system_command
-from ptt.resolve_topologies import resolve_topologies as topology2gmt
 
 import warnings
 
@@ -1967,9 +1966,9 @@ class GPlatesRaster(object):
         # if the point falls on a NaN grid node
         # adding -T+e returns the distance to the node
         if extrapolate:
-            call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-T', '-nl','-V','>', grdtrack_file.name])
+            subprocess.run(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-T', '-nl','-V','>', grdtrack_file.name], check=True)
         else:
-            call_system_command(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name])
+            subprocess.run(['gmt','grdtrack',xyzfile.name,'-G%s' % self.source_filename, '-nl','-V','>', grdtrack_file.name], check=True)
         G=[]
         with open(grdtrack_file.name) as f:
             for line in f:
