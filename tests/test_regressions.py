@@ -574,3 +574,36 @@ def test_reconstruction_model_module_does_not_import_unused_ptt_symbols():
     assert 'ptt.utils.call_system_command' not in imported_from
     assert not hasattr(grm, 'call_system_command')
     assert not hasattr(grm, 'topology2gmt')
+
+
+def test_merge_polygons_return_raster_does_not_need_scikit_image():
+    """merge_polygons() unconditionally imported skimage at the top of the function, even
+    though 'measure' is only used in the contouring branch (return_raster=False). scikit-image
+    is an extras-only dependency (gprm[spatial]), so get_merged_cob_terrane_raster's default
+    method='pygplates' -- which calls merge_polygons(return_raster=True) -- raised
+    ModuleNotFoundError on a bare `pip install gprm`, even though that code path never touches
+    skimage. Verified against a real pip install from git on a clean machine.
+    """
+    import sys
+    import pygplates
+    from gprm.utils.spatial import merge_polygons
+
+    square = pygplates.PolygonOnSphere([(10., 10.), (10., 30.), (30., 30.), (30., 10.)])
+    feature = pygplates.Feature()
+    feature.set_geometry(square)
+    feature.set_reconstruction_plate_id(0)
+    rotation_model = pygplates.RotationModel([])
+
+    real_skimage = sys.modules.get('skimage')
+    sys.modules['skimage'] = None  # a None entry makes the import system raise ImportError
+    try:
+        result = merge_polygons([feature], rotation_model, reconstruction_time=0,
+                                sampling=10., return_raster=True)
+    finally:
+        if real_skimage is not None:
+            sys.modules['skimage'] = real_skimage
+        else:
+            del sys.modules['skimage']
+
+    assert result.shape == (19, 37)
+    assert result.sum() == 8  # the square, at this sampling, covers 8 grid nodes

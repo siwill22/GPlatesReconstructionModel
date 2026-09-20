@@ -36,8 +36,6 @@ def merge_polygons(polygons, rotation_model,
        polygons covering a pole are truncated there. ``return_raster=True`` returns the
        point-in-polygon mask directly and is unaffected.
     """
-    from skimage import measure
-
     multipoints = create_gpml_regular_long_lat_mesh(sampling)
     grid_dims = (int(180/sampling)+1,int(360/sampling)+1)
 
@@ -46,11 +44,17 @@ def merge_polygons(polygons, rotation_model,
             points = mp.to_lat_lon_point_list()
 
     bi = run_grid_pip(reconstruction_time,points,polygons,rotation_model,grid_dims,anchor_plate_id=anchor_plate_id)
-    
+
     if return_raster:
         return bi
-    
+
     else:
+        # Only the contouring branch below needs scikit-image (an extras-only dependency,
+        # gprm[spatial]) -- return_raster=True must not require it, since that path is also
+        # reached through get_merged_cob_terrane_raster's default method='pygplates', which a
+        # bare `pip install gprm` needs to work without the spatial extra.
+        from skimage import measure
+
         warnings.warn(
             'merge_polygons traces outlines on a flat lon/lat grid padded with zeros, so '
             'polygons crossing the antimeridian are split at +/-180 and polar polygons are '
