@@ -359,3 +359,35 @@ def test_assign_plate_ids_rejects_unknown_method(reconstruction_model):
     gdf = gpd.GeoDataFrame(geometry=[Point(0., 0.)])
     with pytest.raises(ValueError, match="'spatial_tree', 'overlay'"):
         reconstruction_model.assign_plate_ids(gdf, method='tree')
+
+
+def test_assign_plate_ids_uses_every_geometry_of_a_multi_geometry_feature(rotation_file, tmp_path):
+    """Feature.get_geometry() returns None when a feature holds more than one geometry, so
+    selecting polygons through it dropped every multi-geometry feature -- 279 of Torsvik &
+    Cocks 2017's 600 continent polygons, which left more than half its points unpartitioned.
+    """
+    from gprm import ReconstructionModel
+
+    feature = pygplates.Feature()
+    feature.set_geometry([
+        pygplates.PolygonOnSphere([(-10., 0.), (10., 0.), (10., 20.), (-10., 20.)]),
+        pygplates.PolygonOnSphere([(-10., 100.), (10., 100.), (10., 120.), (-10., 120.)]),
+    ])
+    feature.set_reconstruction_plate_id(701)
+    feature.set_valid_time(600., -999.)
+    assert feature.get_geometry() is None  # the trap this guards against
+
+    path = tmp_path / 'multi_geometry.gpml'
+    pygplates.FeatureCollection([feature]).write(str(path))
+
+    model = ReconstructionModel('MultiGeometryTest')
+    model.add_rotation_model(rotation_file)
+    model.add_static_polygons(str(path))
+
+    # One point in each of the feature's two polygons, and one outside both.
+    gdf = gpd.GeoDataFrame(geometry=[Point(10., 0.), Point(110., 0.), Point(60., 0.)],
+                           crs='EPSG:4326')
+
+    result = model.assign_plate_ids(gdf, polygons='static')
+
+    assert list(result['PLATEID1']) == [701, 701, 0]

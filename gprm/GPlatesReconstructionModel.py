@@ -956,13 +956,17 @@ class ReconstructionModel(object):
             # subdivides so each point is tested against a handful of candidate polygons
             # rather than all of them. It returns exactly one containing polygon per point
             # (None if outside them all), so the row count and row order are both preserved.
+            # get_geometries(), not get_geometry(): the latter returns None for a feature
+            # holding more than one geometry, and those are common (279 of Torsvik & Cocks
+            # 2017's 600 continent polygons). Each polygon points back at its own feature,
+            # so several polygons can share one proxy.
             partitioning_polygons = []
             polygon_proxies = []
             for polygon_feature in pygplates.FeatureCollection(partitioning_polygon_features[0]):
-                geometry = polygon_feature.get_geometry()
-                if isinstance(geometry, pygplates.PolygonOnSphere):
-                    partitioning_polygons.append(geometry)
-                    polygon_proxies.append(polygon_feature)
+                for geometry in polygon_feature.get_geometries():
+                    if isinstance(geometry, pygplates.PolygonOnSphere):
+                        partitioning_polygons.append(geometry)
+                        polygon_proxies.append(polygon_feature)
 
             containing_features = points_in_polygons.find_polygons(
                 [pygplates.PointOnSphere(lat, lon)
