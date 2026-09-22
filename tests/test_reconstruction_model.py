@@ -283,3 +283,79 @@ def test_force_polygon_geometries_warns_about_dropped_features():
         result = force_polygon_geometries([good, _ReversedValidTime(bad_source)])
 
     assert len(list(result)) == 1
+
+
+@pytest.fixture
+def model_with_dateline_polygon(rotation_file, tmp_path):
+    """A model whose single static polygon spans the antimeridian: 20 degrees wide, from
+    lon 170 to lon -170. On the sphere it contains lon 180 and not lon 0. Read as planar
+    lon/lat it is instead 340 degrees wide and contains exactly the opposite points, which
+    is what makes it separate a spherical containment test from a shapely one.
+    """
+    from gprm import ReconstructionModel
+
+    feature = pygplates.Feature()
+    feature.set_geometry(pygplates.PolygonOnSphere(
+        [(-10., 170.), (10., 170.), (10., -170.), (-10., -170.)]))
+    feature.set_reconstruction_plate_id(701)
+    feature.set_valid_time(600., -999.)
+
+    path = tmp_path / 'dateline_polygon.gpml'
+    pygplates.FeatureCollection([feature]).write(str(path))
+
+    model = ReconstructionModel('DatelineTest')
+    model.add_rotation_model(rotation_file)
+    model.add_static_polygons(str(path))
+    return model
+
+
+def test_assign_plate_ids_tests_containment_on_the_sphere(model_with_dateline_polygon):
+    """The GeoDataFrame path used to test containment with geopandas' .overlay(), which is
+    planar, so a polygon crossing the antimeridian captured the points on the far side of
+    the globe and missed the ones it actually contains.
+    """
+    gdf = gpd.GeoDataFrame(geometry=[Point(180., 0.), Point(0., 0.)], crs='EPSG:4326')
+
+    result = model_with_dateline_polygon.assign_plate_ids(gdf, polygons='static')
+
+    assert list(result['PLATEID1']) == [701, 0]
+
+
+def test_assign_plate_ids_preserves_row_count_and_order(model_with_dateline_polygon):
+    """.overlay(how='intersection') silently dropped unpartitioned rows whatever
+    keep_unpartitioned_features said, and emitted one row per match, so a point falling in
+    two polygons was duplicated. Neither can happen now: one row in, one row out.
+    """
+    gdf = gpd.GeoDataFrame(geometry=[Point(0., 0.), Point(180., 0.), Point(0., 0.)],
+                           crs='EPSG:4326')
+
+    result = model_with_dateline_polygon.assign_plate_ids(gdf, polygons='static')
+    assert len(result) == 3
+    assert list(result['PLATEID1']) == [0, 701, 0]
+
+    dropped = model_with_dateline_polygon.assign_plate_ids(
+        gdf, polygons='static', keep_unpartitioned_features=False)
+    assert len(dropped) == 1
+    assert dropped['PLATEID1'].iloc[0] == 701
+
+
+def test_assign_plate_ids_overlay_method_still_works_but_warns(model_with_dateline_polygon):
+    """The planar path is kept so earlier results can be reproduced, but it has to announce
+    itself -- and it still gets the antimeridian exactly backwards, which is the point.
+    """
+    gdf = gpd.GeoDataFrame(geometry=[Point(180., 0.), Point(0., 0.)], crs='EPSG:4326')
+
+    with pytest.warns(FutureWarning, match='plane'):
+        result = model_with_dateline_polygon.assign_plate_ids(
+            gdf, polygons='static', method='overlay')
+
+    # Planar: it keeps the point the polygon does not contain, and drops the one it does.
+    assert len(result) == 1
+    assert result.geometry.x.iloc[0] == 0.
+
+
+def test_assign_plate_ids_rejects_unknown_method(reconstruction_model):
+    """A mistyped method must not silently fall back to either implementation."""
+    gdf = gpd.GeoDataFrame(geometry=[Point(0., 0.)])
+    with pytest.raises(ValueError, match="'spatial_tree', 'overlay'"):
+        reconstruction_model.assign_plate_ids(gdf, method='tree')

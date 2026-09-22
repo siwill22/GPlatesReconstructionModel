@@ -46,6 +46,7 @@ import xarray as xr
 import gprm.utils as utils
 
 from ptt.utils.proximity_query import find_closest_geometries_to_points
+from ptt.utils import points_in_polygons
 from gprm.utils.geometry import distance_between_reconstructed_points_and_features, apply_reconstruction
 from gprm.utils.spatial import force_polygon_geometries
 
@@ -825,19 +826,42 @@ class ReconstructionModel(object):
 
 
 
-    def assign_plate_ids(self, features, polygons='static', copy_valid_times=False, keep_unpartitioned_features=True):
+    def assign_plate_ids(self, features, polygons='static', copy_valid_times=False,
+                         keep_unpartitioned_features=True, method='spatial_tree'):
         """Assign plate IDs to features by partitioning them with polygons from the reconstruction model.
+
+        Containment is tested on the sphere. A GeoDataFrame of points is tested with
+        ptt's spatial tree, anything else through pygplates' own partitioner; either way
+        exactly one partitioning polygon is found per feature, so the row count and row
+        order of a GeoDataFrame are preserved.
 
         :param features: pygplates FeatureCollection or GeoDataFrame to be partitioned.
         :param polygons: Which polygon set to use for partitioning: 'static' (default), 'coastlines', or 'continents'.
         :param copy_valid_times: If True, also copy valid time from the partitioning polygon to each feature.
         :param keep_unpartitioned_features: If True (default), retain features that fall outside all polygons.
+        :param method: How to test containment for a GeoDataFrame: 'spatial_tree' (default,
+            spherical) or 'overlay' (deprecated, planar - see below). Ignored for a
+            pygplates FeatureCollection, which always uses pygplates' partitioner.
         :returns: pygplates FeatureCollection or GeoDataFrame with PLATEID1 assigned.
+
+        .. warning::
+            ``method='overlay'`` is retained only so that results produced before the
+            spherical test became the default can be reproduced. It uses geopandas/shapely
+            containment, which is **planar**, and so it silently gives wrong answers on
+            real plate-tectonic data: polygons crossing the antimeridian or covering a pole
+            are distorted in a lon/lat plane, so points match polygons they are nowhere
+            near. It can return more rows than it was given (one per spurious match) and
+            it drops unpartitioned features regardless of ``keep_unpartitioned_features``.
+            Do not use it for new work.
         """
         if not isinstance(features, (pygplates.FeatureCollection, gpd.GeoDataFrame)):
             raise TypeError(
                 "features must be a pygplates.FeatureCollection or a geopandas.GeoDataFrame, "
                 "not {:s}.".format(type(features).__name__))
+
+        if method not in ('spatial_tree', 'overlay'):
+            raise ValueError(
+                "Unknown method {!r}. Choose one of: 'spatial_tree', 'overlay'.".format(method))
 
         if polygons=='continents':
             partitioning_polygon_features = self.continent_polygons
@@ -883,23 +907,93 @@ class ReconstructionModel(object):
                         partitioning_polygon_feature_merge.append(feature)
                 partitioning_polygon_features = [partitioning_polygon_feature_merge]
 
-            polygon_gdf = utils.create_gpml.gpml2gdf(pygplates.FeatureCollection(partitioning_polygon_features[0]))
-            # TODO handle the FROMAGE and TOAGE
-            # TODO handle case where the field names already exist and we want to overwrite them
-            if copy_valid_times:
-                polygon_gdf = polygon_gdf[['geometry', 'PLATEID1', 'FROMAGE', 'TOAGE']]
+            if method == 'overlay':
+                warnings.warn(
+                    "assign_plate_ids(method='overlay') tests containment in a lon/lat plane, "
+                    "via geopandas/shapely, rather than on the sphere. Wherever a partitioning "
+                    "polygon crosses the antimeridian or covers a pole it matches points that "
+                    "do not lie in it, so it can return more rows than it was given; it also "
+                    "drops unpartitioned features whatever keep_unpartitioned_features says. "
+                    "It is retained only to reproduce results generated before the spherical "
+                    "test became the default. Use the default method='spatial_tree'.",
+                    FutureWarning,
+                    stacklevel=2)
+
+                polygon_gdf = utils.create_gpml.gpml2gdf(pygplates.FeatureCollection(partitioning_polygon_features[0]))
                 # To ensure the column names are the 'standard' ones (and overwrite any existing values),
                 # we must remove columns with these names
                 # Note the "errors='ignore'" is needed to handle cases that the columns may not exist
-                features = features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], errors='ignore')
-            else:
-                polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
-                features = features.drop(columns=['PLATEID1'], errors='ignore')
+                if copy_valid_times:
+                    polygon_gdf = polygon_gdf[['geometry', 'PLATEID1', 'FROMAGE', 'TOAGE']]
+                    features = features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], errors='ignore')
+                else:
+                    polygon_gdf = polygon_gdf[['geometry', 'PLATEID1']]
+                    features = features.drop(columns=['PLATEID1'], errors='ignore')
 
-            features = features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
+                features = features.overlay(polygon_gdf, how='intersection', keep_geom_type=False)
+
+                if not keep_unpartitioned_features:
+                    features = features[features['PLATEID1'] != 0]
+
+                features.attrs[_PLATE_ID_PROVENANCE_KEY] = self.name
+
+                return features
+
+            # Anything other than points can be split across several partitioning polygons,
+            # which only pygplates' own partitioner handles, so send those through that path
+            # rather than testing containment point by point.
+            if set(features.geom_type.dropna().unique()) - {'Point'}:
+                partitioned = self.assign_plate_ids(
+                    utils.create_gpml.gdf2gpml(features),
+                    polygons=polygons,
+                    copy_valid_times=copy_valid_times,
+                    keep_unpartitioned_features=keep_unpartitioned_features)
+                features = utils.create_gpml.gpml2gdf(partitioned)
+                features.attrs[_PLATE_ID_PROVENANCE_KEY] = self.name
+                return features
+
+            # Points go through ptt's spatial tree, which tests containment on the sphere and
+            # subdivides so each point is tested against a handful of candidate polygons
+            # rather than all of them. It returns exactly one containing polygon per point
+            # (None if outside them all), so the row count and row order are both preserved.
+            partitioning_polygons = []
+            polygon_proxies = []
+            for polygon_feature in pygplates.FeatureCollection(partitioning_polygon_features[0]):
+                geometry = polygon_feature.get_geometry()
+                if isinstance(geometry, pygplates.PolygonOnSphere):
+                    partitioning_polygons.append(geometry)
+                    polygon_proxies.append(polygon_feature)
+
+            containing_features = points_in_polygons.find_polygons(
+                [pygplates.PointOnSphere(lat, lon)
+                 for lon, lat in zip(features.geometry.x, features.geometry.y)],
+                partitioning_polygons,
+                polygon_proxies)
+
+            # To ensure the column names are the 'standard' ones (and overwrite any existing values),
+            # we must remove columns with these names
+            # Note the "errors='ignore'" is needed to handle cases that the columns may not exist
+            if copy_valid_times:
+                features = features.drop(columns=['PLATEID1', 'FROMAGE', 'TOAGE'], errors='ignore').copy()
+            else:
+                features = features.drop(columns=['PLATEID1'], errors='ignore').copy()
+
+            features['PLATEID1'] = [polygon_feature.get_reconstruction_plate_id()
+                                    if polygon_feature is not None else 0
+                                    for polygon_feature in containing_features]
+            if copy_valid_times:
+                features['FROMAGE'] = [polygon_feature.get_valid_time()[0]
+                                       if polygon_feature is not None else np.nan
+                                       for polygon_feature in containing_features]
+                features['TOAGE'] = [polygon_feature.get_valid_time()[1]
+                                     if polygon_feature is not None else np.nan
+                                     for polygon_feature in containing_features]
 
             if not keep_unpartitioned_features:
-                features = features[features['PLATEID1'] != 0]
+                # Whether a point was partitioned is what was actually tested, so filter on
+                # that rather than on plate id 0, which a real polygon could carry.
+                features = features[[polygon_feature is not None
+                                     for polygon_feature in containing_features]].reset_index(drop=True)
 
             # Record which model these plate ids came from, so that reconstruct can refuse
             # them if they are later handed to a different one. Set last, since the pandas
