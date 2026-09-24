@@ -358,7 +358,7 @@ def fetch_Muller2022(NNR=False, load=True):
     else:
         reconstruction_model = _ReconstructionModel('Muller++2022_Opt')
         reconstruction_model.add_rotation_model('{:s}/optimisation/1000_0_rotfile_MantleOpt.rot'.format(dirname))
-    #reconstruction_model.add_static_polygons('{:s}/shapes_static_polygons_Merdith_et_al.gpml'.format(dirname))
+    reconstruction_model.add_static_polygons('{:s}/StaticPolygons/shapes_static_polygons_Merdith_etal.gpml'.format(dirname))
     #reconstruction_model.add_coastlines('{:s}/'.format(dirname))
     reconstruction_model.add_continent_polygons('{:s}/Continents/shapes_continents.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Topologies/410-250_plate_bounds.gpml'.format(dirname))
