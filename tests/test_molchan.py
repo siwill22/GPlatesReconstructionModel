@@ -504,3 +504,35 @@ def test_topology_lookup_accepts_an_anchor_plate(reconstruction_model):
     from gprm.utils.spatial import topology_lookup
 
     assert 'anchor_plate_id' in inspect.signature(topology_lookup).parameters
+
+
+def test_sample_distance_analysis_takes_the_age_from_the_stamp(reconstruction_model, aged_samples,
+                                                               target_lookup):
+    """With no age_field, the column named by a gprm loader's age description is used -- here
+    'Age', which differs from FROMAGE, as in the Carbonatites table."""
+    from gprm.datasets._ages import stamp
+    from gprm.utils.molchan import sample_distance_analysis
+
+    gdf = aged_samples.rename(columns={'age': 'Age'}).copy()
+    gdf['Age_ma'] = gdf['Age']
+    gdf['FROMAGE'] = gdf['Age'] + 5.0
+    gdf['Error_ma'] = 5.0
+    gdf['PLATEID1'] = 701
+    gdf.attrs['gprm_reconstruction_model'] = reconstruction_model.name
+    stamp(gdf, 'Rocks.Carbonatites')
+
+    result = sample_distance_analysis(gdf, reconstruction_model, time_max=200,
+                                      targets=target_lookup)
+
+    assert list(result['reconstruction_time']) == list(aged_samples['age'])
+
+
+def test_space_time_distances_warns_when_it_has_to_assume_the_age_column():
+    import pandas as pd
+    import geopandas as gpd
+    from gprm.utils.molchan import space_time_distances
+
+    gdf = gpd.GeoDataFrame({'age': [0.0]}, geometry=gpd.points_from_xy([0.], [0.]), crs=4326)
+    with pytest.warns(UserWarning, match="'age' is assumed"):
+        with pytest.raises(Exception):      # the empty raster dict; only the warning matters here
+            space_time_distances({}, gdf)

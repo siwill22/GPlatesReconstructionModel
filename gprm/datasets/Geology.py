@@ -26,6 +26,7 @@ SOFTWARE.
 
 from pooch import os_cache as _os_cache
 from ._fetch import retrieve as _retrieve
+from ._ages import stamp as _stamp
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 #import pandas as _pd
@@ -69,7 +70,8 @@ def fetch_GlobalTectonicMap(load=True):
     dirname = '{:s}/GlobalTectonics/global_tectonics-766e485af4b63c34c88a555621541f64fd7e68d2/plates&provinces/'.format(str(_os_cache('gprm')))
 
     if load:
-        return _gpd.read_file('{:s}/global_gprv_wage.shp'.format(dirname)).set_crs('EPSG:4326')
+        return _stamp(_gpd.read_file('{:s}/global_gprv_wage.shp'.format(dirname)).set_crs('EPSG:4326'),
+                      'Geology.GlobalTectonicMap')
     else:
         return '{:s}/global_gprv_wage.shp'.format(dirname)
 
@@ -87,6 +89,7 @@ def fetch_SurfaceGeology(load=True):
     dirname = '{:s}/SurfaceGeology/'.format(str(_os_cache('gprm')))
 
     if load:
-        return _gpd.read_file('{:s}/nrcan_geology_with_ages.shp'.format(dirname))
+        return _stamp(_gpd.read_file('{:s}/nrcan_geology_with_ages.shp'.format(dirname)),
+                      'Geology.SurfaceGeology')
     else:
         return '{:s}/nrcan_geology_with_ages.shp'.format(dirname)

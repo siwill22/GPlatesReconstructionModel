@@ -1,6 +1,8 @@
 """Loaders and analysis tools for detrital zircon U-Pb age datasets."""
 from pooch import os_cache as _os_cache
 from ._fetch import retrieve as _retrieve
+from ._columns import add_aliases as _add_aliases
+from ._ages import stamp as _stamp
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 import pandas as _pd
@@ -43,8 +45,6 @@ def loadDB(version=2021):
                                                   u'207Pb /\n235U\n2σ\nPrecis': 'string',
                                                   u'207Pb /\n206Pb\nAge\n(Ma)': 'string',
                                                   u'207Pb /\n206Pb\n2σ\nPrecis': _np.float64})
-        df_Data[u'207Pb /\n235U\n2σ\nPrecis']=df_Data[u'207Pb /\n235U\n2σ\nPrecis'].replace(',','.',regex=True).astype(float)
-        df_Data[u'207Pb /\n206Pb\nAge\n(Ma)']=df_Data[u'207Pb /\n206Pb\nAge\n(Ma)'].replace(',','.',regex=True).astype(float)
 
         df_SampleDetails = _pd.read_excel(xls, sheet_name='Sample_Details', 
                                           dtype={'Sample Key': _np.int64,
@@ -68,20 +68,24 @@ def loadDB(version=2021):
                                                 'Class-3 Rock Type': 'string',
                                                 'Sample Count': _np.int64})
         
-        # rename some fields for neatness
-        df_Data.rename(columns = {u'206Pb /\n238U\nAge\n(Ma)': '206Pb_238U_Age_Ma',
-                                u'206Pb /\n238U\n2σ\nPrecis': '206Pb_238U_Precis',
-                                u'207Pb /\n235U\nAge\n(Ma)': '207Pb_235U_Age_Ma',
-                                u'207Pb /\n235U\n2σ\nPrecis': '207Pb_235U_Precis',
-                                u'207Pb /\n206Pb\nAge\n(Ma)': '207Pb_206Pb_Age_Ma',
-                                u'207Pb /\n206Pb\n2σ\nPrecis': '207Pb_206Pb_Precis'},
-                    inplace = True)
-        
-        df_SampleDetails = df_SampleDetails.rename(columns = {'Est. Depos. Age (Ma)': 'Est_Depos_Age_Ma',
-                                                              'Max. Depos. Age (Ma)': 'Max_Depos_Age_Ma'})
+        # Short names alongside the source's multi-line headers, which are kept as they are
+        df_Data = _add_aliases(df_Data, {u'206Pb /\n238U\nAge\n(Ma)': '206Pb_238U_Age_Ma',
+                                         u'206Pb /\n238U\n2σ\nPrecis': '206Pb_238U_Precis',
+                                         u'207Pb /\n235U\nAge\n(Ma)': '207Pb_235U_Age_Ma',
+                                         u'207Pb /\n235U\n2σ\nPrecis': '207Pb_235U_Precis',
+                                         u'207Pb /\n206Pb\nAge\n(Ma)': '207Pb_206Pb_Age_Ma',
+                                         u'207Pb /\n206Pb\n2σ\nPrecis': '207Pb_206Pb_Precis'})
+        # Two source columns use decimal commas in places; the fix goes on the alias only,
+        # leaving the source column exactly as read
+        for alias in ['207Pb_235U_Precis', '207Pb_206Pb_Age_Ma']:
+            df_Data[alias] = df_Data[alias].replace(',', '.', regex=True).astype(float)
+
+        df_SampleDetails = _add_aliases(df_SampleDetails, {'Est. Depos. Age (Ma)': 'Est_Depos_Age_Ma',
+                                                           'Max. Depos. Age (Ma)': 'Max_Depos_Age_Ma'})
         df_SampleDetails = df_SampleDetails.dropna(subset=['Sample Key'])
 
-        return df_SampleDetails, df_Data
+        return (_stamp(df_SampleDetails, 'Zircons.loadDB:2018:samples'),
+                _stamp(df_Data, 'Zircons.loadDB:2018:data'))
 
 
     elif version==2019:
@@ -100,12 +104,11 @@ def loadDB(version=2021):
         xls = _pd.ExcelFile(fname)
         df = _pd.read_excel(xls, sheet_name='U_Pb_Detrital_Zircon')
 
-        df = df.rename(columns = {'GPS Longitude': 'Longitude',
-                                  'GPS Latitude': 'Latitude'})
+        df = _add_aliases(df, {'GPS Longitude': 'Longitude', 'GPS Latitude': 'Latitude'})
 
         gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
-        return gdf
+        return _stamp(gdf, 'Zircons.loadDB:2019')
 
 
     elif version==2021:
@@ -148,14 +151,14 @@ def loadDB(version=2021):
                                    'Min. Depos. Age': _np.float64,
                                    'Rock Type':'string'})
 
-        df = df.rename(columns = {'Est. Depos. Age': 'Est_Depos_Age_Ma',
-                                  'Max. Depos. Age': 'Max_Depos_Age_Ma',
-                                  'Min. Depos. Age': 'Min_Depos_Age_Ma',
-                                  'Non-iter          age                     (Ma)': 'Non_Iter_Age_Ma'})
+        df = _add_aliases(df, {'Est. Depos. Age': 'Est_Depos_Age_Ma',
+                               'Max. Depos. Age': 'Max_Depos_Age_Ma',
+                               'Min. Depos. Age': 'Min_Depos_Age_Ma',
+                               'Non-iter          age                     (Ma)': 'Non_Iter_Age_Ma'})
 
         gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
-        return gdf
+        return _stamp(gdf, 'Zircons.loadDB:2021')
     
     elif version==2024:
         # Supplementary tables 1-3 from Puetz et al, 2024, Scientific Data
@@ -194,7 +197,7 @@ def loadDB(version=2021):
         # TODO clean up columns and column names
         gdf = _gpd.GeoDataFrame(df_full, geometry=_gpd.points_from_xy(df_full.Longitude, df_full.Latitude), crs=4326)
 
-        return gdf
+        return _stamp(gdf, 'Zircons.loadDB:2024')
 
     elif version==2026:
         # Supplementary Table (mmc5) from Puetz et al, 2026, Geoscience Frontiers
@@ -215,7 +218,7 @@ def loadDB(version=2021):
 
         gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
-        return gdf
+        return _stamp(gdf, 'Zircons.loadDB:2026')
 
     else:
         raise ValueError(
@@ -238,7 +241,7 @@ def load_Hf():
 
     gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
-    return gdf
+    return _stamp(gdf, 'Zircons.load_Hf')
 
 
 # These functions are specifically for the 2018 version, to match sample coordinates against age distributions
@@ -288,16 +291,16 @@ def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018,oldest_o
                                    '207Pb/206Pb Age (Ma)': _np.float64,
                                    'Uncert. (2σ).2': _np.float64})
 
-        df = df.rename(columns = {'GPS Longitude': 'Longitude',
-                                  'GPS Latitude': 'Latitude'})
-
-        # rename some fields for neatness
-        df = df.rename(columns = {u'206Pb/238U Age (Ma)': '206Pb_238U_Age_Ma',
-                                u'Uncert. (2σ)': '206Pb_238U_Precis',
-                                u'207Pb/235U Age (Ma)': '207Pb_235U_Age_Ma',
-                                u'Uncert. (2σ).1': '207Pb_235U_Precis',
-                                u'207Pb/206Pb Age (Ma)': '207Pb_206Pb_Age_Ma',
-                                u'Uncert. (2σ).2': '207Pb_206Pb_Precis'})
+        # Short names alongside the source's own, which are kept as they are. 'Uncert. (2σ).1'
+        # and '.2' are pandas' spelling of a header the source repeats three times.
+        df = _add_aliases(df, {'GPS Longitude': 'Longitude',
+                               'GPS Latitude': 'Latitude',
+                               u'206Pb/238U Age (Ma)': '206Pb_238U_Age_Ma',
+                               u'Uncert. (2σ)': '206Pb_238U_Precis',
+                               u'207Pb/235U Age (Ma)': '207Pb_235U_Age_Ma',
+                               u'Uncert. (2σ).1': '207Pb_235U_Precis',
+                               u'207Pb/206Pb Age (Ma)': '207Pb_206Pb_Age_Ma',
+                               u'Uncert. (2σ).2': '207Pb_206Pb_Precis'})
 
         IgneousZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
@@ -321,7 +324,7 @@ def get_igneous_samples(df_SampleDetails=None,df_Data=None,version=2018,oldest_o
         raise ValueError(
             'Unrecognised version {}. Valid versions are 2018, 2019 and 2026.'.format(version))
 
-    return IgneousZircons
+    return _stamp(IgneousZircons, 'Zircons.get_igneous_samples:{}'.format(version))
 
 
 def get_mafic_felsic_samples(rock_type='Felsic'):
@@ -344,7 +347,8 @@ def get_mafic_felsic_samples(rock_type='Felsic'):
     xls = _pd.ExcelFile(fname)
     df = xls.parse(rock_type)
 
-    return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+    return _stamp(gdf, 'Zircons.get_mafic_felsic_samples')
 
 
 def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
@@ -360,6 +364,9 @@ def get_sedimentary_samples(df_SampleDetails=None,df_Data=None,version=2018):
         df_SamplesWithDepositionalAge = df_SampleDetails.dropna(subset=['Est_Depos_Age_Ma'])
         df = _pd.merge(df_SamplesWithDepositionalAge,df_Data,on='Sample Key')
         SedimentaryZircons = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+        # merge() drops attrs, so the merged table is stamped here; the later versions return
+        # loadDB's table, which already carries its own description
+        _stamp(SedimentaryZircons, 'Zircons.get_sedimentary_samples:2018')
 
     elif version==2019:
 

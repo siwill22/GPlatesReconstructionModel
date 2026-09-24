@@ -49,6 +49,7 @@ from ptt.utils.proximity_query import find_closest_geometries_to_points
 from ptt.utils import points_in_polygons
 from gprm.utils.geometry import distance_between_reconstructed_points_and_features, apply_reconstruction
 from gprm.utils.spatial import force_polygon_geometries
+from gprm.datasets._ages import resolve_age_field as _resolve_age_field
 
 from gprm.utils.spatial import subduction_convergence as _subduction_convergence
 
@@ -713,9 +714,13 @@ class ReconstructionModel(object):
         """Reconstruct each feature to the age defined by its own valid time or a specified attribute.
 
         :param features: pygplates FeatureCollection or GeoDataFrame of point features with plate IDs.
-        :param ReconstructTime: How to determine each feature's reconstruction age: None uses the feature's
-            appearance time (FROMAGE); 'MidTime' uses the midpoint of valid time; any other string is
-            treated as a column/attribute name containing the age in Ma.
+        :param ReconstructTime: How to determine each feature's reconstruction age. A column/attribute
+            name holding the age in Ma, or 'MidTime' for the midpoint of the valid time. If None:
+            for a FeatureCollection, the appearance time (FROMAGE); for a GeoDataFrame, the
+            sample-age column recorded by the gprm loader that produced it
+            (``gdf.attrs['gprm_age']``, see ``gprm.datasets.age_description``), falling back to
+            FROMAGE with a warning when there is no such record. The record matters because
+            FROMAGE is not the age in every dataset -- for Carbonatites it is age + error.
         :param anchor_plate_id: Plate ID held fixed, i.e. the reference frame the reconstructed
             coordinates are expressed in (default 0). Applies to both the FeatureCollection and
             the GeoDataFrame input; the GeoDataFrame branch previously accepted this argument
@@ -771,12 +776,16 @@ class ReconstructionModel(object):
             self._check_geographic_crs(features)
             self._check_plate_ids(features)
 
+            # Decided before anything else touches the table, while its age description is intact
+            if ReconstructTime is None:
+                ReconstructTime = _resolve_age_field(features, None, default='FROMAGE',
+                                                     argument='ReconstructTime')
+
             # Multipart geometries are rotated one part at a time, so split them up first
             # (as reconstruct does). Without this they would silently come back as None.
             features = features.explode(index_parts=False).reset_index(drop=True)
 
-            if ReconstructTime is None:
-                ReconstructTime = 'FROMAGE'
+            if ReconstructTime == 'FROMAGE':
                 if ReconstructTime not in features.columns:
                     raise ValueError(
                         "No 'FROMAGE' column found to take each feature's age from. Either add "

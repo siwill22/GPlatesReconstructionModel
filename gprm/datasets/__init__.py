@@ -17,7 +17,7 @@ _SUBMODULES = (
     'Zircons',
 )
 
-__all__ = list(_SUBMODULES) + ['cache_path', 'DatasetFetchError']
+__all__ = list(_SUBMODULES) + ['cache_path', 'DatasetFetchError', 'age_description']
 
 
 def cache_path(*parts):
@@ -48,6 +48,11 @@ def __getattr__(name):
         module = _import_module('.' + name, __name__)
         globals()[name] = module     # cache, so this runs once per submodule
         return module
+    if name == 'age_description':
+        # What "age" means in each dataset; see _ages.py
+        from ._ages import age_description
+        globals()[name] = age_description
+        return age_description
     if name == 'DatasetFetchError':
         from ._fetch import DatasetFetchError
         globals()[name] = DatasetFetchError

@@ -26,6 +26,8 @@ SOFTWARE.
 
 from pooch import os_cache as _os_cache
 from ._fetch import retrieve as _retrieve
+from ._columns import add_aliases as _add_aliases
+from ._ages import stamp as _stamp
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 import pandas as _pd
@@ -112,11 +114,11 @@ def pbdb(path_to_pbdb_data=None, usecols=None):
     else:
         df = _pd.read_csv(path_to_pbdb_data, delimiter=',', skiprows=14, usecols=usecols)
 
-    df.rename(columns={'lng':'Longitude', 'lat':'Latitude'}, inplace=True)
+    df = _add_aliases(df, {'lng': 'Longitude', 'lat': 'Latitude'})
 
     gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
 
-    return gdf
+    return _stamp(gdf, 'Strat.pbdb')
 
 
 def pbdb_elevation_mapping(pbdb):
@@ -310,7 +312,7 @@ def PaleoLithology(lithology=None, reconstruction_time=None):
     if reconstruction_time is not None:
         gdf = gdf[(gdf['TOAGE'] <= reconstruction_time) & (reconstruction_time <= gdf['FROMAGE'])]
 
-    return gdf.reset_index(drop=True)
+    return _stamp(gdf.reset_index(drop=True), 'Strat.PaleoLithology')
 
 
 def paleolithology_climate_mapping(gdf):

@@ -29,6 +29,10 @@ from ._fetch import retrieve as _retrieve
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Untar as _Untar
 from pooch import Unzip as _Unzip
+from ._columns import add_aliases as _add_aliases
+from ._ages import stamp as _stamp
+from ._gpml import read_gpml_points as _read_gpml_points
+from ._remote_zip import retrieve_zip_member as _retrieve_zip_member
 import pandas as _pd
 import geopandas as _gpd
 import os as _os
@@ -50,7 +54,7 @@ def MagneticPicks(load=True):
     )
     
     if load:
-        return _gpd.read_file(fname)
+        return _stamp(_gpd.read_file(fname), 'Seafloor.MagneticPicks')
     else:
         return fname
 
@@ -133,9 +137,21 @@ def PacificSeamountAges(catalogue='2021', load=True):
         )
         
         if load:
-            df = _pd.read_csv(fname, comment='#', delim_whitespace=True,
-                            names=['Long', 'Lat', 'Average_Age_Ma', 'Average_Age_Error_Ma', 'Tag', 'SeamountName', 'SeamountChain'])
-            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+            # No header row, so the columns take the names in the file's commented header line:
+            #   #Lon Lat Average_age(Ma) Average_error(Ma) Tag Name(island,seamount,plateau_or_sample) Island_or_seamount_chain
+            # except that in every data row the name comes before the two-letter chain code
+            # (e.g. 'Macdonald  AC  Austral'), so those two are named by what they hold.
+            df = _pd.read_csv(fname, comment='#', sep=r'\s+',
+                              names=['Lon', 'Lat', 'Average_age(Ma)', 'Average_error(Ma)',
+                                     'Name(island,seamount,plateau_or_sample)', 'Tag',
+                                     'Island_or_seamount_chain'])
+            df = _add_aliases(df, {'Lon': 'Long',
+                                   'Average_age(Ma)': 'Average_Age_Ma',
+                                   'Average_error(Ma)': 'Average_Age_Error_Ma',
+                                   'Name(island,seamount,plateau_or_sample)': 'SeamountName',
+                                   'Island_or_seamount_chain': 'SeamountChain'})
+            gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Lon, df.Lat))
+            return _stamp(gdf, 'Seafloor.PacificSeamountAges:2013')
         else:
             return fname
         
@@ -160,9 +176,18 @@ def PacificSeamountAges(catalogue='2021', load=True):
                 'and retrying is the usual fix.')
 
         if load:
-            df = _pd.read_csv(fname, comment='#', delim_whitespace=True,
-                              names=['Long', 'Lat', 'Average_Age_Ma', 'Average_Age_Error_Ma', 'Type', 'Ref', 'SampleName', 'Tag', 'SeamountChain'])
-            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+            # No header row, so the columns take the names in the file's commented header line:
+            #   # Lon Lat Age Error Type Ref Name(Sample) Tag Chain
+            df = _pd.read_csv(fname, comment='#', sep=r'\s+',
+                              names=['Lon', 'Lat', 'Age', 'Error', 'Type', 'Ref', 'Name(Sample)',
+                                     'Tag', 'Chain'])
+            df = _add_aliases(df, {'Lon': 'Long',
+                                   'Age': 'Average_Age_Ma',
+                                   'Error': 'Average_Age_Error_Ma',
+                                   'Name(Sample)': 'SampleName',
+                                   'Chain': 'SeamountChain'})
+            gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Lon, df.Lat))
+            return _stamp(gdf, 'Seafloor.PacificSeamountAges:2021')
         else:
             return fname
 
@@ -185,9 +210,15 @@ def Seamounts(catalogue='KimWessel', load=True):
         )
         
         if load:
-            df = _pd.read_csv(fname, delim_whitespace=True, skiprows=17, comment='>', 
-                    names=['Long', 'Lat', 'Azimuth', 'Major', 'Minor', 'Height', 'FAA', 'VGG', 'Depth', 'CrustAge', 'ID'])
-            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+            # 17 '#' header lines, the last of which names the columns; '>' lines separate the
+            # ocean basins. Note CrustAge is the age of the seafloor beneath the seamount (from
+            # the AGE 3.2 grid, per the header), not the age of the seamount.
+            df = _pd.read_csv(fname, sep=r'\s+', skiprows=17, comment='>',
+                    names=['Longitude', 'Latitude', 'Azimuth', 'Major', 'Minor', 'Height', 'FAA',
+                           'VGG', 'Depth', 'CrustAge', 'ID'])
+            df = _add_aliases(df, {'Longitude': 'Long', 'Latitude': 'Lat'})
+            gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude))
+            return _stamp(gdf, 'Seafloor.Seamounts:KimWessel')
         else:
             return fname
         
@@ -212,9 +243,15 @@ def Seamounts(catalogue='KimWessel', load=True):
                 'gprm cache (see gprm.datasets.cache_path()) and retrying is the usual fix.'.format(target))
 
         if load:
-            df = _pd.read_csv(fname, delim_whitespace=True, skiprows=17, comment='>',
-                    names=['Long', 'Lat', 'Height', 'Radius', 'Base_Depth', 'Name', 'Charted'])
-            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+            # No header row: every line is a seamount (the README gives 39399 for good.xyhrdnc).
+            # Column names are the README's; its seventh column ('1 or 0 charted or uncharted')
+            # is unnamed there, so it keeps gprm's name 'Charted'.
+            df = _pd.read_csv(fname, sep=r'\s+', comment='>',
+                    names=['longitude', 'latitude', 'height', 'radius', 'base_depth', 'name', 'Charted'])
+            df = _add_aliases(df, {'longitude': 'Long', 'latitude': 'Lat', 'height': 'Height',
+                                   'radius': 'Radius', 'base_depth': 'Base_Depth', 'name': 'Name'})
+            gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.longitude, df.latitude))
+            return _stamp(gdf, 'Seafloor.Seamounts:SIO')
         else:
             return fname
 
@@ -227,8 +264,9 @@ def Seamounts(catalogue='KimWessel', load=True):
         )
 
         if load:
-            df = _pd.read_csv(fname, delim_whitespace=True, names=['Long', 'Lat', 'Height'])
-            return _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+            df = _pd.read_csv(fname, sep=r'\s+', names=['Long', 'Lat', 'Height'])
+            gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Long, df.Lat))
+            return _stamp(gdf, 'Seafloor.Seamounts:HillierWatts')
         else:
             return fname
 
@@ -236,7 +274,19 @@ def Seamounts(catalogue='KimWessel', load=True):
         raise ValueError('Unknown catalogue {:s}'.format(catalogue))
 
 
-def LargeIgneousProvinces(catalogue='Whittaker', load=True):
+# sha256 of the Johansson et al (2018) volcanic province centroids as distributed inside the
+# Flament et al (2022) supplement, one file per tectonic reconstruction. All four hold the same
+# 185 centroids; they differ in the plate ids attached (and in GPlates' internal feature ids).
+_JOHANSSON_CENTROIDS = {
+    'M21':    'sha256:17489d665ba216125c146560a24b4d60030f59430e776560936822f7dc56282a',
+    'M21NNR': 'sha256:c7771492aa6e8826c8e78bda2ef43654150381df5cf1bf9b784d422ab4a1cde7',
+    'Y19':    'sha256:34c5c5cdef0ed1a6dc79f99746cbd09ca07f61af61183e2bd3aad6483e92eca7',
+    'M16':    'sha256:2a3202b428084bc33e1655aa90b67effc95fd4bc4b25f5d3dae0af886350891c',
+}
+
+
+def LargeIgneousProvinces(catalogue='Whittaker', reconstruction='M21', load=True,
+                          keep_unknown_age_samples=False):
     '''
     (Large) Igneous Province polygons included in GPlates sample data:
     - 'Whittaker' [default], from Whittaker et al (2015)
@@ -244,8 +294,45 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
     and also
     - 'UTIG' from the 2011 version of the UTIG LIP compilation
 
+    - 'Johansson_centroids' returns **points, not polygons**: the 185 centroids of the same
+      Johansson et al (2018) catalogue, each carrying its emplacement age ('Age', in Ma, from
+      the begin time of the feature's validity) and a plate id. Taken from the supplement to
+      Flament et al (2022), doi:10.1038/s41586-022-04538-y (Zenodo record 6031641). Use this
+      when you want ages and plate ids to reconstruct with; use 'Johansson' for the outlines.
+      Each centroid is valid from its emplacement age to the present, so reconstructing the whole
+      set to a given time returns only the provinces already emplaced by then.
+
+    reconstruction applies to 'Johansson_centroids' only, and selects whose plate ids are
+    attached: 'M21' [default, Merdith et al 2021, matching fetch_Merdith2021], 'M21NNR' (the same
+    with net rotation removed), 'Y19' (Young et al 2019) or 'M16' (Matthews et al 2016).
+
+    For both Johansson catalogues, an emplacement age (FROMAGE) of 0 is treated as an error
+    rather than a real age: 144 of the 2526 polygons and 2 of the 185 centroids have one
+    (e.g. the Tuamotu seamounts). These are left out by default; keep_unknown_age_samples=True
+    keeps them. Either way FROMAGE is unchanged, and the 'Age' column gprm adds is NaN for them.
+
     '''
-    if catalogue in ['Whittaker', 'Johansson']:
+    if catalogue == 'Johansson_centroids':
+        if reconstruction not in _JOHANSSON_CENTROIDS:
+            raise ValueError('Unknown reconstruction {} (expected one of {})'.format(
+                reconstruction, ', '.join(sorted(_JOHANSSON_CENTROIDS))))
+
+        # 772 MB archive, 0.33 MB file: pulled out with range requests rather than downloaded whole
+        fname = _retrieve_zip_member(
+            url="https://zenodo.org/records/6031641/files/Assembly_African_basal_mantle_structure_supplement.zip",
+            member=('Assembly_African_basal_mantle_structure_supplement/Volcanic_eruption_locations/'
+                    '{0}/J18/J18_centroids_{0}_plateIDs.gpml'.format(reconstruction)),
+            known_hash=_JOHANSSON_CENTROIDS[reconstruction],
+            path=_os_cache('gprm'),
+        )
+
+        if not load:
+            return fname
+
+        gdf = _johansson_ages(_read_gpml_points(fname), keep_unknown_age_samples)
+        return _stamp(gdf, 'Seafloor.LargeIgneousProvinces:Johansson_centroids')
+
+    elif catalogue in ['Whittaker', 'Johansson']:
         fnames = _retrieve(
                 url="https://www.earthbyte.org/webdav/ftp/earthbyte/GPlates/SampleData_GPlates2.2/Individual/FeatureCollections/LargeIgneousProvinces_VolcanicProvinces.zip",
                 known_hash="sha256:8f86ab86a12761f5534beaaeaddbed5b4e3e6d3d9b52b0c87ee9b15af2a797cd",  
@@ -285,7 +372,23 @@ def LargeIgneousProvinces(catalogue='Whittaker', load=True):
         raise ValueError('Unknown catalogue {:s}'.format(catalogue))
 
     if load:
-        return _gpd.read_file(fname)
+        gdf = _gpd.read_file(fname)
+        if catalogue == 'Johansson':
+            gdf = _johansson_ages(gdf, keep_unknown_age_samples)
+        return _stamp(gdf, 'Seafloor.LargeIgneousProvinces:' + catalogue)
     else:
         return fname
+
+
+def _johansson_ages(gdf, keep_unknown_age_samples):
+    """Add 'Age' (FROMAGE, NaN where FROMAGE is 0) and drop the zero-age rows unless asked not to.
+
+    An emplacement age of 0 in the Johansson et al (2018) catalogue is taken to be an error, not a
+    real age (it includes, e.g., the Cenozoic Tuamotu seamounts).
+    """
+    unknown_age = gdf['FROMAGE'] == 0
+    gdf['Age'] = gdf['FROMAGE'].where(~unknown_age)
+    if not keep_unknown_age_samples:
+        gdf = gdf[~unknown_age].reset_index(drop=True)
+    return gdf
 

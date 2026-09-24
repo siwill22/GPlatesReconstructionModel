@@ -69,6 +69,7 @@ import xarray as xr
 import shapely
 import pygplates
 from .geometry import apply_nearest_feature, apply_reconstruction, wrap_polygon_feature, wrap_polyline_feature
+from gprm.datasets._ages import resolve_age_field as _resolve_age_field
 from .spatial import topology_lookup
 
 
@@ -479,7 +480,7 @@ def combine_raster_sequences(raster_dict1, raster_dict2):
 
     
 
-def space_time_distances(raster_dict, gdf, age_field_name='age', 
+def space_time_distances(raster_dict, gdf, age_field_name=None, 
                          distance_max=DEFAULT_DISTANCE_MAX, 
                          distance_step=DEFAULT_DISTANCE_STEP, 
                          buffer_radius=1,
@@ -494,7 +495,13 @@ def space_time_distances(raster_dict, gdf, age_field_name='age',
     the sequence's time steps. Round them yourself, as ``sample_distance_analysis`` does,
     rather than having it happen silently here; an age matching no raster raises an error
     naming the nearest one available, instead of a bare KeyError.
+
+    ``age_field_name`` names the column holding each sample's age. If None, the column recorded
+    by the gprm loader that produced ``gdf`` is used (``gdf.attrs['gprm_age']``), falling back to
+    'age' with a warning.
     """
+    age_field_name = _resolve_age_field(gdf, age_field_name, default='age',
+                                        argument='age_field_name')
 
     results = []
 
@@ -784,7 +791,7 @@ def zeros_grid_like(sampling=DEFAULT_GEOGRAPHIC_SAMPLING,
 
 
 def sample_distance_analysis(data_df, reconstruction_model, 
-                             age_field='age', time_min=0, time_max=1000.,
+                             age_field=None, time_min=0, time_max=1000.,
                              reconstruction_time_step=1, targets='subduction',
                              anchor_plate_id=0):
     """Nearest distance between age-coded samples and reconstructed target features.
@@ -796,7 +803,9 @@ def sample_distance_analysis(data_df, reconstruction_model,
         present-day coordinates. If it already carries a ``PLATEID1`` column those ids are
         used as they stand, after checking they came from this model; if not, the samples are
         partitioned here.
-    :param age_field: column holding each sample's own age in Ma (default 'age').
+    :param age_field: column holding each sample's own age in Ma. If None, the column recorded
+        by the gprm loader that produced ``data_df`` (``data_df.attrs['gprm_age']``, see
+        ``gprm.datasets.age_description``), falling back to 'age' with a warning.
     :param targets: 'subduction', 'midoceanridge', 'other', or a {time: features} dict.
     :param anchor_plate_id: Plate held fixed (default 0). Applied to both the samples and the
         target boundaries, so the two stay in one reference frame. Note that it cannot be
@@ -822,6 +831,9 @@ def sample_distance_analysis(data_df, reconstruction_model,
     known. Supply ``PLATEID1`` yourself and you are taken to have made that judgement already.
     """
     
+    # Decided first, while data_df's age description is intact (partitioning below merges)
+    age_field = _resolve_age_field(data_df, age_field, default='age')
+
     # If not provided, create a lookup table for the target features
     if isinstance(targets, dict):
         target_lookup = targets
