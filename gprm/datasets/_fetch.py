@@ -28,10 +28,14 @@ class DatasetFetchError(RuntimeError):
     """
 
 
+# Frames in these modules are gprm's own download plumbing, not the loader the user called.
+_INTERNAL = frozenset(['_fetch.py', '_remote_zip.py'])
+
+
 def _calling_loader():
-    """Name of the nearest frame outside this module, i.e. the loader the user called."""
+    """Name of the nearest frame outside the download plumbing, i.e. the loader the user called."""
     for frame in _inspect.stack()[1:]:
-        if _Path(frame.filename).name != _Path(__file__).name:
+        if _Path(frame.filename).name not in _INTERNAL:
             return frame.function
     return None
 
@@ -78,6 +82,37 @@ def _diagnose(err, url):
     return None
 
 
+def fetch_error(err, url, path=None, extra=None):
+    """Build the :class:`DatasetFetchError` for a failed download.
+
+    Shared by :func:`retrieve` and by ``_remote_zip.retrieve_zip_member``, so that however a
+    dataset is fetched, a failure reads the same way.
+
+    :param err: the original exception, chained by the caller via ``raise ... from err``.
+    :param url: the URL that was being fetched.
+    :param path: the cache directory, if known.
+    :param extra: optional extra lines (e.g. which member of an archive was wanted).
+    """
+    loader = _calling_loader()
+    lines = [
+        "Could not fetch {}.".format(
+            "the dataset '{}'".format(loader) if loader else "a gprm dataset"),
+        "",
+        "  url   : {}".format(url),
+    ]
+    for line in (extra or []):
+        lines.append("  {}".format(line))
+    if path is not None:
+        lines.append("  cache : {}".format(path))
+    lines += ["", "{}: {}".format(type(err).__name__, err)]
+
+    hint = _diagnose(err, url)
+    if hint:
+        lines += ["", hint]
+
+    return DatasetFetchError("\n".join(lines))
+
+
 def retrieve(url, known_hash, **kwargs):
     """:func:`pooch.retrieve` with a failure message that says what went wrong.
 
@@ -88,20 +123,4 @@ def retrieve(url, known_hash, **kwargs):
     try:
         return _pooch_retrieve(url, known_hash, **kwargs)
     except Exception as err:
-        loader = _calling_loader()
-        lines = [
-            "Could not fetch {}.".format(
-                "the dataset '{}'".format(loader) if loader else "a gprm dataset"),
-            "",
-            "  url   : {}".format(url),
-        ]
-        path = kwargs.get('path')
-        if path is not None:
-            lines.append("  cache : {}".format(path))
-        lines += ["", "{}: {}".format(type(err).__name__, err)]
-
-        hint = _diagnose(err, url)
-        if hint:
-            lines += ["", hint]
-
-        raise DatasetFetchError("\n".join(lines)) from err
+        raise fetch_error(err, url, path=kwargs.get('path')) from err
