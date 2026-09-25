@@ -36,6 +36,7 @@ dependencies = [
     "pooch",
     "rasterio",
     "requests",
+    "openpyxl",  # pandas.read_excel, for the PaleoReefs (PARED) spreadsheet
     "tqdm",
     "pyyaml",
     # Required, not just defensive: PlateTectonicTools imports pkg_resources unconditionally at

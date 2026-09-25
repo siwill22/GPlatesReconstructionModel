@@ -287,6 +287,7 @@ AGE_DESCRIBED_LOADERS = [
     ('Seafloor.LargeIgneousProvinces:UTIG', lambda: _loader('Seafloor.LargeIgneousProvinces')('UTIG')),
     ('Strat.pbdb', _pbdb_if_downloaded),
     ('Strat.PaleoLithology', lambda: _loader('Strat.PaleoLithology')()),
+    ('Strat.PaleoReefs', lambda: _loader('Strat.PaleoReefs')()),
     ('Geology.GlobalTectonicMap', lambda: _loader('Geology.fetch_GlobalTectonicMap')()),
     ('Geology.SurfaceGeology', lambda: _loader('Geology.fetch_SurfaceGeology')()),
     ('Zircons.loadDB:2018:samples', lambda: _loader('Zircons.loadDB')(2018)[0]),
@@ -354,3 +355,14 @@ def test_lihu2022_is_the_figshare_file():
     ds = fetch_LiHu2022(return_xarray=True)
     assert ds.sizes['simulation'] == 55
     assert {'T', 'P'} <= set(ds.data_vars)
+
+
+def test_paleoreefs_is_pared_version_1():
+    from gprm.datasets.Strat import PaleoReefs
+
+    gdf = PaleoReefs()
+    assert len(gdf) == 4363
+    assert gdf['r_number'].is_unique
+    assert {'latit', 'longit', 'intervall', 'biota_main_t', 'pal_lat_scotese'} <= set(gdf.columns)
+    assert gdf.crs.to_epsg() == 4326
+

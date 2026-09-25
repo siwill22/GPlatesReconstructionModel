@@ -121,6 +121,98 @@ def pbdb(path_to_pbdb_data=None, usecols=None):
     return _stamp(gdf, 'Strat.pbdb')
 
 
+def PaleoReefs():
+    """
+    Load the PaleoReefs Database (PARED), simplified static version 1.0: one row per
+    Phanerozoic (and a few Precambrian) reef, compiled by reef specialists.
+
+    Kiessling, W. & Krause, M.C. (2022). PaleoReefs Database (PARED), version 1.0.
+    Zenodo, doi:10.5281/zenodo.6037852. Licence CC BY-NC 4.0 (non-commercial use only,
+    as stated on the Zenodo landing page).
+
+    4,363 reefs, 20 source columns under their source names, including ``latit``/``longit``
+    (present-day), ``system``/``series``/``intervall`` (age as chronostratigraphic names
+    only -- there is no numeric age in Ma), ``biota_main_t``/``biota_sec_text`` (main and
+    secondary reef builders) and ``pal_lat_scotese``/``pal_long_scotese`` (paleocoordinates
+    from an unstated Scotese model version, at an unstated age within each interval).
+    Two near-empty trailing columns (``Unnamed: 18``, ``Unnamed: 19``) are kept as in the
+    source: in those few rows, quote marks in a reference title pushed the journal volume
+    one or two cells to the right.
+
+    No plate ids: run the result through ``ReconstructionModel.assign_plate_ids()``
+    against your chosen polygons before reconstructing.
+
+    :returns: GeoDataFrame (EPSG:4326) with the source columns plus Longitude/Latitude aliases.
+    """
+    fname = _retrieve(
+        url="https://zenodo.org/records/6037852/files/PARED_version1.xlsx?download=1",
+        known_hash="md5:4d808fe9116a9f9389a476430a3b8446",
+        fname="PARED_version1.xlsx",
+        downloader=_HTTPDownloader(progressbar=False),
+        path=_os.path.join(str(_os_cache('gprm')), 'PaleoReefs'),
+    )
+    df = _pd.read_excel(fname)
+    df = _add_aliases(df, {'longit': 'Longitude', 'latit': 'Latitude'})
+
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+    return _stamp(gdf, 'Strat.PaleoReefs')
+
+
+def pbdb_query(endpoint='colls/list', params=None, snapshot=None):
+    """
+    Download a table from the Paleobiology Database web service (data1.2) and save it as
+    a dated snapshot, or reload a snapshot saved earlier.
+
+    PBDB is a live database: the same query returns different rows as records are added
+    or edited, so a download cannot be checked against a fixed checksum the way gprm's
+    other datasets are. Instead, each download is written to a CSV file whose name records
+    the endpoint and the date, and passing that file back as ``snapshot`` reproduces the
+    same table exactly. Keep the snapshot file (and record its date) wherever the result
+    has to be reproducible.
+
+    Example -- every collection whose environment was entered as a reef-type setting::
+
+        gdf = pbdb_query('colls/list', {'envtype': 'reef', 'show': 'loc,time,strat,geo,lith'},
+                         snapshot='pbdb_reef_collections.csv')
+
+    :param endpoint: web service path without extension, e.g. 'colls/list' or 'occs/list'.
+    :param params: dict of query parameters (see https://paleobiodb.org/data1.2/). ``limit``
+        defaults to 'all'.
+    :param snapshot: path of a CSV to read. If the file exists it is loaded and nothing is
+        downloaded; if it does not, the query is downloaded and saved there. If None, the
+        download is saved in gprm's cache as ``pbdb/<endpoint>_<YYYY-MM-DD>.csv``.
+    :returns: GeoDataFrame (EPSG:4326) of the PBDB columns, with Longitude/Latitude aliases
+        of ``lng``/``lat``. ``gdf.attrs['pbdb_snapshot']`` holds the path of the CSV it
+        was read from.
+    """
+    import datetime as _datetime
+    import requests as _requests
+
+    if snapshot is not None and _os.path.exists(snapshot):
+        path = snapshot
+    else:
+        query = dict(params or {})
+        query.setdefault('limit', 'all')
+        response = _requests.get('https://paleobiodb.org/data1.2/{:s}.csv'.format(endpoint),
+                                 params=query, headers={'User-Agent': 'gprm'}, timeout=600)
+        response.raise_for_status()
+        if snapshot is None:
+            snapshot = _os.path.join(str(_os_cache('gprm')), 'pbdb', '{:s}_{:s}.csv'.format(
+                endpoint.replace('/', '_'), _datetime.date.today().isoformat()))
+        _os.makedirs(_os.path.dirname(_os.path.abspath(snapshot)), exist_ok=True)
+        with open(snapshot, 'wb') as f:
+            f.write(response.content)
+        path = snapshot
+
+    df = _pd.read_csv(path, low_memory=False)
+    df = _add_aliases(df, {'lng': 'Longitude', 'lat': 'Latitude'})
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+    gdf.attrs['pbdb_snapshot'] = str(path)
+
+    return _stamp(gdf, 'Strat.pbdb')
+
+
 def pbdb_elevation_mapping(pbdb):
 
     # first we define the mapping dictionary. Ultimately this should be moved somewhere 

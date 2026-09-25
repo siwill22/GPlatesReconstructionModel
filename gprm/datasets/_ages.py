@@ -141,6 +141,11 @@ _REGISTRY = {
     'Strat.pbdb': _entry(
         event='deposition', range=('min_ma', 'max_ma'),
         note='Only the stratigraphic interval of each collection is known.'),
+    'Strat.PaleoReefs': _entry(
+        event='deposition',
+        note='No numeric age: only chronostratigraphic names in system, series and intervall '
+             '(free text, stage- to series-level). Converting them to Ma needs a timescale '
+             'chosen by the user.'),
     'Strat.PaleoLithology': _entry(
         event='deposition', range=('TOAGE', 'FROMAGE'), validity_window='interval',
         other_ages={'ReconstructionAge': 'mid-age of the time slice, not a measured age'}),

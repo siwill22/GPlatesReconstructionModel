@@ -69,6 +69,7 @@ deals with that, and gives the evidence behind each dataset's entry. Terms follo
 | `Seafloor.LargeIgneousProvinces:Johansson`, `:Johansson_centroids` | `Age` (from `FROMAGE`) | emplacement | — | age to present | — |
 | `Seafloor.LargeIgneousProvinces:UTIG` | None | — | — | none (all zeros) | — |
 | `Strat.pbdb` | None | deposition | `min_ma`–`max_ma` | none | — |
+| `Strat.PaleoReefs` | None | deposition | — (text interval names only) | none | — |
 | `Strat.PaleoLithology` | None | deposition | `TOAGE`–`FROMAGE` | interval | `ReconstructionAge` |
 | `Geology.GlobalTectonicMap` | None | — | — | none | `mag_*_age`, `met_*_age` |
 | `Geology.SurfaceGeology` | None | not stated | `TOAGE`–`FROMAGE` | interval | — |
