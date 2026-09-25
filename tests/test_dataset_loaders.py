@@ -333,3 +333,24 @@ def test_geochem_age_is_cleaned_without_touching_the_source_or_dropping_rows():
     assert int(((source < 0) & (gdf.Age == 0)).sum()) == 119
     assert source.max() == 127000             # the source column is not cleaned
     assert gdf.attrs['gprm_age']['field'] == 'Age'
+
+
+def test_valdes2021_fetches_every_run_and_checks_its_checksum():
+    """109 BRIDGE runs, one annual-mean file each, all verified against pinned sha256."""
+    import xarray as xr
+    from gprm.datasets.Paleogeography import fetch_Valdes2021
+
+    runs = fetch_Valdes2021()
+    assert len(runs) == 109
+    assert min(runs) == 0 and max(runs) == 541
+    with xr.open_dataset(runs[0.0], decode_times=False) as ds:
+        assert 'temp_mm_1_5m' in ds and 'precip_mm_srf' in ds
+
+
+def test_lihu2022_is_the_figshare_file():
+    """754 MB download on first run. Checked against figshare's own published md5."""
+    from gprm.datasets.Paleogeography import fetch_LiHu2022
+
+    ds = fetch_LiHu2022(return_xarray=True)
+    assert ds.sizes['simulation'] == 55
+    assert {'T', 'P'} <= set(ds.data_vars)
