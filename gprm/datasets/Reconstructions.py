@@ -26,6 +26,7 @@ SOFTWARE.
 
 from pooch import os_cache as _os_cache
 from ._fetch import retrieve as _retrieve
+from ._remote_zip import retrieve_zip_member as _retrieve_zip_member
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 import pandas as _pd
@@ -368,6 +369,90 @@ def fetch_Muller2022(NNR=False, load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Convergence.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Divergence.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Topologies.gpml'.format(dirname))
+
+    return reconstruction_model
+
+
+# Members of the Muller2025 archive that gprm uses, with the sha256 of each extracted file.
+# The archive is 335 MB, 442 MB of it (unpacked) continent-contouring masks gprm never reads,
+# so these ~70 MB are pulled out with range requests rather than the whole zip downloaded.
+_MULLER2025_MEMBERS = {
+    'optimisation/optimised_rotation_model_20240725.rot': 'sha256:9cbcf5a4bc53f2fbda4540771a349fa60b6c83a46c7bf96019707d2dc0c62b54',
+    'optimisation/no_net_rotation_model_20240725.rot': 'sha256:2f45adeddf7e3ecf64f6ac6183d53ef83202db9fbac819d6a1e837b7e3fa723e',
+    'static_polygons.gpmlz': 'sha256:9b30d231157f99f9a7942d073efcb85649b0a6e10e49332637df2386f1b1350f',
+    'shapes_coasts.gpmlz': 'sha256:e0cc85a4e485c4ba1f15e0e20b1780acd0d42b67f1f19ddaca7114dc2e6ae31f',
+    'shapes_continents.gpmlz': 'sha256:6e30de73967f81a403f46370295dec5c0d7ed3ffd80c73d47df926461d949616',
+    '250-0_plate_boundaries.gpml': 'sha256:6cdc686091753f4d85f07f57b122ec36c0ee07d44ff04c0dc5c9e2a5946bb995',
+    '410-250_plate_boundaries.gpml': 'sha256:fd5f0e52eb6d8a5058549004ef0ecd354f0da6a45d4c96488cfe23398a504736',
+    '1000-410-plate-boundaries.gpml': 'sha256:0ec8c8c0dd9dcbf1240d05b193e0f2606e0031ed8561c7438d07ee42c9cd2b1b',
+    '1000-410-Convergence.gpml': 'sha256:cd3b690d50efb6fdaa4250e186825dc22b3558e776311114dd36c6b661337a82',
+    '1000-410-Divergence.gpml': 'sha256:79b9eb19f5e5bb4bc5b8a925932f49f517b5c4a95d9b8c4237008defecbf69c0',
+    '1000-410-Transforms.gpml': 'sha256:c8e21c10f8d1648c9a89ba913a7cd0aa86ba60605b214d90ef93e6f24a509c70',
+    '1800-1000_plate_boundaries.gpml': 'sha256:3ef04cd1e0ce114fcefef9e3f562c4e270521075e5b396404d4c7aec679556bd',
+    'TopologyBuildingBlocks.gpml': 'sha256:5bcfa571804d400e1d12c3bf9035e06016ebd899ee715420ceebdf5c1d2748b5',
+}
+
+
+def _fetch_Muller2025_member(member):
+    return _retrieve_zip_member(
+        url='https://zenodo.org/records/17142287/files/Cao_etal_2024_1.8_Ga_mantle_ref_frame.zip',
+        member='Cao_etal_2024_1.8_Ga_mantle_ref_frame/{:s}'.format(member),
+        known_hash=_MULLER2025_MEMBERS[member],
+        path=_os.path.join(str(_os_cache('gprm')), 'Muller2025'),
+    )
+
+
+def fetch_Muller2025(NNR=False, load=True):
+    '''
+    Load the 1800 Ma to present reconstruction of Cao et al (2024) placed in an optimised
+    mantle reference frame by Muller et al (2025).
+
+    This is the Cao et al (2024) plate model: its relative plate motions are unchanged and
+    its topologies are near-identical (a few subduction zones moved slightly offshore). What
+    Muller et al (2025) contributed is the absolute reference frame, derived with the
+    optimisation approach of Muller et al (2022). Work using it should cite both:
+
+    - Cao et al (2024), Geoscience Frontiers, https://doi.org/10.1016/j.gsf.2024.101922
+      -- the plate model (the Zenodo record declares itself a version of this work).
+    - Muller et al (2025), Zenodo, v1.3, https://doi.org/10.5281/zenodo.17142287
+      -- the optimised mantle reference frame.
+
+    Relative plate motions are identical to fetch_Cao2024; only the absolute reference
+    frame differs. The rotation file used is the one that keeps the two frames apart:
+
+    - anchor_plate_id=0 (the default): the optimised mantle reference frame
+      (or, with NNR=True, a no-net-rotation frame).
+    - anchor_plate_id=5: the original palaeomagnetic reference frame of Cao et al (2024),
+      i.e. the same positions as fetch_Cao2024 with anchor plate 0.
+
+    The authors' recommended rotation files merge plate 5 away, which leaves only the mantle
+    frame; those are not used here.
+
+    :param NNR: If True, use the no-net-rotation frame for plate 0 instead of the optimised
+        mantle frame (default False).
+    '''
+    if NNR:
+        rotation_file = _fetch_Muller2025_member('optimisation/no_net_rotation_model_20240725.rot')
+    else:
+        rotation_file = _fetch_Muller2025_member('optimisation/optimised_rotation_model_20240725.rot')
+
+    from gprm import ReconstructionModel as _ReconstructionModel
+    reconstruction_model = _ReconstructionModel('Muller++2025_NNR' if NNR else 'Muller++2025_Opt')
+    reconstruction_model.add_rotation_model(rotation_file)
+
+    reconstruction_model.add_static_polygons(_fetch_Muller2025_member('static_polygons.gpmlz'))
+    reconstruction_model.add_coastlines(_fetch_Muller2025_member('shapes_coasts.gpmlz'))
+    reconstruction_model.add_continent_polygons(_fetch_Muller2025_member('shapes_continents.gpmlz'))
+
+    for member in ['250-0_plate_boundaries.gpml',
+                   '410-250_plate_boundaries.gpml',
+                   '1000-410-plate-boundaries.gpml',
+                   '1000-410-Convergence.gpml',
+                   '1000-410-Divergence.gpml',
+                   '1000-410-Transforms.gpml',
+                   '1800-1000_plate_boundaries.gpml',
+                   'TopologyBuildingBlocks.gpml']:
+        reconstruction_model.add_dynamic_polygons(_fetch_Muller2025_member(member))
 
     return reconstruction_model
 
