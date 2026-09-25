@@ -17,7 +17,8 @@ _SUBMODULES = (
     'Zircons',
 )
 
-__all__ = list(_SUBMODULES) + ['cache_path', 'DatasetFetchError', 'age_description']
+__all__ = list(_SUBMODULES) + ['cache_path', 'DatasetFetchError', 'age_description',
+                              'reference_frames']
 
 
 def cache_path(*parts):
@@ -53,6 +54,11 @@ def __getattr__(name):
         from ._ages import age_description
         globals()[name] = age_description
         return age_description
+    if name == 'reference_frames':
+        # What the anchor plate ids mean in each reconstruction model; see _frames.py
+        from ._frames import reference_frames
+        globals()[name] = reference_frames
+        return reference_frames
     if name == 'DatasetFetchError':
         from ._fetch import DatasetFetchError
         globals()[name] = DatasetFetchError

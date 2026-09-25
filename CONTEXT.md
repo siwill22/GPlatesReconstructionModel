@@ -18,6 +18,23 @@ A present-day polygon carrying a plate ID, used to partition point data onto pla
 Partitioning against static polygons is what assigns a plate ID; it is not itself a
 reconstruction.
 
+**Anchor Plate**:
+The plate id held fixed when reconstructing (`anchor_plate_id`, default 0). Which Reference
+Frame it gives depends on the model; the plates worth anchoring on, and what each means, are
+recorded per model in `gprm/datasets/_frames.py` and carried as `model.reference_frames`.
+Intermediate plates in a rotation chain (a true polar wander correction, a longitude shift, a
+zero-rotation placeholder) are anchorable but are not Reference Frames and are not listed.
+_Avoid_: fixed plate (which means the parent plate of one rotation pole)
+
+**Reference Frame**:
+What an Anchor Plate is fixed to — one of two things. A **mantle** frame is fixed to the deep
+mantle, however it was built: hotspots, palaeomagnetism corrected for true polar wander,
+optimisation, no-net-rotation, or Pacific hotspots. A **spin axis** frame is palaeomagnetic,
+without a true polar wander correction. Classification is by target, not method: a frame that
+uses moving hotspots when young and TPW-corrected palaeomagnetism when old is one mantle frame.
+_Avoid_: hybrid frame (as a category), absolute frame (without saying which), palaeomagnetic
+frame (for a TPW-corrected one)
+
 **Reconstruction Age**:
 The single age a whole time interval is reconstructed to — the rounded mid-age of that
 interval, not an age measured on any individual sample.

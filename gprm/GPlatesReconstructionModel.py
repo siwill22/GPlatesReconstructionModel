@@ -80,6 +80,8 @@ class ReconstructionModel(object):
         self.coastlines_files = []
         self.continent_polygons = []
         self.continent_polygons_files = []
+        # What the anchor plate ids mean; see gprm/datasets/_frames.py. Empty = not documented.
+        self.reference_frames = []
 
     def info(self, show_full_paths=False):
         print(self.__repr__(show_full_paths))
@@ -100,7 +102,48 @@ class ReconstructionModel(object):
                 else:
                     lines.append('   - {:s}\n'.format(os.path.split(f)[1]))
 
+        lines.append('Reference Frames (anchor_plate_id):\n')
+        if not self.reference_frames:
+            lines.append('   - not documented\n')
+        for frame in self.reference_frames:
+            valid = '' if frame['valid'] is None else ', {:g}-{:g} Ma only'.format(*frame['valid'])
+            lines.append('   - {:d}: {:s} -- {:s}{:s}\n'.format(
+                frame['plate_id'], frame['reference'], frame['description'], valid))
+
         return ''.join(lines)
+
+    def add_reference_frame(self, plate_id, reference, description, valid=None, source=None,
+                            note=None):
+        """Record what anchoring on a plate id means, for a model the fetch_ functions do not know.
+
+        :param plate_id: the anchor plate id.
+        :param reference: what the frame is fixed to: 'mantle' or 'spin axis'. A mantle frame
+            may be built from hotspots, from palaeomagnetism corrected for true polar wander, by
+            optimisation, or as no-net-rotation; a spin-axis frame is palaeomagnetic without a
+            true polar wander correction.
+        :param description: which frame it is, in a few words.
+        :param valid: (young, old) ages in Ma over which the frame is defined, or None for the
+            whole model.
+        :param source: where the classification comes from (default 'user').
+        :param note: anything to know before relying on the frame.
+        """
+        from .datasets._frames import REFERENCES
+
+        if reference not in REFERENCES:
+            raise ValueError('reference must be one of {}, not {!r}'.format(REFERENCES, reference))
+        if valid is not None:
+            young, old = valid
+            if not 0 <= young < old:
+                raise ValueError('valid must be (young, old) ages in Ma with young < old, '
+                                 'not {!r}'.format(valid))
+            valid = (float(young), float(old))
+        if any(frame['plate_id'] == plate_id for frame in self.reference_frames):
+            raise ValueError('A reference frame is already recorded for plate {}'.format(plate_id))
+
+        self.reference_frames.append(dict(plate_id=int(plate_id), reference=reference,
+                                          description=description, valid=valid,
+                                          source=source or 'user', note=note))
+        self.reference_frames.sort(key=lambda frame: frame['plate_id'])
 
     def add_rotation_model(self, rotation_file, replace=False):
         """
@@ -287,7 +330,8 @@ class ReconstructionModel(object):
             new_model = copy.copy(self)
             for attr in ('rotation_files', 'static_polygons', 'static_polygon_files',
                         'dynamic_polygons', 'dynamic_polygon_files', 'coastlines',
-                        'coastlines_files', 'continent_polygons', 'continent_polygons_files'):
+                        'coastlines_files', 'continent_polygons', 'continent_polygons_files',
+                        'reference_frames'):
                 setattr(new_model, attr, list(getattr(self, attr)))
             return new_model
 

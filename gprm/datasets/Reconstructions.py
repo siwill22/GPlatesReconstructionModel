@@ -35,6 +35,13 @@ import os as _os
 #from gprm import ReconstructionModel as _ReconstructionModel
 
 
+def _with_frames(reconstruction_model, model):
+    """Record what the model's anchor plate ids mean (see _frames.py) and return the model."""
+    from ._frames import reference_frames
+    reconstruction_model.reference_frames = reference_frames(model)
+    return reconstruction_model
+
+
 
 
 def fetch_Cao2024(load=True, model_case='NNR'):
@@ -70,7 +77,7 @@ def fetch_Cao2024(load=True, model_case='NNR'):
     reconstruction_model.add_dynamic_polygons('{:s}/1800-1000_plate_boundaries.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/TopologyBuildingBlocks.gpml'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Cao2024')
 
 
 def fetch_CaoToyRodinia(load=True, model_case='NNR'):
@@ -116,7 +123,7 @@ def fetch_CaoToyRodinia(load=True, model_case='NNR'):
     else:
         raise ValueError('Unrecognised model name {}'.format(model_case))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'CaoToyRodinia:' + model_case)
 
 
 def fetch_Li2008(load=True):
@@ -141,7 +148,7 @@ def fetch_Li2008(load=True):
     reconstruction_model.add_rotation_model('{:s}/Li_etal_2008_RodiniaModel/RodiniaModel_CompleteRotationFile.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Li_etal_2008_RodiniaModel/RodiniaBlocks_WithPlateIDColumnAndIDs.shp'.format(dirname))
     
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Li2008')
 
 
 def fetch_Li2023(load=True, model_case='East'):
@@ -211,7 +218,7 @@ def fetch_Li2023(load=True, model_case='East'):
     sp.to_file('{:s}/Static_polygon_outlines.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Static_polygon_outlines.shp'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Li2023:' + model_case)
 
 
 def fetch_DomeierTorsvik2014(load=True):
@@ -243,7 +250,7 @@ def fetch_DomeierTorsvik2014(load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Domeier2014_data/LP_subduction.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Domeier2014_data/LP_ridge.gpml'.format(dirname))
     
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'DomeierTorsvik2014')
 
 
 def fetch_Matthews2016(load=True):
@@ -280,7 +287,7 @@ def fetch_Matthews2016(load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Matthews_etal_2016_Global_Plate_Model_GPC/Global_EarthByte_Paleozoic_plate_boundaries_Matthews_etal.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Matthews_etal_2016_Global_Plate_Model_GPC/Global_EarthByte_Mesozoic-Cenozoic_plate_boundaries_Matthews_etal.gpml'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Matthews2016')
 
 
 def fetch_Merdith2021(load=True, version='1.0'):
@@ -330,7 +337,7 @@ def fetch_Merdith2021(load=True, version='1.0'):
     if version=='1.1':
         reconstruction_model.add_coastlines('{:s}/shapes_coastlines_Merdith_et_al_v2.gpmlz'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Merdith2021')
 
 
 def fetch_Muller2022(NNR=False, load=True):
@@ -370,7 +377,7 @@ def fetch_Muller2022(NNR=False, load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Divergence.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Topologies/1000-410-Topologies.gpml'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Muller2022:NNR' if NNR else 'Muller2022:Opt')
 
 
 # Members of the Muller2025 archive that gprm uses, with the sha256 of each extracted file.
@@ -454,7 +461,7 @@ def fetch_Muller2025(NNR=False, load=True):
                    'TopologyBuildingBlocks.gpml']:
         reconstruction_model.add_dynamic_polygons(_fetch_Muller2025_member(member))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Muller2025:NNR' if NNR else 'Muller2025:Opt')
 
 
 def fetch_Muller2016(load=True):
@@ -483,7 +490,7 @@ def fetch_Muller2016(load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Muller_etal_2016_AREPS_Supplement_v1.17/Global_EarthByte_230-0Ma_GK07_AREPS_PlateBoundaries.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Muller_etal_2016_AREPS_Supplement_v1.17/Global_EarthByte_230-0Ma_GK07_AREPS_Topology_BuildingBlocks.gpml'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Muller2016')
 
 
 def fetch_Muller2019(load=True):
@@ -576,7 +583,7 @@ def fetch_Muller2019(load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Western_Tethys_Deforming_Mesh_2019_v2.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Western_Tethys_Tectonic_Boundary_Topologies_2019_v2.gpml'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Muller2019')
 
 
 def fetch_Pehrsson2015(load=True):
@@ -613,7 +620,7 @@ def fetch_Pehrsson2015(load=True):
     reconstruction_model.add_rotation_model('{:s}/T_Rot_Model_Abs_25Ma_20131004_sort.rot'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/PlatePolygons.shp'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Pehrsson2015')
 
 
 def fetch_Seton2012(load=True):
@@ -641,7 +648,7 @@ def fetch_Seton2012(load=True):
     reconstruction_model.add_continent_polygons('{:s}/Seton_etal_ESR2012_ContinentalPolygons_2012.1.gpmlz'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Seton_etal_ESR2012_StaticPolygons_2012.1.gpmlz'.format(dirname))
     
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Seton2012')
 
 
 def fetch_TorsvikCocks2017(load=True, wrap_static_polygons=True):
@@ -689,7 +696,7 @@ def fetch_TorsvikCocks2017(load=True, wrap_static_polygons=True):
         reconstruction_model.add_static_polygons('{:s}/CEED6_MICROCONTINENTS.shp'.format(dirname))
         reconstruction_model.add_static_polygons('{:s}/CEED6_LAND.gpml'.format(dirname))
     
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'TorsvikCocks2017')
 
 
 def fetch_Young2019(load=True):
@@ -721,7 +728,7 @@ def fetch_Young2019(load=True):
     reconstruction_model.add_dynamic_polygons('{:s}/Young_etal_2018_GeoscienceFrontiers_GPlatesPlateMotionModel/Global_Paleozoic_plate_boundaries_Young_et_al.gpml'.format(dirname))
     reconstruction_model.add_dynamic_polygons('{:s}/Young_etal_2018_GeoscienceFrontiers_GPlatesPlateMotionModel/TopologyBuildingBlocks_Young_et_al.gpml'.format(dirname))
 
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Young2019')
 
 
 def fetch_Scotese(load=True):
@@ -748,7 +755,7 @@ def fetch_Scotese(load=True):
     reconstruction_model.add_continent_polygons('{:s}/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Rotation_models/Scotese_2008_PresentDay_ContinentalPolygons.shp'.format(dirname))
     
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Scotese2008')
 
 
 def fetch_Golonka(load=True):
@@ -877,7 +884,7 @@ def fetch_Clennett(load=True, model_case='M2019'):
         reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Western_Tethys_Deforming_Mesh_2019_v2.gpml'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/DeformingMeshes/Western_Tethys_Tectonic_Boundary_Topologies_2019_v2.gpml'.format(dirname))
 
-        return reconstruction_model
+        return _with_frames(reconstruction_model, 'Clennett:M2019')
 
     elif model_case=='S2013':
         fnames = _retrieve(
@@ -903,7 +910,7 @@ def fetch_Clennett(load=True, model_case='M2019'):
         reconstruction_model.add_dynamic_polygons('{:s}/Clennett_etal_2020_NAm_boundaries.gpml'.format(dirname))
         reconstruction_model.add_dynamic_polygons('{:s}/Clennett_etal_2020_Plates.gpml'.format(dirname))
 
-        return reconstruction_model 
+        return _with_frames(reconstruction_model, 'Clennett:S2013') 
 
     else:
         raise ValueError('Unrecognised model name {}'.format(model_case))

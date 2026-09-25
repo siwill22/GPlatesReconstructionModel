@@ -168,3 +168,93 @@ def test_muller2025_topologies_resolve_in_the_mantle_frame(muller2025, age):
 def test_muller2025_polygons_reconstruct_in_the_palaeomag_frame(muller2025):
     snapshot = muller2025.polygon_snapshot('static_polygons', 1000., anchor_plate_id=5)
     assert len(snapshot.reconstructed_polygons) > 0
+
+
+# --- Reference frames, checked against the rotation files each fetcher loads ------------------
+
+FETCHERS_WITH_FRAMES = [
+    ('fetch_Cao2024', {}, 'Cao2024'),
+    ('fetch_CaoToyRodinia', {'model_case': 'NNR'}, 'CaoToyRodinia:NNR'),
+    ('fetch_CaoToyRodinia', {'model_case': 'OV'}, 'CaoToyRodinia:OV'),
+    ('fetch_CaoToyRodinia', {'model_case': 'SSL'}, 'CaoToyRodinia:SSL'),
+    ('fetch_Li2008', {}, 'Li2008'),
+    ('fetch_Li2023', {'model_case': 'East'}, 'Li2023:East'),
+    ('fetch_Li2023', {'model_case': 'West'}, 'Li2023:West'),
+    ('fetch_DomeierTorsvik2014', {}, 'DomeierTorsvik2014'),
+    ('fetch_Matthews2016', {}, 'Matthews2016'),
+    ('fetch_Merdith2021', {}, 'Merdith2021'),
+    ('fetch_Muller2022', {'NNR': False}, 'Muller2022:Opt'),
+    ('fetch_Muller2022', {'NNR': True}, 'Muller2022:NNR'),
+    ('fetch_Muller2025', {'NNR': False}, 'Muller2025:Opt'),
+    ('fetch_Muller2025', {'NNR': True}, 'Muller2025:NNR'),
+    ('fetch_Muller2016', {}, 'Muller2016'),
+    ('fetch_Muller2019', {}, 'Muller2019'),
+    ('fetch_Pehrsson2015', {}, 'Pehrsson2015'),
+    ('fetch_Seton2012', {}, 'Seton2012'),
+    ('fetch_TorsvikCocks2017', {}, 'TorsvikCocks2017'),
+    ('fetch_Young2019', {}, 'Young2019'),
+    ('fetch_Scotese', {}, 'Scotese2008'),
+    ('fetch_Clennett', {'model_case': 'M2019'}, 'Clennett:M2019'),
+    ('fetch_Clennett', {'model_case': 'S2013'}, 'Clennett:S2013'),
+]
+
+
+def _pole_times(model, plate_id):
+    """Every time at which the model's rotation files give plate_id a pole (as moving plate)."""
+    times = set()
+    for rotation_file in model.rotation_files:
+        for feature in pygplates.FeatureCollection(rotation_file):
+            pole = feature.get_total_reconstruction_pole()
+            if pole and pole[1] == plate_id:
+                times |= {sample.get_time() for sample in pole[2].get_enabled_time_samples()}
+    return times
+
+
+@pytest.fixture(scope='module', params=FETCHERS_WITH_FRAMES,
+                ids=[key for _, _, key in FETCHERS_WITH_FRAMES])
+def fetched(request):
+    from gprm.datasets import Reconstructions
+    fetcher, kwargs, key = request.param
+    return getattr(Reconstructions, fetcher)(**kwargs), key
+
+
+def test_fetcher_attaches_its_registered_frames(fetched):
+    from gprm.datasets import reference_frames
+    model, key = fetched
+    assert model.reference_frames == reference_frames(key)
+    assert 'not documented' not in repr(model)
+
+
+def test_every_frame_plate_is_in_the_rotation_files(fetched):
+    model, _ = fetched
+    for frame in model.reference_frames:
+        assert frame['plate_id'] in model.known_plate_ids(), frame
+
+
+def test_a_frame_span_ends_at_its_last_pole(fetched):
+    """The spans were read off the rotation files by hand; hold them to the files."""
+    model, _ = fetched
+    for frame in model.reference_frames:
+        if frame['valid'] is None:
+            continue
+        young, old = frame['valid']
+        times = _pole_times(model, frame['plate_id'])
+        assert young in times and old in times, (frame, sorted(times))
+
+
+def test_no_two_frames_of_a_model_are_the_same_frame(fetched):
+    """A listed frame that coincided with another would be an alias, not a frame: somewhere in
+    their common span, some major plate must sit in a different place."""
+    model, _ = fetched
+    frames = model.reference_frames
+    for i, first in enumerate(frames):
+        for second in frames[i + 1:]:
+            oldest = min((frame['valid'] or (0., 1e9))[1] for frame in (first, second))
+            ages = [age for age in (50., 100., 300., 500.) if age < oldest]
+            worst = 0.
+            for age in ages:
+                for plate_id in (701, 101, 901, 801, 501):
+                    worst = max(worst, _rotation_difference_degrees(
+                        model.rotation_model.get_rotation(age, plate_id, anchor_plate_id=first['plate_id']),
+                        model.rotation_model.get_rotation(age, plate_id, anchor_plate_id=second['plate_id'])))
+            assert worst > 0.5, (first['plate_id'], second['plate_id'])
