@@ -78,8 +78,8 @@ def test_reference_frames_is_exported_from_gprm_datasets():
 
 def test_every_fetcher_records_its_frames_under_a_registered_name():
     """Read the fetchers' source rather than running them, which would need the network. Every
-    fetch_ function except Golonka (whose file path is currently broken, so it was never
-    scanned) must hand its model to _with_frames, and every registry entry must be reachable."""
+    fetch_ function must hand its model to _with_frames, and every registry entry must be
+    reachable."""
     source = (DATASETS_DIR / 'Reconstructions.py').read_text()
     functions = re.split(r'\ndef ', source)
 
@@ -89,9 +89,6 @@ def test_every_fetcher_records_its_frames_under_a_registered_name():
         if not name.startswith('fetch_'):
             continue
         calls = re.findall(r'_with_frames\(reconstruction_model, (.+)\)', function)
-        if name == 'fetch_Golonka':
-            assert not calls
-            continue
         assert calls, '{} does not record its reference frames'.format(name)
         for call in calls:
             literals = re.findall(r"'([^']+)'", call)

@@ -194,6 +194,7 @@ FETCHERS_WITH_FRAMES = [
     ('fetch_TorsvikCocks2017', {}, 'TorsvikCocks2017'),
     ('fetch_Young2019', {}, 'Young2019'),
     ('fetch_Scotese', {}, 'Scotese2008'),
+    ('fetch_Golonka', {}, 'Golonka2007'),
     ('fetch_Clennett', {'model_case': 'M2019'}, 'Clennett:M2019'),
     ('fetch_Clennett', {'model_case': 'S2013'}, 'Clennett:S2013'),
 ]

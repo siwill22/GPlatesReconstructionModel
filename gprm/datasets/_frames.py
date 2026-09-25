@@ -189,6 +189,10 @@ _REGISTRY = {
     'Li2023:East': [_MAINTAINER_SPIN_AXIS],
     'Li2023:West': [_MAINTAINER_SPIN_AXIS],
     'Pehrsson2015': [_MAINTAINER_SPIN_AXIS],
+    'Golonka2007': [
+        _frame(0, 'spin axis', 'palaeomagnetic reference frame',
+               source='rotation file: 701-000 "Africa - Spin Axis", "Torsvik and van der Voo '
+                      '(2002), spherical spline option GAD (dipole)"')],
     'Scotese2008': [
         _frame(0, 'spin axis', 'PALEOMAP palaeomagnetic reference frame', source=_MAINTAINER,
                note='Loosely defined: the rotation file carries an all-zero 001-000 pole '

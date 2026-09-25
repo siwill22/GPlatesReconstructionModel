@@ -772,7 +772,8 @@ def fetch_Golonka(load=True):
         processor=_Unzip(extract_dir='Cao2018_SM'),
     )
     
-    dirname = '{:s}/'.format(_os.path.split(fnames[0])[0])
+    # fnames[0] can be any member of the archive, so its directory is not the model directory
+    dirname = '{:s}/Cao2018_SM/SupplementaryMaterial_Cao_etal/'.format(str(_os_cache('gprm')))
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Golonka2007')
@@ -780,7 +781,7 @@ def fetch_Golonka(load=True):
     reconstruction_model.add_continent_polygons('{:s}/Rotation_models/Golonka_2007_PresentDay_ContinentalPolygons.shp'.format(dirname))
     reconstruction_model.add_static_polygons('{:s}/Rotation_models/Golonka_2007_PresentDay_ContinentalPolygons.shp'.format(dirname))
     
-    return reconstruction_model
+    return _with_frames(reconstruction_model, 'Golonka2007')
 
 
 def fetch_Clennett(load=True, model_case='M2019'):

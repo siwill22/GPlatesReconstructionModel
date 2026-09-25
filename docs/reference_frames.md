@@ -94,7 +94,5 @@ Quotations are from the pole comments of the rotation files each fetcher loads.
 | `Li2008` | 0 | spin axis | not stated in the file; maintainer |
 | `Li2023:East`, `Li2023:West` | 0 | spin axis | the file has no comments; maintainer |
 | `Pehrsson2015` | 0 | spin axis | not stated in the file (plate ids 1–99 there are real plates, not frames); maintainer |
+| `Golonka2007` | 0 | spin axis | 701→000 "Africa - Spin Axis", "Torsvik and van der Voo (2002), spherical spline option GAD (dipole)" |
 | `Scotese2008` | 0 | spin axis | maintainer. **Note:** loosely defined — an all-zero 001→000 pole is labelled "Hot Spot to PMAG", and the model is sometimes used as a mantle frame. Use with caution in either role. |
-
-`fetch_Golonka` has no entry: its file path is currently broken, so its rotation file was never
-examined.
