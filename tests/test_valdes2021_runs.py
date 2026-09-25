@@ -22,3 +22,11 @@ def test_cached_file_names_do_not_collide_on_a_case_insensitive_filesystem():
     assert len({r.lower() for r in run_codes}) < len(run_codes)  # the hazard is real
     names = ['{:03d}_{:s}a.pdclann.nc'.format(i, run) for i, run in enumerate(run_codes)]
     assert len({n.lower() for n in names}) == len(names)
+
+
+def test_ocean_surface_checksums_cover_the_same_runs():
+    from gprm.datasets._valdes2021_runs import RUNS, OCEAN_SURFACE_SHA256
+
+    assert set(OCEAN_SURFACE_SHA256) == {run for run, _, _ in RUNS}
+    assert len(set(OCEAN_SURFACE_SHA256.values())) == len(RUNS)
+

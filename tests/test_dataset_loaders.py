@@ -348,6 +348,16 @@ def test_valdes2021_fetches_every_run_and_checks_its_checksum():
         assert 'temp_mm_1_5m' in ds and 'precip_mm_srf' in ds
 
 
+def test_valdes2021_ocean_surface_has_sea_surface_temperature():
+    import xarray as xr
+    from gprm.datasets.Paleogeography import fetch_Valdes2021
+
+    runs = fetch_Valdes2021(stream='ocean_surface')
+    assert len(runs) == 109
+    with xr.open_dataset(runs[0.0], decode_times=False) as ds:
+        assert 'temp_mm_uo' in ds
+
+
 def test_lihu2022_is_the_figshare_file():
     """754 MB download on first run. Checked against figshare's own published md5."""
     from gprm.datasets.Paleogeography import fetch_LiHu2022

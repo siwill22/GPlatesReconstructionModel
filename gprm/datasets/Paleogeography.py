@@ -161,38 +161,55 @@ def fetch_LiHu2022(return_xarray=False):
     return fname
 
 
-def fetch_Valdes2021():
+def fetch_Valdes2021(stream='atmosphere'):
     """
-    Load the annual-mean atmosphere fields of the Valdes, Scotese & Lunt (2021) BRIDGE
-    simulations: the HadCM3 `scotese_02` run sequence, 109 time slices from 541 Ma to present.
+    Load the annual-mean fields of the Valdes, Scotese & Lunt (2021) BRIDGE simulations: the
+    HadCM3 `scotese_02` run sequence, 109 time slices from 541 Ma to present.
 
     Valdes, P.J., Scotese, C.R. & Lunt, D.J. (2021). Deep ocean temperatures through time.
     Climate of the Past 17, 1483-1506, doi:10.5194/cp-17-1483-2021.
     Data: https://www.paleo.bristol.ac.uk/ummodel/data/<run>/climate/ (public, no login).
 
-    One file per run, <run>a.pdclann.nc (~1.3 MB each, 140 MB in total), downloaded on first
-    use and checked against checksums pinned in gprm. Among its 39 variables are
-    ``temp_mm_1_5m`` (air temperature at 1.5 m, K) and ``precip_mm_srf`` (precipitation,
-    kg m-2 s-1 despite its units attribute). There is no single total-evaporation field:
-    evaporation is split across ``evapsea_mm_srf``, ``soilEvap_mm_srf``, ``canopyEvap_mm_can``,
-    ``transpiration_mm_srf`` and ``srfSublim_mm_srf``.
+    One file per run, downloaded on first use and checked against checksums pinned in gprm.
 
-    Only the annual atmosphere mean is fetched. The same server also has monthly means and
-    two ocean streams, which are not pinned here.
+    ``stream='atmosphere'`` (default): <run>a.pdclann.nc, ~1.3 MB each, 140 MB in total. Among
+    its 39 variables are ``temp_mm_1_5m`` (air temperature at 1.5 m, K) and ``precip_mm_srf``
+    (precipitation, kg m-2 s-1 despite its units attribute). There is no single
+    total-evaporation field: evaporation is split across ``evapsea_mm_srf``,
+    ``soilEvap_mm_srf``, ``canopyEvap_mm_can``, ``transpiration_mm_srf`` and
+    ``srfSublim_mm_srf``.
 
+    ``stream='ocean_surface'``: <run>o.pfclann.nc, ~0.5 MB each, 57 MB in total. Includes
+    ``temp_mm_uo`` (sea-surface temperature, degC -- its long_name says K, but present-day
+    values run -1.7 to 31.5), sea ice,
+    mixed-layer depth, and ``temp_mm_dpth``/``salinity_mm_dpth`` on 20 depth levels. Values
+    are missing over land.
+
+    Monthly means, which the same server also has, are not pinned here.
+
+    :param stream: 'atmosphere' or 'ocean_surface'.
     :returns: OrderedDict mapping age (Ma) to the path of that run's cached file, youngest first.
     """
-    from ._valdes2021_runs import RUNS
+    from ._valdes2021_runs import RUNS, OCEAN_SURFACE_SHA256
+
+    if stream == 'atmosphere':
+        suffix, subdir = 'a.pdclann.nc', 'Valdes2021'
+        hashes = {run: sha256 for run, _, sha256 in RUNS}
+    elif stream == 'ocean_surface':
+        suffix, subdir = 'o.pfclann.nc', 'Valdes2021_ocean_surface'
+        hashes = OCEAN_SURFACE_SHA256
+    else:
+        raise ValueError("stream must be 'atmosphere' or 'ocean_surface'")
 
     downloader = _HTTPDownloader(progressbar=False, headers={'User-Agent': 'gprm (pooch)'})
-    cache = _os.path.join(str(_os_cache('gprm')), 'Valdes2021')
+    cache = _os.path.join(str(_os_cache('gprm')), subdir)
 
     raster_dict = {}
-    for index, (run, age, sha256) in enumerate(RUNS):
-        name = '{:s}a.pdclann.nc'.format(run)
+    for index, (run, age, _) in enumerate(RUNS):
+        name = '{:s}{:s}'.format(run, suffix)
         raster_dict[float(age)] = _retrieve(
             url='https://www.paleo.bristol.ac.uk/ummodel/data/{:s}/climate/{:s}'.format(run, name),
-            known_hash='sha256:{:s}'.format(sha256),
+            known_hash='sha256:{:s}'.format(hashes[run]),
             # Prefixed with the index: run codes differ only in case, and would collide on
             # a case-insensitive filesystem.
             fname='{:03d}_{:s}'.format(index, name),
@@ -201,4 +218,3 @@ def fetch_Valdes2021():
         )
 
     return collections.OrderedDict(sorted(raster_dict.items()))
-
