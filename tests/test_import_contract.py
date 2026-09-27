@@ -107,3 +107,10 @@ def test_cache_path_is_platform_correct():
 
     assert str(cache_path()) == str(os_cache('gprm'))
     assert cache_path('Model', 'file.shp').name == 'file.shp'
+
+
+def test_excel_readers_that_the_loaders_rely_on_are_installed():
+    """pandas.read_excel needs openpyxl for .xlsx and xlrd for old .xls files (e.g. the
+    Hoggard et al. 2020 deposit table); pandas does not install either itself."""
+    import openpyxl  # noqa: F401
+    import xlrd  # noqa: F401
