@@ -376,3 +376,27 @@ def test_paleoreefs_is_pared_version_1():
     assert {'latit', 'longit', 'intervall', 'biota_main_t', 'pal_lat_scotese'} <= set(gdf.columns)
     assert gdf.crs.to_epsg() == 4326
 
+
+
+def test_tc1_ages_decode_to_the_nine_legend_bins():
+    """tc1age.png from Keller's StatisticalGeochemistry, decoded colour by colour."""
+    import numpy as np
+    from gprm.datasets.Geology import fetch_TC1
+
+    ds = fetch_TC1()
+    assert ds.sizes == {'lat': 540, 'lon': 1080}
+    assert (np.diff(ds.lat) > 0).all() and (np.diff(ds.lon) > 0).all()
+    ages = ds.age.values[np.isfinite(ds.age.values)]
+    assert set(np.unique(ages)) == {25., 150., 395., 695., 975., 1400., 2100., 2750., 3250.}
+    assert ds.age.sel(lat=-25, lon=120, method='nearest') == 2750        # Yilgarn/Pilbara
+    assert ds.age.sel(lat=45, lon=10, method='nearest') == 25            # Alps
+    assert np.isnan(ds.age.sel(lat=0, lon=-150, method='nearest'))       # Pacific
+
+
+def test_tc1_thermal_is_one_row_per_continental_node():
+    from gprm.datasets.Geology import fetch_TC1Thermal
+
+    df = fetch_TC1Thermal()
+    assert len(df) == 22939
+    assert list(df.columns) == ['lon', 'lat', 'z1300', 'T50', 'gradTlith', 'z550', 'region']
+    assert not df.duplicated(['lon', 'lat']).any()
