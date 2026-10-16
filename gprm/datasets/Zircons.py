@@ -6,6 +6,7 @@ from pooch import Unzip as _Unzip
 import pandas as _pd
 import geopandas as _gpd
 import os as _os
+import zipfile as _zipfile
 import numpy as _np
 
 
@@ -232,6 +233,89 @@ def load_Hf():
     df = _pd.read_excel(xls, sheet_name='Hf_Data')
 
     gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+
+    return gdf
+
+
+def load_OneDZ(dataset='expert'):
+    '''
+    Load the OneDZ global detrital zircon database (Li et al., 2026, ESSD 18, 3671-3696)
+    https://doi.org/10.5194/essd-18-3671-2026
+    Data: https://doi.org/10.5281/zenodo.19690702 (CC-BY-4.0)
+
+    dataset must be one of:
+     - 'expert' (default): the expert-checked U-Pb subset (~1.5M grains, ~2 GB in memory)
+     - 'total': the full U-Pb compilation (~2.55M grains, ~4 GB in memory). Includes
+       unverified rows, some without coordinates and some that are not detrital samples
+     - 'LuHf': the Lu-Hf isotope compilation (~300k grains, ~0.4 GB in memory)
+
+    Returns one row per grain analysis. Column names follow the OneDZ schema, which shares
+    Latitude, Longitude and Est/Max/Min_Depos_Age_Ma with the Puetz loaders above. The Lu-Hf
+    files spell some headers differently; these are renamed to the U-Pb names so the two can
+    be joined on Lead_Author + Year + Published_Sample_ID + Grain, as the OneDZ README suggests.
+
+    Some source rows have values shifted between columns, leaving place names or out-of-range
+    numbers in the coordinate fields. These rows are kept, with NaN coordinates and missing
+    geometry, rather than dropped; use gdf[gdf.geometry.notna()] to keep only located grains.
+
+    A 'Sample_Key' column (Lead_Author|Year|Published_Sample_ID) is added, since OneDZ has no
+    single sample identifier. It can be passed to tectonic_fingerprint() and tectonic_category(),
+    e.g. tectonic_fingerprint(gdf, sample_key='Sample_Key', grain_age_key='Best_age').
+    Ages are sparser than the paper's tables suggest. In the expert subset Best_age is filled
+    for ~52% of grains, Pb206U238_age for ~61% and Pb207Pb206_age for ~88%, so whole samples
+    can lack a Best_age; choose the grain_age_key accordingly.
+    '''
+    folders = {'expert': 'Experts_checked_UPb_split_parts/',
+               'total': 'Total_UPb_split_parts/',
+               'LuHf': 'Total_LuHf_split_parts/'}
+    if dataset not in folders:
+        raise ValueError(
+            "Unrecognised dataset {}. Valid datasets are 'expert', 'total' and 'LuHf'.".format(dataset))
+
+    fname = _retrieve(
+        url="https://zenodo.org/api/records/19690702/files/onedz_datasets_csv.zip/content",
+        known_hash="sha256:3876260d517684639e27da44b767fe64cc5f322132986f483d843c900641c11e",
+        fname='onedz_datasets_csv.zip',
+        downloader=_HTTPDownloader(progressbar=True),
+        path=_os_cache('gprm'),
+    )
+
+    # read the CSV parts straight from the zip (in part order), rather than caching 2.3 GB of
+    # extracted files
+    print('Reading OneDZ {} parts, please be patient....'.format(dataset))
+    with _zipfile.ZipFile(fname) as zf:
+        parts = sorted(name for name in zf.namelist()
+                       if name.startswith(folders[dataset]) and name.endswith('.csv'))
+        df = _pd.concat([_pd.read_csv(zf.open(part), encoding='utf-8-sig', low_memory=False)
+                         for part in parts], ignore_index=True)
+
+    df = df.rename(columns={'Latitud': 'Latitude',
+                            'Logitud': 'Longitude',
+                            'Web Link': 'Web_Link',
+                            'Published Sample_ID': 'Published_Sample_ID'})
+
+    # every column after Spot_diam is a measurement (ratios, ages, uncertainties,
+    # concentrations), as are the coordinates and depositional ages. A few hundred entries hold
+    # spreadsheet errors (#DIV/0!, #REF!) or OCR debris, which become NaN here. Spot_diam stays
+    # as text, since many entries are ranges such as '20/25' or '30-50'
+    numeric_columns = (['Latitude', 'Longitude',
+                        'Max_Depos_Age_Ma', 'Est_Depos_Age_Ma', 'Min_Depos_Age_Ma']
+                       + list(df.columns[df.columns.get_loc('Spot_diam') + 1:]))
+    for column in numeric_columns:
+        # unicode minus sign. Series.replace, not .str.replace, which would turn the numbers in
+        # a mixed number/text column into NaN
+        df[column] = _pd.to_numeric(df[column].replace('−', '-', regex=True), errors='coerce')
+    df['Year'] = _pd.to_numeric(df['Year'], errors='coerce').round().astype('Int64')
+
+    bad_coordinates = (df.Latitude.abs() > 90) | (df.Longitude.abs() > 180)
+    df.loc[bad_coordinates, ['Latitude', 'Longitude']] = _np.nan
+
+    df['Sample_Key'] = (df['Lead_Author'].astype(str) + '|' + df['Year'].astype(str)
+                        + '|' + df['Published_Sample_ID'].astype(str))
+
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+    # missing geometry rather than POINT (NaN NaN), so gdf.geometry.isna() finds these rows
+    gdf.loc[df.Latitude.isna() | df.Longitude.isna(), 'geometry'] = None
 
     return gdf
 
