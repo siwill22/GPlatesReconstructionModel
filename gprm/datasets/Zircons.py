@@ -257,18 +257,27 @@ def load_OneDZ(dataset='expert'):
        unverified rows, some without coordinates and some that are not detrital samples
      - 'LuHf': the Lu-Hf isotope compilation (~300k grains, ~0.4 GB in memory)
 
-    Returns one row per grain analysis. Column names follow the OneDZ schema, which shares
-    Latitude, Longitude and Est/Max/Min_Depos_Age_Ma with the Puetz loaders above. The Lu-Hf
-    files spell some headers differently; these are renamed to the U-Pb names so the two can
-    be joined on Lead_Author + Year + Published_Sample_ID + Grain, as the OneDZ README suggests.
-
-    Some source rows have values shifted between columns, leaving place names or out-of-range
-    numbers in the coordinate fields. These rows are kept, with NaN coordinates and missing
-    geometry, rather than dropped; use gdf[gdf.geometry.notna()] to keep only located grains.
+    Returns one row per grain analysis, with every source column under its OneDZ name and
+    exactly as read. Many hold some text among the numbers (spreadsheet errors such as #DIV/0!,
+    OCR debris, period names in the depositional ages), so gprm adds cleaned numeric copies:
+     - U-Pb ages, under the names used for the Puetz data: 206Pb_238U_Age_Ma, 207Pb_235U_Age_Ma,
+       207Pb_206Pb_Age_Ma, and Best_Age_Ma (from Best_age)
+     - depositional ages: Est_Depos_Age_Ma_numeric, Max_Depos_Age_Ma_numeric and
+       Min_Depos_Age_Ma_numeric. The source already uses gprm's names for these, so the cleaned
+       copies take a suffix
+     - Lu-Hf only: Latitude and Longitude (from Latitud and Logitud), plus Published_Sample_ID
+       and Web_Link copies of the source's spellings, so the Lu-Hf and U-Pb tables can be joined
+       on Lead_Author + Year + Published_Sample_ID + Grain, as the OneDZ README suggests
+    Other measurements (isotope ratios, epsilon Hf, concentrations) have no cleaned copy; where
+    one is read as text, pandas.to_numeric(gdf[column], errors='coerce') converts it.
+    The geometry is built from cleaned coordinates. Rows whose coordinates are text or out of
+    range (values shifted between columns, mostly in the Lu-Hf and 'total' sets) are kept with
+    missing geometry; use gdf[gdf.geometry.notna()] to keep only located grains.
 
     A 'Sample_Key' column (Lead_Author|Year|Published_Sample_ID) is added, since OneDZ has no
-    single sample identifier. It can be passed to tectonic_fingerprint() and tectonic_category(),
-    e.g. tectonic_fingerprint(gdf, sample_key='Sample_Key', grain_age_key='Best_age').
+    single sample identifier. With it, e.g.
+        tectonic_fingerprint(gdf, sample_key='Sample_Key', grain_age_key='206Pb_238U_Age_Ma',
+                             depositional_age_key='Est_Depos_Age_Ma_numeric')
     Ages are sparser than the paper's tables suggest. In the expert subset Best_age is filled
     for ~52% of grains, Pb206U238_age for ~61% and Pb207Pb206_age for ~88%, so whole samples
     can lack a Best_age; choose the grain_age_key accordingly.
@@ -290,42 +299,53 @@ def load_OneDZ(dataset='expert'):
 
     # read the CSV parts straight from the zip (in part order), rather than caching 2.3 GB of
     # extracted files
-    print('Reading OneDZ {} parts, please be patient....'.format(dataset))
+    _logger.info('Reading the OneDZ %s parts, this takes a while', dataset)
     with _zipfile.ZipFile(fname) as zf:
         parts = sorted(name for name in zf.namelist()
                        if name.startswith(folders[dataset]) and name.endswith('.csv'))
         df = _pd.concat([_pd.read_csv(zf.open(part), encoding='utf-8-sig', low_memory=False)
                          for part in parts], ignore_index=True)
 
-    df = df.rename(columns={'Latitud': 'Latitude',
-                            'Logitud': 'Longitude',
-                            'Web Link': 'Web_Link',
-                            'Published Sample_ID': 'Published_Sample_ID'})
+    df = _add_aliases(df, {'Web Link': 'Web_Link', 'Published Sample_ID': 'Published_Sample_ID'})
 
-    # every column after Spot_diam is a measurement (ratios, ages, uncertainties,
-    # concentrations), as are the coordinates and depositional ages. A few hundred entries hold
-    # spreadsheet errors (#DIV/0!, #REF!) or OCR debris, which become NaN here. Spot_diam stays
-    # as text, since many entries are ranges such as '20/25' or '30-50'
-    numeric_columns = (['Latitude', 'Longitude',
-                        'Max_Depos_Age_Ma', 'Est_Depos_Age_Ma', 'Min_Depos_Age_Ma']
-                       + list(df.columns[df.columns.get_loc('Spot_diam') + 1:]))
-    for column in numeric_columns:
-        # unicode minus sign. Series.replace, not .str.replace, which would turn the numbers in
-        # a mixed number/text column into NaN
-        df[column] = _pd.to_numeric(df[column].replace('−', '-', regex=True), errors='coerce')
-    df['Year'] = _pd.to_numeric(df['Year'], errors='coerce').round().astype('Int64')
+    if dataset == 'LuHf':
+        latitude, longitude = _to_number(df['Latitud']), _to_number(df['Logitud'])
+    else:
+        latitude, longitude = _to_number(df['Latitude']), _to_number(df['Longitude'])
+    located = latitude.between(-90, 90) & longitude.between(-180, 180)
+    latitude, longitude = latitude.where(located), longitude.where(located)
 
-    bad_coordinates = (df.Latitude.abs() > 90) | (df.Longitude.abs() > 180)
-    df.loc[bad_coordinates, ['Latitude', 'Longitude']] = _np.nan
+    year = _to_number(df['Year']).round().astype('Int64')
 
-    df['Sample_Key'] = (df['Lead_Author'].astype(str) + '|' + df['Year'].astype(str)
-                        + '|' + df['Published_Sample_ID'].astype(str))
+    derived = {'Est_Depos_Age_Ma_numeric': _to_number(df['Est_Depos_Age_Ma']),
+               'Max_Depos_Age_Ma_numeric': _to_number(df['Max_Depos_Age_Ma']),
+               'Min_Depos_Age_Ma_numeric': _to_number(df['Min_Depos_Age_Ma']),
+               'Sample_Key': (df['Lead_Author'].astype(str) + '|' + year.astype(str)
+                              + '|' + df['Published_Sample_ID'].astype(str))}
+    if dataset == 'LuHf':
+        derived.update({'Latitude': latitude, 'Longitude': longitude})
+    else:
+        derived.update({'206Pb_238U_Age_Ma': _to_number(df['Pb206U238_age']),
+                        '207Pb_235U_Age_Ma': _to_number(df['Pb207U235_age']),
+                        '207Pb_206Pb_Age_Ma': _to_number(df['Pb207Pb206_age']),
+                        'Best_Age_Ma': _to_number(df['Best_age'])})
+    # One concat rather than a column at a time: these tables run to 2.5 million rows
+    df = _pd.concat([df, _pd.DataFrame(derived)], axis=1)
 
-    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(df.Longitude, df.Latitude), crs=4326)
+    gdf = _gpd.GeoDataFrame(df, geometry=_gpd.points_from_xy(longitude, latitude), crs=4326)
     # missing geometry rather than POINT (NaN NaN), so gdf.geometry.isna() finds these rows
-    gdf.loc[df.Latitude.isna() | df.Longitude.isna(), 'geometry'] = None
+    gdf.loc[~located, 'geometry'] = None
 
-    return gdf
+    return _stamp(gdf, 'Zircons.load_OneDZ:{}'.format(dataset))
+
+
+def _to_number(series):
+    """Numbers from a column that holds some text among them; the text becomes NaN.
+
+    Series.replace, not .str.replace, for the unicode minus sign: .str.replace would also turn
+    the numbers in a mixed number/text column into NaN.
+    """
+    return _pd.to_numeric(series.replace('−', '-', regex=True), errors='coerce')
 
 
 # These functions are specifically for the 2018 version, to match sample coordinates against age distributions

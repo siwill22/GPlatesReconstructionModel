@@ -80,6 +80,8 @@ deals with that, and gives the evidence behind each dataset's entry. Terms follo
 | `Zircons.loadDB:2024` | `Non-Iter. Probability age (Ma)` | crystallisation | — | none | `Est./Min./Max. Stratigraphic Age (Ma)` |
 | `Zircons.loadDB:2026` | `U-Pb Non-Iter. Prob. age (Ma)` | crystallisation | — | none | stratigraphic ages, `Strat/Dep  Age (Ma)` |
 | `Zircons.load_Hf` | `U-Pb    Age  (Ma)` | crystallisation | — | none | depositional ages, `TDM1`/`TDM2` (Hf model) |
+| `Zircons.load_OneDZ:expert`, `:total` | `Best_Age_Ma` (from `Best_age`) | crystallisation | — | none | isotope ages (`*_Age_Ma`), `*_Depos_Age_Ma_numeric` |
+| `Zircons.load_OneDZ:LuHf` | `Upb_Age` | crystallisation | `Upb_Age_two_sigma` | none | `*_Depos_Age_Ma_numeric`, `TDM1_Ma`/`TDM2_Ma` (Hf model) |
 | `Zircons.get_igneous_samples:2019` | `Best Age (Ma)` | crystallisation | `Uncertainty (2σ precision)` | none | isotope ages |
 | `Zircons.get_igneous_samples:2026`, `get_mafic_felsic_samples` | `Magm. / crystal age (Ma)` | crystallisation | — | none | `Map age (Ma)` (50-Myr bin) |
 
@@ -121,7 +123,12 @@ Puetz 2026 schema defines its `Est./Max./Min. Stratigraphic Age` as the sample's
 "stratigraphic/depositional age", `Strat/Dep Age` as "the depositional age of the sample from
 which the zircons were extracted", and `U-Pb Non-Iter. Prob. age` as "the U-Pb age of the detrital
 zircon". The 2018 release gives three isotope-system ages and no preferred one, so gprm sets no
-`field` for it. `load_Hf` adds Hf depleted-mantle model ages (`TDM1`, `TDM2`). The Global
+`field` for it. `load_Hf` adds Hf depleted-mantle model ages (`TDM1`, `TDM2`). OneDZ (Li et al.
+2026; README and Tables 3–6 of the paper) gives three isotope-system ages plus `Best_age`, "Preferred
+best age (Ma)" as chosen in each original paper, which gprm uses as `field`; it is filled for only
+52% of expert-checked grains (1,496,951 rows, measured 2026-10-16), against 61% for `Pb206U238_age`
+and 88% for `Pb207Pb206_age`. Its depositional ages hold some period names ("Early Miocene") among
+the numbers, so the registry names gprm's numeric copies. The Global
 Tectonic Map gives each province separate magmatic and metamorphic age ranges.
 
 ### Interval-only data

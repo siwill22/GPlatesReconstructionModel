@@ -77,6 +77,23 @@ _ZIRCON_2019_ISOTOPE_AGES = {'206Pb/238U Age (Ma)': 'crystallisation (206Pb/238U
 _NO_BEST_AGE_2018 = ('The 2018 compilation reports each grain\'s age by three isotope systems and '
                      'does not choose one, so neither does gprm: pass the column you want.')
 
+# OneDZ's source age columns hold some text among the numbers, so these name gprm's cleaned
+# numeric copies; source_field and the note say where each came from.
+_ONEDZ_DEPOSITIONAL_AGES = {'Est_Depos_Age_Ma_numeric': 'deposition',
+                            'Min_Depos_Age_Ma_numeric': 'deposition (minimum)',
+                            'Max_Depos_Age_Ma_numeric': 'deposition (maximum)'}
+_ONEDZ_UPB = _entry(
+    'Best_Age_Ma', 'crystallisation', source_field='Best_age',
+    other_ages=dict({'206Pb_238U_Age_Ma': 'crystallisation (206Pb/238U)',
+                     '207Pb_235U_Age_Ma': 'crystallisation (207Pb/235U)',
+                     '207Pb_206Pb_Age_Ma': 'crystallisation (207Pb/206Pb)'},
+                    **_ONEDZ_DEPOSITIONAL_AGES),
+    note='Best_age is the preferred age as reported in each original paper, and is missing for '
+         'about half the grains (52% filled in the expert subset, against 88% for Pb207Pb206_age), '
+         'so whole samples can lack one. The *_Age_Ma and *_numeric columns are numeric copies of '
+         'Pb206U238_age, Pb207U235_age, Pb207Pb206_age and Est/Max/Min_Depos_Age_Ma, with text '
+         'entries (spreadsheet errors, period names) as NaN.')
+
 _JOHANSSON_ZERO_AGES = ('Age is FROMAGE, except that an emplacement age of 0 is taken to be an '
                         'error (144 of 2526 polygons, 2 of 185 centroids): Age is NaN there, and '
                         'the loader drops those rows unless keep_unknown_age_samples=True.')
@@ -191,6 +208,14 @@ _REGISTRY = {
         other_ages={'Est. Depos. Age (Ma)': 'deposition', 'Min. Depos. Age (Ma)': 'deposition (minimum)',
                     'Max. Depos. Age (Ma)': 'deposition (maximum)',
                     'TDM1 (Ma)': 'Hf model age', 'TDM2 (Ma)': 'Hf model age'}),
+    'Zircons.load_OneDZ:expert': _ONEDZ_UPB,
+    'Zircons.load_OneDZ:total': _ONEDZ_UPB,
+    'Zircons.load_OneDZ:LuHf': _entry(
+        'Upb_Age', 'crystallisation', uncertainty='Upb_Age_two_sigma',
+        other_ages=dict({'TDM1_Ma': 'Hf model age', 'TDM2_Ma': 'Hf model age'},
+                        **_ONEDZ_DEPOSITIONAL_AGES),
+        note='TDM2_Ma is read as text, because 3 of its entries are not numbers. The *_numeric '
+             'columns are numeric copies of Est/Max/Min_Depos_Age_Ma, with text entries as NaN.'),
     'Zircons.get_igneous_samples:2018': _entry(
         event='crystallisation', other_ages=_ZIRCON_2018_ISOTOPE_AGES, note=_NO_BEST_AGE_2018),
     'Zircons.get_igneous_samples:2019': _entry(
