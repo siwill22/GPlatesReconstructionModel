@@ -26,6 +26,7 @@ SOFTWARE.
 
 from pooch import os_cache as _os_cache
 from ._fetch import retrieve as _retrieve
+from ._fetch import UnzipTidy as _UnzipTidy, skip_folder as _skip_folder
 from ._remote_zip import retrieve_zip_member as _retrieve_zip_member
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
@@ -504,16 +505,11 @@ def fetch_Muller2019(load=True):
         known_hash="sha256:91a11e6b810f78c5dcc11c555044546d11f975a6e6ad3db83936e3ab00da632e",
         downloader=_HTTPDownloader(progressbar=True),
         path=_os_cache('gprm'),
-        processor=_Unzip(extract_dir='Muller2019'),
+        processor=_UnzipTidy(extract_dir='Muller2019', skip=_skip_folder('DeformingMeshPoints')),
     )
 
     dirname = '{:s}/Muller2019/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics/'.format(fnames[0].split('Muller2019')[0])
     #dirname = '{:s}/Muller_etal_2019_PlateMotionModel_v2.0_Tectonics/'.format(_os.path.split(fnames[0])[0])
-
-    # if downloading for first time, remove the unwanted MeshPoint files
-    if _os.path.isdir('{:s}/DeformingMeshPoints'.format(dirname)):
-        import shutil
-        shutil.rmtree('{:s}/DeformingMeshPoints'.format(dirname))
 
     from gprm import ReconstructionModel as _ReconstructionModel
     reconstruction_model = _ReconstructionModel('Muller++2019')
@@ -800,17 +796,12 @@ def fetch_Clennett(load=True, model_case='M2019'):
             known_hash="sha256:1ad6a29ceb396b581930734b1f6e8409e52dc4e2ae9658156ac2dd732cb82ab8",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(extract_dir='Clennett2020_M2019'),
+            processor=_UnzipTidy(extract_dir='Clennett2020_M2019', skip=_skip_folder('DeformingMeshPoints')),
         )
 
         #dirname = _os.path.split(fnames[0])[0]
         #dirname = '{:s}/Clennett_etal_2020_M2019/'.format(_os.path.split(fnames[0])[0])
         dirname = '{:s}/Clennett2020_M2019/Clennett_etal_2020_M2019/'.format(fnames[0].split('Clennett2020_M2019')[0])
-
-        # if downloading for first time, remove the unwanted MeshPoint files
-        if _os.path.isdir('{:s}/DeformingMeshPoints'.format(dirname)):
-            import shutil
-            shutil.rmtree('{:s}/DeformingMeshPoints'.format(dirname))
 
         from gprm import ReconstructionModel as _ReconstructionModel
         reconstruction_model = _ReconstructionModel('Clennett++M2019')

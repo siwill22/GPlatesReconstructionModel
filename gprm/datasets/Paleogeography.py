@@ -26,6 +26,7 @@ SOFTWARE.
 
 from pooch import os_cache as _os_cache
 from ._fetch import retrieve as _retrieve
+from ._fetch import UnzipTidy as _UnzipTidy, underscores_in_file_names as _underscores
 from pooch import HTTPDownloader as _HTTPDownloader
 from pooch import Unzip as _Unzip
 #import pandas as _pd
@@ -47,24 +48,17 @@ def fetch_Paleomap(resolution='01d'):
             known_hash="md5:77147998623ab039d86ff3e0b5e40344",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(extract_dir='Paleomap_01d'),
+            processor=_UnzipTidy(extract_dir='Paleomap_01d', skip=lambda m: m.endswith('.cache'),
+                                 rename=_underscores),      # spaces in file names upset pygmt
         )
 
         dirname = '{:s}/Paleomap_01d/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(fnames[0].split('Paleomap_01d')[0])
         #dirname = '{:s}/Scotese_Wright_2018_Maps_1-88_1degX1deg_PaleoDEMS_nc_v2'.format(_os.path.split(fnames[0])[0])
 
-        # if downloading for first time, remove the unwanted cache files
-        for file in _os.listdir(dirname):
-            if file.endswith(".cache"):
-                _os.remove('{:s}/{:s}'.format(dirname,file))
-
         raster_dict = {}
         for file in _os.listdir(dirname):
             if file.endswith(".nc"):
-                # Replace whitespace with underscore to help pygmt plotting
-                if ' ' in file:
-                    _os.rename('{:s}/{:s}'.format(dirname,file), '{:s}/{:s}'.format(dirname,file.replace(' ','_')))
-                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file.replace(' ','_'))
+                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file)
 
         ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
 
@@ -77,7 +71,7 @@ def fetch_Paleomap(resolution='01d'):
             known_hash="md5:89eb50d8645707ab221b023078535bda",  
             downloader=_HTTPDownloader(progressbar=True),
             path=_os_cache('gprm'),
-            processor=_Unzip(extract_dir='Paleomap_06m'),
+            processor=_UnzipTidy(extract_dir='Paleomap_06m', rename=_underscores),
         )
 
         dirname = '{:s}/Paleomap_06m/Scotese_Wright_2018_Maps_1-88_6minX6min_PaleoDEMS_nc'.format(fnames[0].split('Paleomap_06m')[0])
@@ -86,10 +80,7 @@ def fetch_Paleomap(resolution='01d'):
         raster_dict = {}
         for file in _os.listdir(dirname):
             if file.endswith(".nc"):
-                # Replace whitespace with underscore to help pygmt plotting
-                if ' ' in file:
-                    _os.rename('{:s}/{:s}'.format(dirname,file), '{:s}/{:s}'.format(dirname,file.replace(' ','_')))
-                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file.replace(' ','_'))
+                raster_dict[float(file.split('_')[-1][:-5])] = '{:s}/{:s}'.format(dirname,file)
 
         ordered_raster_dict = collections.OrderedDict(sorted(raster_dict.items()))
 

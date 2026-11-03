@@ -15,8 +15,12 @@ Copyright (c) 2017-2021 Simon Williams
 """
 
 import inspect as _inspect
+import os as _os
+import shutil as _shutil
+import zipfile as _zipfile
 from pathlib import Path as _Path
 
+from pooch import Unzip as _Unzip
 from pooch import retrieve as _pooch_retrieve
 
 
@@ -124,3 +128,59 @@ def retrieve(url, known_hash, **kwargs):
         return _pooch_retrieve(url, known_hash, **kwargs)
     except Exception as err:
         raise fetch_error(err, url, path=kwargs.get('path')) from err
+
+
+class UnzipTidy(_Unzip):
+    """:class:`pooch.Unzip` that leaves out unwanted archive members and renames others as it
+    extracts them.
+
+    pooch extracts an archive again whenever any of its members is missing from the extract
+    folder. Loaders that deleted or renamed files after extracting (unwanted
+    DeformingMeshPoints folders, ``.cache`` files, file names with spaces) therefore unpacked
+    the whole archive again on every call, which is slow and gives every file a new
+    modification time, so anything cached downstream on those times was thrown away. Doing the
+    tidying here keeps the folder exactly as pooch expects it, so later calls extract nothing.
+
+    :param extract_dir: as for :class:`pooch.Unzip`.
+    :param skip: function of an archive member name (``'folder/file.gpml'``) that is True for
+        members to leave out; a skipped folder (name ending ``/``) should also skip its contents.
+    :param rename: function of a member name returning the name to extract it as.
+    """
+
+    def __init__(self, extract_dir, skip=None, rename=None):
+        super().__init__(extract_dir=extract_dir)
+        self.skip = skip or (lambda name: False)
+        self.rename = rename or (lambda name: name)
+
+    def _kept(self, fname):
+        with _zipfile.ZipFile(fname, 'r') as archive:
+            return [m for m in archive.namelist() if not self.skip(m)]
+
+    def _all_members(self, fname):
+        # what pooch checks for in the extract folder before deciding to extract again
+        return [self.rename(m) for m in self._kept(fname)]
+
+    def _extract_file(self, fname, extract_dir):
+        with _zipfile.ZipFile(fname, 'r') as archive:
+            for member in archive.namelist():
+                if self.skip(member):
+                    continue
+                target = _os.path.join(extract_dir, self.rename(member))
+                if member.endswith('/'):
+                    _os.makedirs(target, exist_ok=True)
+                    continue
+                _os.makedirs(_os.path.dirname(target), exist_ok=True)
+                with archive.open(member) as src, open(target, 'wb') as dst:
+                    _shutil.copyfileobj(src, dst)
+
+
+def skip_folder(name):
+    """A ``skip`` for :class:`UnzipTidy`: leave out every member under a folder called ``name``."""
+    return lambda member: ('/' + name + '/') in ('/' + member)
+
+
+def underscores_in_file_names(member):
+    """A ``rename`` for :class:`UnzipTidy`: spaces in the file name (not its folders) become
+    underscores, which helps pygmt."""
+    folder, _, base = member.rpartition('/')
+    return (folder + '/' if folder else '') + base.replace(' ', '_')
